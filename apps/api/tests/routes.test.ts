@@ -19,6 +19,25 @@ describe("handleApiRequest", () => {
     const j = (await res.json()) as { ok: boolean };
     expect(j.ok).toBe(true);
   });
+
+  test("demo mode returns synthetic series with volume", async () => {
+    const prev = process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "1";
+    try {
+      const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=DEMO"));
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        ticker: string;
+        series: { close: number; volume: number | null }[];
+      };
+      expect(body.ticker).toBe("DEMO");
+      expect(body.series.length).toBeGreaterThan(0);
+      expect(body.series[0]!.volume).not.toBeNull();
+    } finally {
+      if (prev === undefined) delete process.env.DEMO_MODE;
+      else process.env.DEMO_MODE = prev;
+    }
+  });
 });
 
 describe("handleApiRequest with mocked Yahoo fetch", () => {

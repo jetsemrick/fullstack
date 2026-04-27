@@ -1,5 +1,6 @@
 import type { ApiErrorBody, GetPricesResponse } from "@stock/shared";
 import { DEFAULT_TICKER } from "@stock/shared";
+import { getDemoPricesResponse } from "./demo";
 import { fetchYahooChart } from "./yahoo";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
@@ -49,6 +50,10 @@ export async function handleApiRequest(req: Request): Promise<Response> {
     const ticker = normalizeTicker(tickerRaw);
     if (!TICKER_RE.test(ticker)) {
       return jsonResponse(errBody("Invalid ticker format", "VALIDATION"), { status: 400, headers: corsHeaders() });
+    }
+    if (process.env.DEMO_MODE === "1") {
+      const body: GetPricesResponse = getDemoPricesResponse(ticker);
+      return jsonResponse(body, { status: 200, headers: corsHeaders() });
     }
     try {
       const yahoo = await fetchYahooChart(ticker);
