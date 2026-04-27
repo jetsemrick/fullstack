@@ -1,0 +1,44 @@
+:root {
+  --bg: #f7f7f4;
+  --fg: #26251e;
+  --fg-muted: rgba(38, 37, 30, 0.6);
+  --accent: #f54e00;
+  --card: #f2f1ed;
+  --card-border: #e6e5e0;
+  --shadow: 0 1px 2px rgba(38, 37, 30, 0.06), 0 8px 24px rgba(38, 37, 30, 0.06);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

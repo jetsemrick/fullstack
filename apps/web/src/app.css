@@ -1,0 +1,256 @@
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.5rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  padding: 1.25rem 1.25rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 120px;
+}
+
+.field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+.label-spacer {
+  visibility: hidden;
+}
+
+.input,
+.select {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--fg);
+  min-width: 0;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--accent);
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 2.4rem;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--card-border);
+  box-shadow: none;
+}
+
+.btn-secondary:hover:enabled {
+  background: #fff;
+  border-color: #d8d6cf;
+}
+
+.hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+}
+
+.muted,
+.hint {
+  color: var(--fg-muted);
+}
+
+.metrics-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 720px) {
+  .metrics-row {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 800px) {
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.export-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 720px) {
+  .export-wrap {
+    align-items: flex-end;
+  }
+}
+
+.export-hint {
+  font-size: 0.75rem;
+  max-width: 14rem;
+}
+
+@media (min-width: 720px) {
+  .export-hint {
+    text-align: right;
+  }
+}
+
+.metric {
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+.metric-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-card {
+  padding: 0.5rem 0.25rem 0.75rem;
+  min-height: 360px;
+}
+
+.chart-wrap {
+  width: 100%;
+  height: 360px;
+  padding: 0 0.5rem 0.25rem;
+}
+
+.error-banner {
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border-color: rgba(245, 78, 0, 0.35);
+  background: #fff5f0;
+  color: var(--fg);
+}
+
+.skeleton-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: shine 1.1s ease-in-out infinite;
+}
+
+.chart-skel {
+  height: 360px;
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.field.actions {
+  min-width: 0;
+}

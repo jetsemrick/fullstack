@@ -1,0 +1,23 @@
+{
+  "chart": {
+    "result": [
+      {
+        "meta": {
+          "currency": "USD",
+          "symbol": "AAPL",
+          "regularMarketPrice": 198.5
+        },
+        "timestamp": [1700000000, 1700086400],
+        "indicators": {
+          "quote": [
+            {
+              "close": [198.1, 198.5],
+              "volume": [1000000, 1100000]
+            }
+          ]
+        }
+      }
+    ],
+    "error": null
+  }
+}
