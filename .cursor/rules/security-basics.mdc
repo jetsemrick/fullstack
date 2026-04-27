@@ -1,0 +1,37 @@
+---
+description: Basic security for API, client, and secrets—use when writing or reviewing code
+alwaysApply: true
+---
+
+# Security basics
+
+## Secrets and config
+
+- Never commit API keys, tokens, or real credentials. Use env vars and document required keys in `README` without example secrets.
+- Do not log secrets, full auth headers, or PII; redact in logs and errors returned to clients.
+
+## Trust boundaries
+
+- **Browser is untrusted.** Validate and normalize all inputs on the server (query params, body, path). Reject with clear 4xx and typed error bodies, not stack traces in production.
+- For external data (e.g. market APIs), treat responses as untrusted: parse defensively, handle missing fields, and do not pass raw HTML/JSON to `dangerouslySetInnerHTML` or `eval`.
+
+## Network and CORS
+
+- Call sensitive or third-party HTTP APIs from the **backend** when possible (avoids exposing keys and reduces CORS surface). Configure `CORS` narrowly for known origins, not `*` in production.
+- Use HTTPS in production; avoid mixing HTTP/HTTPS in ways that leak cookies or creds.
+
+## Dependencies and surface
+
+- Prefer minimal dependencies; run audit/update when changing security-sensitive paths.
+- Set security-related headers where applicable (CSP, etc.) for production deploys, not ad hoc in this repo without a plan.
+
+## Example: server input
+
+```ts
+// BAD: trust raw query and forward
+// GOOD: validate shape/range, then call upstream; map failures to 400/404/502
+```
+
+## User-generated content
+
+- If you add forms or file upload later: sanitize output, set size limits, and avoid path traversal in filenames.
