@@ -4,6 +4,7 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,magenta \"bun run --cwd apps/api dev\" \"bun run --cwd apps/web dev\"",
+    "dev:demo": "DEMO_MODE=1 concurrently -n api,web -c blue,magenta \"bun run --cwd apps/api dev\" \"bun run --cwd apps/web dev\"",
     "dev:api": "bun run --cwd apps/api dev",
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",

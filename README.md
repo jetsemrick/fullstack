@@ -28,6 +28,12 @@ Run API and web together (concurrently on ports **3001** and **5173**):
 bun run dev
 ```
 
+**Demo mode** (deterministic sample prices and volumes, no Yahoo calls—good for UI review and screenshots):
+
+```bash
+bun run dev:demo
+```
+
 Or run them separately:
 
 ```bash
@@ -48,6 +54,7 @@ After data loads, use **Export CSV** to download the current series as one row p
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
 | `CORS_ORIGIN` | `http://localhost:5173` | `Access-Control-Allow-Origin` for the API |
+| `DEMO_MODE` | (unset) | Set to `1` on the API process to serve synthetic `/api/prices` data (see `bun run dev:demo`) |
 
 ## API
 
