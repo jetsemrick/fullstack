@@ -3,6 +3,12 @@
   --fg: #26251e;
   --fg-muted: rgba(38, 37, 30, 0.6);
   --accent: #f54e00;
+  /* Compare chart series (distinct from accent + fg) */
+  --chart-1: #f54e00;
+  --chart-2: #1565c0;
+  --chart-3: #2e7d32;
+  --chart-4: #6a1b9a;
+  --chart-5: #c62828;
   --card: #f2f1ed;
   --card-border: #e6e5e0;
   --shadow: 0 1px 2px rgba(38, 37, 30, 0.06), 0 8px 24px rgba(38, 37, 30, 0.06);

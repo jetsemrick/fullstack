@@ -42,6 +42,8 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+**Compare tickers** ([CURSOR-23](https://linear.app/jemrick/issue/CURSOR-23/feature-compare-multiple-tickers-on-one-price-chart)): add up to five symbols; the chart overlays them using **indexed percent** (each line starts at 100% from its first valid close in the same Yahoo window). Misaligned dates show as gaps per series. The client calls `GET /api/prices` once per symbol in parallel (no batch route).
+
 ### Environment (optional)
 
 | Variable | Default | Description |
