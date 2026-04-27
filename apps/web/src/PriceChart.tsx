@@ -36,13 +36,14 @@ type BarShapeProps = {
   height?: number;
   payload?: PriceChartRow;
   fill?: string;
+  fillOpacity?: number;
 };
 
 function VolumeBarShape(props: unknown): ReactElement {
-  const { x = 0, y = 0, width = 0, height = 0, payload, fill } = props as BarShapeProps;
+  const { x = 0, y = 0, width = 0, height = 0, payload, fill, fillOpacity } = props as BarShapeProps;
   if (payload?.volume == null) return <g />;
   if (!Number.isFinite(height) || height <= 0) return <g />;
-  return <rect x={x} y={y} width={width} height={height} fill={fill} rx={1} ry={1} />;
+  return <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} rx={1} ry={1} />;
 }
 
 function ChartTooltip({
