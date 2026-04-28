@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
+import { getDailyFavoriteShuffleSeed } from "./favoritesSeed";
+import { FavoritesChart } from "./FavoritesChart";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import "./app.css";
@@ -57,6 +59,7 @@ export default function App() {
   const [todayLoading, setTodayLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [favoriteShuffleSeed] = useState(() => getDailyFavoriteShuffleSeed());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,6 +208,7 @@ export default function App() {
                   variant={horizonIndex === 0 && todayData ? "intraday" : "daily"}
                 />
               </div>
+              <FavoritesChart mainTicker={ticker} shuffleSeed={favoriteShuffleSeed} />
             </div>
             <div className="actions-footer">
               <button

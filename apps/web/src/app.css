@@ -277,6 +277,34 @@
   width: 100%;
 }
 
+.favorites-chart {
+  padding: 0 2rem 2rem;
+  border-top: 1px solid var(--card-border);
+}
+
+.favorites-chart__title {
+  margin: 1.25rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+
+.favorites-chart__hint {
+  margin: 0.35rem 0 1rem;
+  font-size: 0.8125rem;
+}
+
+.favorites-chart__plot {
+  height: 240px;
+  width: 100%;
+}
+
+.favorites-chart--loading .favorites-chart__skeleton {
+  height: 200px;
+  margin-top: 0.25rem;
+}
+
 .loading-card {
   padding: 2rem;
   display: flex;
