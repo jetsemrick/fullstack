@@ -25,43 +25,47 @@ function formatPrice(n: number): string {
 
 export function PriceChart({ data }: { data: GetPricesResponse }) {
   const rows = chartData(data);
-  if (rows.length === 0) return <p className="muted">No data to chart.</p>;
+  if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div className="chart-wrap" role="img" aria-label="Price over time line chart">
+    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="rgba(38,37,30,0.08)" vertical={false} />
+        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
             type="number"
             domain={["dataMin", "dataMax"]}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "var(--card-border)" }}
+            axisLine={false}
             tickFormatter={(ms: number) => formatAxisDate(ms)}
-            minTickGap={24}
+            minTickGap={32}
+            dy={10}
           />
           <YAxis
             dataKey="price"
             domain={["auto", "auto"]}
-            width={64}
+            width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v: number) => formatPrice(v)}
+            dx={-10}
           />
           <Tooltip
             contentStyle={{
               background: "var(--card)",
               border: `1px solid var(--card-border)`,
-              borderRadius: 8,
+              borderRadius: "12px",
               color: "var(--fg)",
+              boxShadow: "var(--shadow)",
+              padding: "12px",
             }}
             labelFormatter={(_, payload) => {
               const t = (payload?.[0]?.payload as { t?: number })?.t;
               if (typeof t === "number") {
-                return new Date(t).toLocaleString();
+                return new Date(t).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
               }
               return "";
             }}
@@ -71,9 +75,9 @@ export function PriceChart({ data }: { data: GetPricesResponse }) {
             type="monotone"
             dataKey="price"
             stroke="var(--accent)"
-            strokeWidth={2}
+            strokeWidth={3}
             dot={false}
-            activeDot={{ r: 4, stroke: "var(--accent)", fill: "var(--bg)" }}
+            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
         </LineChart>

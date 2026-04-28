@@ -46,18 +46,10 @@ export default function App() {
   return (
     <div className="shell">
       <header className="header">
-        <div>
-          <h1 className="title">Stock Visualizer</h1>
-        </div>
-      </header>
-
-      <section className="panel card controls" aria-labelledby={`${formId}-legend`}>
-        <h2 id={`${formId}-legend`} className="sr-only">
-          Ticker
-        </h2>
-        <form className="form-row" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor={`${formId}-ticker`}>Ticker</label>
+        <h1 className="title">Cursor Trade</h1>
+        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+          <div className="search-input-wrapper">
             <input
               id={`${formId}-ticker`}
               name="ticker"
@@ -66,76 +58,59 @@ export default function App() {
               spellCheck={false}
               value={inputTicker}
               onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="input"
+              className="search-input"
+              placeholder={`e.g. ${DEFAULT_TICKER}`}
               maxLength={32}
             />
-          </div>
-          <div className="field actions">
-            <label className="label-spacer" htmlFor={`${formId}-submit`}>
-              &nbsp;
-            </label>
             <button
               id={`${formId}-submit`}
               type="submit"
-              className="btn"
+              className="search-btn"
               disabled={loading}
             >
-              Update
+              Search
             </button>
           </div>
         </form>
-        <p className="hint muted">
-          Default ticker is <strong>{DEFAULT_TICKER}</strong>. Submit to load a different symbol.
-        </p>
-      </section>
+      </header>
 
-      {loading && (
-        <div className="skeleton-grid" aria-busy="true" aria-label="Loading chart">
-          <div className="skeleton card" style={{ height: 88 }} />
-          <div className="skeleton card" style={{ height: 88 }} />
-          <div className="skeleton card chart-skel" />
-        </div>
-      )}
+      <main className="main-content">
+        {loading && (
+          <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
+             <div className="skeleton-toolbar" />
+             <div className="skeleton-chart" />
+          </div>
+        )}
 
-      {!loading && error && (
-        <div className="card error-banner" role="alert">
-          <strong>Could not load data.</strong> {error}
-        </div>
-      )}
+        {!loading && error && (
+          <div className="card error-banner" role="alert">
+            <strong>Could not load data.</strong> {error}
+          </div>
+        )}
 
-      {!loading && !error && data && (
-        <>
-          <div className="metrics-row">
-            <div className="metrics">
-              <div className="card metric">
-                <span className="metric-label">Symbol</span>
-                <span className="metric-value">{data.ticker}</span>
+        {!loading && !error && data && (
+          <div className="card content-card">
+            <div className="content-toolbar">
+              <div className="metrics-inline">
+                <h2 className="ticker-display">{data.ticker}</h2>
+                <span className="metric-badge">{formatLast(data.lastPrice, data.currency)}</span>
+                <span className="metric-badge muted">{data.series.length.toLocaleString()} points</span>
               </div>
-              <div className="card metric">
-                <span className="metric-label">Last</span>
-                <span className="metric-value tabular">{formatLast(data.lastPrice, data.currency)}</span>
-              </div>
-              <div className="card metric">
-                <span className="metric-label">Points</span>
-                <span className="metric-value tabular">{data.series.length.toLocaleString()}</span>
-              </div>
-            </div>
-            <div className="export-wrap">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn-export"
                 onClick={() => downloadPricesCsv(data)}
+                title="Export CSV"
               >
                 Export CSV
               </button>
-              <span className="export-hint muted">One row per day in the loaded series</span>
+            </div>
+            <div className="chart-container" aria-label="Price chart">
+              <PriceChart data={data} />
             </div>
           </div>
-          <section className="card chart-card" aria-label="Price chart">
-            <PriceChart data={data} />
-          </section>
-        </>
-      )}
+        )}
+      </main>
     </div>
   );
 }
