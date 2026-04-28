@@ -1,0 +1,28 @@
+{
+  "quoteResponse": {
+    "result": [
+      {
+        "symbol": "^GSPC",
+        "shortName": "S&P 500",
+        "regularMarketPrice": 5980.87,
+        "regularMarketChangePercent": 0.12,
+        "marketState": "REGULAR"
+      },
+      {
+        "symbol": "^DJI",
+        "shortName": "Dow Jones Industrial Average",
+        "regularMarketPrice": 42000,
+        "regularMarketChangePercent": -0.08,
+        "marketState": "REGULAR"
+      },
+      {
+        "symbol": "^IXIC",
+        "shortName": "NASDAQ Composite",
+        "regularMarketPrice": 19100,
+        "regularMarketChangePercent": 0.2,
+        "marketState": "REGULAR"
+      }
+    ],
+    "error": null
+  }
+}

@@ -1,14 +1,15 @@
 :root {
-  --bg: #f7f7f4;
-  --fg: #26251e;
-  --fg-muted: rgba(38, 37, 30, 0.6);
-  --accent: #f54e00;
-  --card: #f2f1ed;
-  --card-border: #e6e5e0;
-  --shadow: 0 1px 2px rgba(38, 37, 30, 0.06), 0 8px 24px rgba(38, 37, 30, 0.06);
-  --radius: 12px;
-  --radius-sm: 8px;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  --bg: #f4f5f3;
+  --fg: #2b302b;
+  --fg-muted: #6b726b;
+  --accent: #93af93;
+  --accent-hover: #7b997b;
+  --card: #ffffff;
+  --card-border: #e2e4e0;
+  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
+  --radius: 20px;
+  --radius-sm: 10px;
+  --font: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 *,

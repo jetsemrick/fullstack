@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
+import { MarketStrip } from "./MarketStrip";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -11,12 +12,49 @@ function formatLast(v: number | null, currency: string | null) {
   return `${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
 }
 
+function formatPercentChange(data: GetPricesResponse | null) {
+  if (!data || !data.series || data.series.length < 2) return null;
+  const first = data.series[0].close;
+  const last = data.series[data.series.length - 1].close;
+  if (!first) return null;
+  const diff = last - first;
+  const pct = (diff / first) * 100;
+  const sign = pct > 0 ? "+" : "";
+  return {
+    text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+    isPositive: pct > 0,
+    isNegative: pct < 0
+  };
+}
+
+const HORIZONS = [
+  { label: "Today", days: 1 },
+  { label: "1 Year", days: 365 },
+  { label: "5 Year", days: 1825 },
+  { label: "All Time", days: Infinity }
+];
+
+function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (horizonDays === Infinity) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (!latestTimestamp) return data;
+  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
+}
+
 export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
+  const [todayData, setTodayData] = useState<GetPricesResponse | null>(null);
+  const [todayLoading, setTodayLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +75,43 @@ export default function App() {
     void load();
   }, [load]);
 
+  const slicedDaily = useMemo(() => {
+    if (!data) return null;
+    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
+  }, [data, horizonIndex]);
+
+  useEffect(() => {
+    if (horizonIndex !== 0) {
+      setTodayLoading(false);
+      setTodayData(null);
+      return;
+    }
+    let cancelled = false;
+    setTodayLoading(true);
+    void (async () => {
+      const res = await fetchPrices({ ticker, range: "1d", interval: "5m" });
+      if (cancelled) return;
+      setTodayLoading(false);
+      if (res.ok) {
+        setTodayData(res.data);
+      } else {
+        setTodayData(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [horizonIndex, ticker]);
+
+  const displayData = useMemo(() => {
+    if (!slicedDaily) return null;
+    if (horizonIndex === 0 && todayData) return todayData;
+    return slicedDaily;
+  }, [horizonIndex, slicedDaily, todayData]);
+
+  const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
+  const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
@@ -46,18 +121,10 @@ export default function App() {
   return (
     <div className="shell">
       <header className="header">
-        <div>
-          <h1 className="title">Stock Visualizer</h1>
-        </div>
-      </header>
-
-      <section className="panel card controls" aria-labelledby={`${formId}-legend`}>
-        <h2 id={`${formId}-legend`} className="sr-only">
-          Ticker
-        </h2>
-        <form className="form-row" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor={`${formId}-ticker`}>Ticker</label>
+        <MarketStrip />
+        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+          <div className="search-input-wrapper">
             <input
               id={`${formId}-ticker`}
               name="ticker"
@@ -66,76 +133,92 @@ export default function App() {
               spellCheck={false}
               value={inputTicker}
               onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="input"
+              className="search-input"
+              placeholder={`e.g. ${DEFAULT_TICKER}`}
               maxLength={32}
             />
-          </div>
-          <div className="field actions">
-            <label className="label-spacer" htmlFor={`${formId}-submit`}>
-              &nbsp;
-            </label>
             <button
               id={`${formId}-submit`}
               type="submit"
-              className="btn"
+              className="search-btn"
               disabled={loading}
             >
-              Update
+              Search
             </button>
           </div>
         </form>
-        <p className="hint muted">
-          Default ticker is <strong>{DEFAULT_TICKER}</strong>. Submit to load a different symbol.
-        </p>
-      </section>
+      </header>
 
-      {loading && (
-        <div className="skeleton-grid" aria-busy="true" aria-label="Loading chart">
-          <div className="skeleton card" style={{ height: 88 }} />
-          <div className="skeleton card" style={{ height: 88 }} />
-          <div className="skeleton card chart-skel" />
-        </div>
-      )}
+      <main className="main-content">
+        {loading && (
+          <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
+             <div className="skeleton-toolbar" />
+             <div className="skeleton-chart" />
+          </div>
+        )}
 
-      {!loading && error && (
-        <div className="card error-banner" role="alert">
-          <strong>Could not load data.</strong> {error}
-        </div>
-      )}
+        {!loading && error && (
+          <div className="card error-banner" role="alert">
+            <strong>Could not load data.</strong> {error}
+          </div>
+        )}
 
-      {!loading && !error && data && (
-        <>
-          <div className="metrics-row">
-            <div className="metrics">
-              <div className="card metric">
-                <span className="metric-label">Symbol</span>
-                <span className="metric-value">{data.ticker}</span>
+        {!loading && !error && data && displayData && (
+          <>
+            <div className="card content-card">
+              <div className="content-toolbar">
+                <div className="metrics-block">
+                  <div className="metrics-inline">
+                    <h2 className="ticker-display">{data.ticker}</h2>
+                    <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
+                    {(() => {
+                      const percentChange = formatPercentChange(displayData);
+                      if (!percentChange) return null;
+                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
+                      return (
+                        <span className={`metric-badge ${statusClass}`}>
+                          {percentChange.text}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div className="horizon-buttons">
+                    {HORIZONS.map((h, i) => (
+                      <button
+                        key={h.label}
+                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                        onClick={() => setHorizonIndex(i)}
+                      >
+                        {h.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="card metric">
-                <span className="metric-label">Last</span>
-                <span className="metric-value tabular">{formatLast(data.lastPrice, data.currency)}</span>
-              </div>
-              <div className="card metric">
-                <span className="metric-label">Points</span>
-                <span className="metric-value tabular">{data.series.length.toLocaleString()}</span>
+              <div
+                className="chart-container"
+                aria-label="Price chart"
+                aria-busy={horizonIndex === 0 && todayLoading ? true : undefined}
+              >
+                <PriceChart
+                  data={displayData}
+                  variant={horizonIndex === 0 && todayData ? "intraday" : "daily"}
+                />
               </div>
             </div>
-            <div className="export-wrap">
+            <div className="actions-footer">
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={() => downloadPricesCsv(data)}
+                className="btn-export"
+                onClick={() => downloadPricesCsv(displayData)}
+                title="Export CSV"
               >
                 Export CSV
               </button>
-              <span className="export-hint muted">One row per day in the loaded series</span>
             </div>
-          </div>
-          <section className="card chart-card" aria-label="Price chart">
-            <PriceChart data={data} />
-          </section>
-        </>
-      )}
+          </>
+        )}
+      </main>
     </div>
   );
 }
