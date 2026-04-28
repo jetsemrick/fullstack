@@ -3,6 +3,7 @@ import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
+import { MarketStrip } from "./MarketStrip";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -33,6 +34,18 @@ const HORIZONS = [
   { label: "All Time", days: Infinity }
 ];
 
+function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (horizonDays === Infinity) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (!latestTimestamp) return data;
+  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
+}
+
 export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
@@ -40,6 +53,8 @@ export default function App() {
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
+  const [todayData, setTodayData] = useState<GetPricesResponse | null>(null);
+  const [todayLoading, setTodayLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,22 +75,42 @@ export default function App() {
     void load();
   }, [load]);
 
-  const filteredData = useMemo(() => {
+  const slicedDaily = useMemo(() => {
     if (!data) return null;
-    const horizon = HORIZONS[horizonIndex].days;
-    if (horizon === Infinity) return data;
-
-    const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-    if (!latestTimestamp) return data;
-
-    const cutoff = latestTimestamp - (horizon * 24 * 60 * 60);
-    const filteredSeries = data.series.filter(p => p.timestamp >= cutoff);
-    
-    return {
-      ...data,
-      series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1)
-    };
+    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
   }, [data, horizonIndex]);
+
+  useEffect(() => {
+    if (horizonIndex !== 0) {
+      setTodayLoading(false);
+      setTodayData(null);
+      return;
+    }
+    let cancelled = false;
+    setTodayLoading(true);
+    void (async () => {
+      const res = await fetchPrices({ ticker, range: "1d", interval: "5m" });
+      if (cancelled) return;
+      setTodayLoading(false);
+      if (res.ok) {
+        setTodayData(res.data);
+      } else {
+        setTodayData(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [horizonIndex, ticker]);
+
+  const displayData = useMemo(() => {
+    if (!slicedDaily) return null;
+    if (horizonIndex === 0 && todayData) return todayData;
+    return slicedDaily;
+  }, [horizonIndex, slicedDaily, todayData]);
+
+  const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
+  const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -86,7 +121,8 @@ export default function App() {
   return (
     <div className="shell">
       <header className="header">
-<form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+        <MarketStrip />
+        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
           <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
           <div className="search-input-wrapper">
             <input
@@ -127,29 +163,30 @@ export default function App() {
           </div>
         )}
 
-        {!loading && !error && data && filteredData && (
+        {!loading && !error && data && displayData && (
           <>
             <div className="card content-card">
               <div className="content-toolbar">
-                <div className="metrics-inline">
-                  <h2 className="ticker-display">{data.ticker}</h2>
-                  <span className="metric-badge">{formatLast(data.lastPrice, data.currency)}</span>
-                  {(() => {
-                    const percentChange = formatPercentChange(filteredData);
-                    if (!percentChange) return null;
-                    const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
-                    return (
-                      <span className={`metric-badge ${statusClass}`}>
-                        {percentChange.text}
-                      </span>
-                    );
-                  })()}
-                  
+                <div className="metrics-block">
+                  <div className="metrics-inline">
+                    <h2 className="ticker-display">{data.ticker}</h2>
+                    <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
+                    {(() => {
+                      const percentChange = formatPercentChange(displayData);
+                      if (!percentChange) return null;
+                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
+                      return (
+                        <span className={`metric-badge ${statusClass}`}>
+                          {percentChange.text}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? 'active' : ''}`}
+                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
                         onClick={() => setHorizonIndex(i)}
                       >
                         {h.label}
@@ -158,15 +195,22 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="chart-container" aria-label="Price chart">
-                <PriceChart data={filteredData} />
+              <div
+                className="chart-container"
+                aria-label="Price chart"
+                aria-busy={horizonIndex === 0 && todayLoading ? true : undefined}
+              >
+                <PriceChart
+                  data={displayData}
+                  variant={horizonIndex === 0 && todayData ? "intraday" : "daily"}
+                />
               </div>
             </div>
             <div className="actions-footer">
               <button
                 type="button"
                 className="btn-export"
-                onClick={() => downloadPricesCsv(filteredData)}
+                onClick={() => downloadPricesCsv(displayData)}
                 title="Export CSV"
               >
                 Export CSV

@@ -8,11 +8,20 @@
 }
 
 .header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1rem 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .header {
+    grid-template-columns: 1fr;
+  }
+
+  .search-form {
+    justify-self: end;
+  }
 }
 
 .title {
@@ -20,6 +29,86 @@
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--fg);
+}
+
+.market-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.market-strip__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.market-status {
+  font-weight: 600;
+}
+
+.market-status--open {
+  color: #2b703e;
+}
+
+.market-status--closed {
+  color: var(--fg-muted);
+}
+
+.market-status--other {
+  color: var(--fg);
+}
+
+.market-strip__dot {
+  color: var(--fg-muted);
+  opacity: 0.55;
+  user-select: none;
+}
+
+.market-strip__clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.market-strip__indexes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: baseline;
+}
+
+.market-strip__chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.market-strip__chip-name {
+  color: var(--fg-muted);
+}
+
+.market-strip__pct--up {
+  color: #2b703e;
+  font-weight: 500;
+}
+
+.market-strip__pct--down {
+  color: #ba3b3b;
+  font-weight: 500;
+}
+
+.market-strip__pct--muted {
+  color: var(--fg-muted);
+}
+
+.market-strip__chip--pending {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
 }
 
 .search-form {
@@ -105,6 +194,14 @@
   border-bottom: 1px solid var(--card-border);
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+.metrics-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  width: 100%;
 }
 
 .metrics-inline {
@@ -227,18 +324,19 @@
 .horizon-buttons {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-left: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .horizon-btn {
   background: transparent;
   border: 1px solid var(--card-border);
   color: var(--fg-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.35rem 0.85rem;
-  font-size: 0.85rem;
+  border-radius: 6px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.8125rem;
   font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
   transition: all 0.2s ease;
 }

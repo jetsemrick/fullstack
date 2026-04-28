@@ -101,11 +101,16 @@ function extractQuoteArrays(indicators: unknown): { close: (number | null)[]; vo
   return { close: q0.close as (number | null)[], volume };
 }
 
-/** Fetches chart data using the product default range and interval (1mo / 1d). */
-export async function fetchYahooChart(ticker: string): Promise<YahooParseResult> {
+export type YahooChartOpts = {
+  range?: string;
+  interval?: string;
+};
+
+/** Fetches chart data; defaults match package constants (max / 1d). */
+export async function fetchYahooChart(ticker: string, opts?: YahooChartOpts): Promise<YahooParseResult> {
   const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(ticker)}`);
-  url.searchParams.set("range", DEFAULT_RANGE);
-  url.searchParams.set("interval", DEFAULT_INTERVAL);
+  url.searchParams.set("range", opts?.range ?? DEFAULT_RANGE);
+  url.searchParams.set("interval", opts?.interval ?? DEFAULT_INTERVAL);
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
   });
