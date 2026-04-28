@@ -9,7 +9,7 @@
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
@@ -138,6 +138,18 @@
   font-size: 0.9rem;
 }
 
+.metric-badge.positive {
+  color: #2b703e;
+  background: #edf5ee;
+  border-color: #d1e2d3;
+}
+
+.metric-badge.negative {
+  color: #ba3b3b;
+  background: #fdf5f5;
+  border-color: #f5c2c2;
+}
+
 .btn-export {
   border: 1px solid var(--card-border);
   background: transparent;
@@ -154,6 +166,12 @@
   background: var(--bg);
   color: var(--fg);
   border-color: var(--fg-muted);
+}
+
+.actions-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .chart-container {
@@ -204,4 +222,35 @@
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+.horizon-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.horizon-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--fg-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.horizon-btn:hover {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+.horizon-btn.active {
+  background: #edf5ee;
+  color: #2b703e;
+  border-color: #d1e2d3;
 }
