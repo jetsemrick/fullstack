@@ -28,10 +28,10 @@ function formatPercentChange(data: GetPricesResponse | null) {
 }
 
 const HORIZONS = [
-  { label: "Today", days: 1 },
-  { label: "1 Year", days: 365 },
-  { label: "5 Year", days: 1825 },
-  { label: "All Time", days: Infinity }
+  { label: "Today", days: 1, range: "1d", interval: "5m" },
+  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
+  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
+  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
 function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
@@ -53,15 +53,14 @@ export default function App() {
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
-  const [todayData, setTodayData] = useState<GetPricesResponse | null>(null);
-  const [todayLoading, setTodayLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await fetchPrices({ ticker });
+    const horizon = HORIZONS[horizonIndex];
+    const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
     setLoading(false);
     if (!res.ok) {
       setData(null);
@@ -69,7 +68,7 @@ export default function App() {
       return;
     }
     setData(res.data);
-  }, [ticker]);
+  }, [ticker, horizonIndex]);
 
   useEffect(() => {
     void load();
@@ -80,34 +79,10 @@ export default function App() {
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
   }, [data, horizonIndex]);
 
-  useEffect(() => {
-    if (horizonIndex !== 0) {
-      setTodayLoading(false);
-      setTodayData(null);
-      return;
-    }
-    let cancelled = false;
-    setTodayLoading(true);
-    void (async () => {
-      const res = await fetchPrices({ ticker, range: "1d", interval: "5m" });
-      if (cancelled) return;
-      setTodayLoading(false);
-      if (res.ok) {
-        setTodayData(res.data);
-      } else {
-        setTodayData(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [horizonIndex, ticker]);
-
   const displayData = useMemo(() => {
     if (!slicedDaily) return null;
-    if (horizonIndex === 0 && todayData) return todayData;
     return slicedDaily;
-  }, [horizonIndex, slicedDaily, todayData]);
+  }, [slicedDaily]);
 
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
@@ -198,11 +173,10 @@ export default function App() {
               <div
                 className="chart-container"
                 aria-label="Price chart"
-                aria-busy={horizonIndex === 0 && todayLoading ? true : undefined}
               >
                 <PriceChart
                   data={displayData}
-                  variant={horizonIndex === 0 && todayData ? "intraday" : "daily"}
+                  variant={horizonIndex === 0 ? "intraday" : "daily"}
                 />
               </div>
             </div>

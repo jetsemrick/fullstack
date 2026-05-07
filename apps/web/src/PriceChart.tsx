@@ -133,7 +133,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="price"
             stroke="var(--accent)"
             strokeWidth={3}
