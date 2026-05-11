@@ -114,7 +114,10 @@ export default function App() {
   }, [tickers, horizonIndex]);
 
   useEffect(() => {
-    void load();
+    const id = requestAnimationFrame(() => {
+      void load();
+    });
+    return () => cancelAnimationFrame(id);
   }, [load]);
 
   const slicedDaily = useMemo(() => {
