@@ -71,6 +71,7 @@ export default function App() {
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Load remote chart data when the selected ticker or horizon changes.
     void load();
   }, [load]);
 

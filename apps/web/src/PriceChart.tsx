@@ -8,7 +8,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { buildPriceVolumeRows } from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
@@ -57,6 +56,15 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function calculateYDomain(rows: { price: number; openPrice: number | null }[]): [number, number] | [string, string] {
+  const values = rows.flatMap((row) => (row.openPrice == null ? [row.price] : [row.price, row.openPrice]));
+  if (values.length === 0) return ["auto", "auto"];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const padding = Math.max((max - min) * 0.08, Math.abs(max || 1) * 0.002);
+  return [min - padding, max + padding];
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
@@ -70,29 +78,11 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       ? (ms: number) => formatIntradayAxisTick(ms)
       : (ms: number) => formatDailyAxisTick(ms, spanDays);
 
-  const intradayDomain = useMemo(() => {
-    if (variant !== "intraday" || anchorMs <= 0) return undefined;
-    return regularSessionDomainUtcMs(anchorMs);
-  }, [variant, anchorMs]);
-
-  const intradayTicks = useMemo(() => {
-    if (!intradayDomain) return undefined;
-    return hourlySessionTicksUtcMs(intradayDomain[0], intradayDomain[1]);
-  }, [intradayDomain]);
-
-  const xDomain = useMemo((): [number, number] | [string, string] => {
-    if (variant === "intraday" && intradayDomain) return intradayDomain;
-    return ["dataMin", "dataMax"];
-  }, [variant, intradayDomain]);
-
-  const yDomain = useMemo((): [number, number] | [string, string] => {
-    const values = rows.flatMap((row) => (row.openPrice == null ? [row.price] : [row.price, row.openPrice]));
-    if (values.length === 0) return ["auto", "auto"];
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const padding = Math.max((max - min) * 0.08, Math.abs(max || 1) * 0.002);
-    return [min - padding, max + padding];
-  }, [rows]);
+  const intradayDomain = variant === "intraday" && anchorMs > 0 ? regularSessionDomainUtcMs(anchorMs) : undefined;
+  const intradayTicks = intradayDomain ? hourlySessionTicksUtcMs(intradayDomain[0], intradayDomain[1]) : undefined;
+  const xDomain: [number, number] | [string, string] =
+    variant === "intraday" && intradayDomain ? intradayDomain : ["dataMin", "dataMax"];
+  const yDomain = calculateYDomain(rows);
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
