@@ -2,6 +2,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -9,13 +10,12 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import { buildPriceVolumeRows } from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
 
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
+const POSITIVE_STROKE = "#2b703e";
+const NEGATIVE_STROKE = "#ba3b3b";
+const OPEN_STROKE = "var(--fg-muted)";
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -60,7 +60,8 @@ function formatPrice(n: number): string {
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+  const rows = buildPriceVolumeRows(data);
+  const openPrice = rows[0]?.openPrice ?? null;
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -84,6 +85,15 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, intradayDomain]);
 
+  const yDomain = useMemo((): [number, number] | [string, string] => {
+    const values = rows.flatMap((row) => (row.openPrice == null ? [row.price] : [row.price, row.openPrice]));
+    if (values.length === 0) return ["auto", "auto"];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = Math.max((max - min) * 0.08, Math.abs(max || 1) * 0.002);
+    return [min - padding, max + padding];
+  }, [rows]);
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
@@ -106,7 +116,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           />
           <YAxis
             dataKey="price"
-            domain={["auto", "auto"]}
+            domain={yDomain}
             width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
@@ -132,13 +142,38 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             }}
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
+          {openPrice != null && (
+            <ReferenceLine
+              y={openPrice}
+              stroke={OPEN_STROKE}
+              strokeDasharray="5 5"
+              strokeWidth={1.5}
+              label={{
+                value: `Open ${formatPrice(openPrice)}`,
+                position: "insideTopRight",
+                fill: "var(--fg-muted)",
+                fontSize: 12,
+              }}
+            />
+          )}
           <Line
             type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
+            dataKey="priceAboveOpen"
+            name="Close"
+            stroke={POSITIVE_STROKE}
             strokeWidth={3}
             dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: POSITIVE_STROKE }}
+            isAnimationActive={false}
+          />
+          <Line
+            type="linear"
+            dataKey="priceBelowOpen"
+            name="Close"
+            stroke={NEGATIVE_STROKE}
+            strokeWidth={3}
+            dot={false}
+            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: NEGATIVE_STROKE }}
             isAnimationActive={false}
           />
         </LineChart>

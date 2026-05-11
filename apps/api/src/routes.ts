@@ -103,6 +103,7 @@ export async function handleApiRequest(req: Request): Promise<Response> {
       const body: GetPricesResponse = {
         ticker: yahoo.symbol ?? ticker,
         currency: yahoo.currency,
+        openPrice: yahoo.openPrice,
         lastPrice: yahoo.lastPrice,
         series: yahoo.points,
       };

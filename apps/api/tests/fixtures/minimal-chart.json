@@ -5,12 +5,14 @@
         "meta": {
           "currency": "USD",
           "symbol": "AAPL",
+          "regularMarketOpen": 197.9,
           "regularMarketPrice": 198.5
         },
         "timestamp": [1700000000, 1700086400],
         "indicators": {
           "quote": [
             {
+              "open": [197.9, 198.2],
               "close": [198.1, 198.5],
               "volume": [1000000, 1100000]
             }

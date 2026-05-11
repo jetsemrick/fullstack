@@ -11,15 +11,18 @@ describe("parseResult", () => {
     expect(out.errorMessage).toBeNull();
     expect(out.currency).toBe("USD");
     expect(out.symbol).toBe("AAPL");
+    expect(out.openPrice).toBe(197.9);
     expect(out.lastPrice).toBe(198.5);
     expect(out.points).toHaveLength(2);
     expect(out.points[0]).toEqual({
       timestamp: 1700000000,
+      open: 197.9,
       close: 198.1,
       volume: 1000000,
     });
     expect(out.points[1]).toEqual({
       timestamp: 1700086400,
+      open: 198.2,
       close: 198.5,
       volume: 1100000,
     });

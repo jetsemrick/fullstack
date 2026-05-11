@@ -55,10 +55,17 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
 
     const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=AAPL"));
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ticker: string; series: { close: number }[]; range?: string };
+    const body = (await res.json()) as {
+      ticker: string;
+      openPrice: number | null;
+      series: { open: number | null; close: number }[];
+      range?: string;
+    };
     expect(body.ticker).toBe("AAPL");
     expect(body.range).toBeUndefined();
+    expect(body.openPrice).toBe(197.9);
     expect(body.series.length).toBe(2);
+    expect(body.series[0].open).toBe(197.9);
     expect(body.series[0].close).toBe(198.1);
   });
 

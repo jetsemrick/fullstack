@@ -2,6 +2,8 @@
 export interface PricePoint {
   /** Unix seconds */
   timestamp: number;
+  /** Open for the source bar when provided by Yahoo */
+  open: number | null;
   /** Adjusted or regular close, depending on source */
   close: number;
   /** Optional per-bar volume */
@@ -11,6 +13,8 @@ export interface PricePoint {
 export interface GetPricesResponse {
   ticker: string;
   currency: string | null;
+  /** Current regular session open from metadata when available */
+  openPrice: number | null;
   /** Most recent last price from metadata when available */
   lastPrice: number | null;
   series: PricePoint[];
