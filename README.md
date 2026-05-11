@@ -42,6 +42,8 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+Use the ticker form to add up to five symbols to the same chart. With two or more loaded symbols, the chart switches to indexed percent mode: each line starts at 100% from that symbol’s first valid close in the selected window, and missing dates render as gaps. The browser keeps the existing API contract by calling `GET /api/prices` once per symbol in parallel.
+
 ### Environment (optional)
 
 | Variable | Default | Description |

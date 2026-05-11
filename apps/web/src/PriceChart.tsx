@@ -1,5 +1,6 @@
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -8,14 +9,16 @@ import {
   YAxis,
 } from "recharts";
 import { useMemo } from "react";
-import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
+import type { PriceChartRow } from "./priceChartData";
 
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
+const SERIES_STROKES = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+] as const;
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -57,10 +60,24 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export type PriceChartVariant = "daily" | "intraday";
+function formatPercent(n: number): string {
+  return `${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+export type PriceChartVariant = "daily" | "intraday";
+export type PriceChartValueMode = "price" | "indexedPercent";
+
+export function PriceChart({
+  rows,
+  tickers,
+  variant = "daily",
+  valueMode = "price",
+}: {
+  rows: PriceChartRow[];
+  tickers: string[];
+  variant?: PriceChartVariant;
+  valueMode?: PriceChartValueMode;
+}) {
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -86,6 +103,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const formatter = valueMode === "indexedPercent" ? formatPercent : formatPrice;
+  const axisWidth = valueMode === "indexedPercent" ? 72 : 60;
+
   return (
     <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
@@ -105,13 +125,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
-            dataKey="price"
             domain={["auto", "auto"]}
-            width={60}
+            width={axisWidth}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
+            tickFormatter={(v: number) => formatter(v)}
             dx={-10}
           />
           <Tooltip
@@ -130,17 +149,23 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: number | string, name: string) => [typeof value === "number" ? formatter(value) : value, name]}
           />
-          <Line
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
+          <Legend wrapperStyle={{ paddingTop: 4 }} formatter={(value) => <span style={{ color: "var(--fg)" }}>{value}</span>} />
+          {tickers.map((ticker, i) => (
+            <Line
+              key={ticker}
+              type="linear"
+              dataKey={ticker}
+              name={ticker}
+              stroke={SERIES_STROKES[i % SERIES_STROKES.length]}
+              strokeWidth={tickers.length === 1 ? 3 : 2.5}
+              dot={false}
+              connectNulls={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: SERIES_STROKES[i % SERIES_STROKES.length] }}
+              isAnimationActive={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
