@@ -1,5 +1,6 @@
 ---
 name: unit-test-writer
+model: gpt-5.5
 description: Author focused unit tests for TypeScript in this monorepo. Use proactively when adding or changing app logic, API routes, Yahoo parsing, or shared types. Triggers on unit tests, coverage, regression tests, and fast isolated test cases.
 ---
 

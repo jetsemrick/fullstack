@@ -1,8 +1,6 @@
 ---
-description: Basic security for API, client, and secrets—use when writing or reviewing code
 alwaysApply: true
 ---
-
 # Security basics
 
 ## Secrets and config

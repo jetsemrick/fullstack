@@ -1,0 +1,46 @@
+---
+description: Frontend design tokens and usage for apps/web (CSS variables)
+globs: apps/web/**/*.{tsx,css,html}
+alwaysApply: false
+---
+
+# Frontend design schema
+
+Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file as the **single source of truth** for surfaces, typography, radius, and default shadows.
+
+## Tokens (reference)
+
+| Token | Role |
+|-------|------|
+| `--bg`, `--fg`, `--fg-muted` | Page background, primary text, secondary text (~60% feel—use muted for hints) |
+| `--accent`, `--accent-hover` | Primary actions, focus ring, emphasis borders |
+| `--card`, `--card-border`, `--shadow` | Elevated surfaces and separation |
+| `--radius`, `--radius-sm` | Default and smaller corner radius |
+| `--font` | Inter stack; body already sets `font-family` — inherit in components |
+
+## Rules
+
+1. **Prefer CSS variables** for layout chrome: backgrounds, borders, foreground, accents. Avoid new hard-coded hex/rgb except for **meaning-specific** hues (e.g. market up/down) until those become named tokens in `:root`.
+2. **Add new primitives in `:root` first**, then wire components with `var(--…)`—do not scatter one-off palette values across TSX or CSS without a matching token when the color is reused.
+3. **Focus**: use `:focus-visible` patterns consistent with globals (accent outline)—do not remove focus outlines without an accessible replacement.
+4. **Consistency**: spacing and component layout follow existing patterns in `app.css`; match established gaps (e.g. `rem`-based grids) unless changing the shell intentionally.
+
+### Example
+
+```css
+/* Good */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+}
+
+/* Avoid when a semantic token fits */
+.panel {
+  background: #ffffff;
+  color: #2b302b;
+}
+```
+
+When introducing dark mode later, extend the schema with a class or `prefers-color-scheme` block on the same token names rather than branching colors inside every component.
