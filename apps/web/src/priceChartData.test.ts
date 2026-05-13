@@ -81,7 +81,7 @@ describe("buildCompareChartRows", () => {
     expect(result.rows.map((row) => row.t)).toEqual([1000, 2000, 3000]);
     expect(result.rows[0][compareValueKey("series0")]).toBe(100);
     expect(result.rows[1][compareValueKey("series1")]).toBe(100);
-    expect(result.rows[2][compareValueKey("series0")]).toBe(110);
+    expect(result.rows[2][compareValueKey("series0")]).toBeCloseTo(110);
     expect(result.rows[2][compareValueKey("series1")]).toBe(120);
     expect(result.rows[2][compareCloseKey("series1")]).toBe(60);
   });

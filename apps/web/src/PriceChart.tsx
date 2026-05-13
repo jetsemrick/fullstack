@@ -64,6 +64,10 @@ type TooltipItem = {
   payload?: Record<string, number | undefined>;
 };
 
+function tooltipItems(payload: unknown): TooltipItem[] {
+  return Array.isArray(payload) ? (payload as TooltipItem[]) : [];
+}
+
 export function PriceChart({
   data,
   series,
@@ -163,18 +167,19 @@ export function PriceChart({
               boxShadow: "var(--shadow)",
               padding: "12px",
             }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
+            labelFormatter={(_, payload: unknown) => {
+              const t = (tooltipItems(payload)[0]?.payload as { t?: number } | undefined)?.t;
               if (typeof t === "number") {
                 return formatTooltipWhen(t, variant, spanDays);
               }
               return "";
             }}
-            formatter={(value: number | string, name, item) => {
-              if (typeof value !== "number") return [value, name];
+            formatter={(value: unknown, name: unknown, item: unknown) => {
+              const fallbackName = String(name ?? "");
+              if (typeof value !== "number") return [String(value ?? ""), fallbackName];
               const tooltipItem = item as TooltipItem;
               const meta = tooltipItem.dataKey ? metaByValueKey.get(String(tooltipItem.dataKey)) : undefined;
-              if (!meta) return [formatPrice(value), name];
+              if (!meta) return [formatPrice(value), fallbackName];
               const close = tooltipItem.payload?.[compareCloseKey(meta.id)];
               const formattedClose = typeof close === "number" ? formatPrice(close) : "—";
               const formattedValue = compareMode
