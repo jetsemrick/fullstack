@@ -19,4 +19,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/App.tsx'],
+    rules: {
+      // Intentionally refetches from `/api/prices` whenever ticker, horizon, or compare mode changes.
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
 ])
