@@ -204,6 +204,18 @@
   font-weight: 600;
 }
 
+.ticker-chip--error {
+  border-color: #f5c2c2;
+  color: #ba3b3b;
+  background: #fdf5f5;
+}
+
+.ticker-chip__status {
+  color: #ba3b3b;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
 .ticker-chip button {
   display: inline-flex;
   align-items: center;

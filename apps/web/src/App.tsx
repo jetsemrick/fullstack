@@ -238,19 +238,27 @@ export default function App() {
             <p className="compare-help">Compare up to {MAX_COMPARE_TICKERS} symbols. Multi-symbol charts are indexed to 100 at each ticker&apos;s first visible close.</p>
           )}
           <div className="ticker-chips" aria-label="Selected tickers">
-            {tickers.map((ticker) => (
-              <span key={ticker} className="ticker-chip">
-                {ticker}
-                <button
-                  type="button"
-                  aria-label={`Remove ${ticker}`}
-                  onClick={() => removeTicker(ticker)}
-                  disabled={tickers.length === 1 || loading}
+            {tickers.map((ticker) => {
+              const tickerLoadError = loadErrors[ticker];
+              return (
+                <span
+                  key={ticker}
+                  className={`ticker-chip ${tickerLoadError ? "ticker-chip--error" : ""}`}
+                  title={tickerLoadError ? `${ticker}: ${tickerLoadError}` : ticker}
                 >
-                  &times;
-                </button>
-              </span>
-            ))}
+                  {ticker}
+                  {tickerLoadError ? <span className="ticker-chip__status">failed</span> : null}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${ticker}`}
+                    onClick={() => removeTicker(ticker)}
+                    disabled={tickers.length === 1 || loading}
+                  >
+                    &times;
+                  </button>
+                </span>
+              );
+            })}
           </div>
         </form>
       </header>
