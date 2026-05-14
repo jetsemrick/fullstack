@@ -4,7 +4,10 @@ import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { PortfolioPanel } from "./PortfolioPanel";
 import "./app.css";
+
+type MainTab = "chart" | "portfolio";
 
 function formatLast(v: number | null, currency: string | null) {
   if (v == null) return "—";
@@ -48,6 +51,7 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
 
 export default function App() {
   const formId = useId();
+  const [mainTab, setMainTab] = useState<MainTab>("chart");
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
@@ -125,20 +129,43 @@ export default function App() {
       </header>
 
       <main className="main-content">
-        {loading && (
+        <div className="view-tabs" role="tablist" aria-label="Application view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mainTab === "chart"}
+            className={`view-tab ${mainTab === "chart" ? "view-tab--active" : ""}`}
+            onClick={() => setMainTab("chart")}
+          >
+            Chart
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mainTab === "portfolio"}
+            className={`view-tab ${mainTab === "portfolio" ? "view-tab--active" : ""}`}
+            onClick={() => setMainTab("portfolio")}
+          >
+            Portfolio
+          </button>
+        </div>
+
+        {mainTab === "portfolio" && <PortfolioPanel />}
+
+        {mainTab === "chart" && loading && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
              <div className="skeleton-toolbar" />
              <div className="skeleton-chart" />
           </div>
         )}
 
-        {!loading && error && (
+        {mainTab === "chart" && !loading && error && (
           <div className="card error-banner" role="alert">
             <strong>Could not load data.</strong> {error}
           </div>
         )}
 
-        {!loading && !error && data && displayData && (
+        {mainTab === "chart" && !loading && !error && data && displayData && (
           <>
             <div className="card content-card">
               <div className="content-toolbar">
@@ -161,6 +188,7 @@ export default function App() {
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
+                        type="button"
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
                         onClick={() => setHorizonIndex(i)}
                       >

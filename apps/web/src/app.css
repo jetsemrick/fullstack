@@ -352,3 +352,186 @@
   color: #2b703e;
   border-color: #d1e2d3;
 }
+
+.view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.view-tab {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--fg-muted);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-tab:hover {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+.view-tab--active {
+  background: var(--card);
+  color: var(--fg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(245, 78, 0, 0.18);
+}
+
+.portfolio-panel {
+  overflow: hidden;
+}
+
+.portfolio-toolbar {
+  align-items: flex-start;
+}
+
+.portfolio-toolbar__title {
+  min-width: 0;
+}
+
+.portfolio-title {
+  font-size: 1.5rem;
+}
+
+.portfolio-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  line-height: 1.45;
+  max-width: 48rem;
+}
+
+.portfolio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.portfolio-refresh {
+  border-radius: 999px;
+}
+
+.portfolio-table-wrap {
+  overflow-x: auto;
+  padding: 0 0 1.25rem;
+}
+
+.portfolio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.portfolio-table th,
+.portfolio-table td {
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: middle;
+}
+
+.portfolio-table th {
+  font-weight: 600;
+  color: var(--fg-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.portfolio-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.portfolio-input {
+  width: 100%;
+  min-width: 4.5rem;
+  max-width: 7rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.875rem;
+}
+
+.portfolio-input--sym {
+  max-width: 5.5rem;
+  font-weight: 600;
+}
+
+.portfolio-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(245, 78, 0, 0.15);
+}
+
+.portfolio-remove {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.25rem;
+}
+
+.portfolio-remove:hover {
+  color: #ba3b3b;
+}
+
+.portfolio-empty {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  padding: 1.25rem 0.65rem;
+}
+
+.portfolio-row-err {
+  color: #ba3b3b;
+  font-size: 0.8125rem;
+  cursor: help;
+  border-bottom: 1px dotted rgba(186, 59, 59, 0.45);
+}
+
+.portfolio-pending {
+  color: var(--fg-muted);
+}
+
+.portfolio-pending--inline {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.portfolio-last {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.portfolio-totals-row th,
+.portfolio-totals-row td {
+  border-top: 2px solid var(--card-border);
+  font-weight: 600;
+  padding-top: 0.65rem;
+}
+
+.portfolio-pl--up {
+  color: #2b703e;
+  font-weight: 600;
+}
+
+.portfolio-pl--down {
+  color: #ba3b3b;
+  font-weight: 600;
+}

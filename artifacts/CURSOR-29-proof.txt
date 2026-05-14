@@ -1,0 +1,45 @@
+CURSOR-29 Portfolio Mode — verification 2026-05-14T19:00Z
+
+$ bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck
+$ tsc -p tsconfig.json --noEmit
+$ tsc -p tsconfig.json --noEmit
+$ tsc -p tsconfig.app.json --noEmit
+
+bun test v1.3.13 (bf2e2cec)
+
+apps/api/tests/yahoo-quote.test.ts:
+(pass) parseQuoteResponse > parses Yahoo v7 benchmark quote fixture [0.61ms]
+
+apps/api/tests/routes.test.ts:
+(pass) handleApiRequest > rejects invalid ticker with 400 [0.67ms]
+(pass) handleApiRequest > returns 400 for invalid range query [0.08ms]
+(pass) handleApiRequest > health check returns 200 [0.07ms]
+(pass) handleApiRequest with mocked Yahoo fetch > returns 200 and series when upstream chart JSON is valid [1.18ms]
+(pass) handleApiRequest with mocked Yahoo fetch > returns 200 and market context when Yahoo quote JSON is valid [0.85ms]
+(pass) handleApiRequest with mocked Yahoo fetch > returns 200 and market context when v7 quote is blocked but v8 chart works [0.68ms]
+
+apps/api/tests/yahoo.test.ts:
+(pass) parseResult > parses minimal Yahoo chart payload [0.50ms]
+(pass) parseResult > returns error for invalid JSON shape [0.05ms]
+(pass) parseResult > returns error when chart error object present [0.04ms]
+
+apps/web/src/portfolioMath.test.ts:
+(pass) aggregatePortfolioTotals > sums market value and P&L across rows [0.17ms]
+(pass) aggregatePortfolioTotals > ignores rows missing price for market value total [0.03ms]
+(pass) aggregatePortfolioTotals > totalUnrealizedPl null when no row has both price and cost [0.02ms]
+(pass) row helpers > rowMarketValue [0.02ms]
+(pass) row helpers > rowUnrealizedPl [0.02ms]
+
+apps/web/src/priceChartData.test.ts:
+(pass) seriesHasVolume > false when empty [0.08ms]
+(pass) seriesHasVolume > false when all null [0.03ms]
+(pass) seriesHasVolume > true when any non-null [0.01ms]
+(pass) buildPriceVolumeRows > maps timestamps and volumeBar [0.05ms]
+(pass) formatVolumeAxis > compact suffixes [6.12ms]
+(pass) formatVolumeTooltip > em dash for null [0.06ms]
+(pass) formatVolumeTooltip > includes digits for finite values [0.09ms]
+
+ 22 pass
+ 0 fail
+ 57 expect() calls
+Ran 22 tests across 5 files. [33.00ms]
