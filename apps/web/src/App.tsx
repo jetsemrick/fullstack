@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, useMemo, type FormEvent } from "react";
+import { useEffect, useId, useState, useMemo, useRef, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
@@ -71,15 +71,42 @@ export default function App() {
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const dataByTickerRef = useRef<Record<string, GetPricesResponse>>({});
+  dataByTickerRef.current = dataByTicker;
+  const prevHorizonIndexRef = useRef(horizonIndex);
+
   useEffect(() => {
     let cancelled = false;
+    const horizonChanged = prevHorizonIndexRef.current !== horizonIndex;
+    prevHorizonIndexRef.current = horizonIndex;
 
     async function load() {
-      setLoading(true);
-      setLoadErrors({});
       const horizon = HORIZONS[horizonIndex];
+
+      const tickersToFetch = horizonChanged
+        ? tickers
+        : tickers.filter((t) => !dataByTickerRef.current[t]);
+
+      if (tickersToFetch.length === 0) {
+        setDataByTicker((current) => {
+          const tickerSet = new Set(tickers);
+          const next: Record<string, GetPricesResponse> = {};
+          for (const [t, data] of Object.entries(current)) {
+            if (tickerSet.has(t)) next[t] = data;
+          }
+          return next;
+        });
+        return;
+      }
+
+      const hasDisplayableData = tickers.some((t) => dataByTickerRef.current[t]);
+      if (!hasDisplayableData) {
+        setLoading(true);
+      }
+      setLoadErrors({});
+
       const responses = await Promise.all(
-        tickers.map(async (ticker) => {
+        tickersToFetch.map(async (ticker) => {
           try {
             const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
             return { ticker, res };
@@ -91,17 +118,30 @@ export default function App() {
       );
       if (cancelled) return;
 
-      const nextData: Record<string, GetPricesResponse> = {};
-      const nextErrors: Record<string, string> = {};
+      const newData: Record<string, GetPricesResponse> = {};
+      const newErrors: Record<string, string> = {};
       for (const { ticker, res } of responses) {
         if (res.ok) {
-          nextData[ticker] = res.data;
+          newData[ticker] = res.data;
         } else {
-          nextErrors[ticker] = res.error.error ?? "Request failed";
+          newErrors[ticker] = res.error.error ?? "Request failed";
         }
       }
-      setDataByTicker(nextData);
-      setLoadErrors(nextErrors);
+
+      setDataByTicker((current) => {
+        const tickerSet = new Set(tickers);
+        const next: Record<string, GetPricesResponse> = {};
+        if (!horizonChanged) {
+          for (const [t, data] of Object.entries(current)) {
+            if (tickerSet.has(t) && !tickersToFetch.includes(t)) {
+              next[t] = data;
+            }
+          }
+        }
+        Object.assign(next, newData);
+        return next;
+      });
+      setLoadErrors(newErrors);
       setLoading(false);
     }
 
