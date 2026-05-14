@@ -9,13 +9,13 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import {
+  buildCompareChartRows,
+  compareCloseKey,
+  compareValueKey,
+  type CompareChartSeriesInput,
+} from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -59,8 +59,38 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+type TooltipItem = {
+  dataKey?: string | number;
+  payload?: Record<string, number | undefined>;
+};
+
+function tooltipItems(payload: unknown): TooltipItem[] {
+  return Array.isArray(payload) ? (payload as TooltipItem[]) : [];
+}
+
+export function PriceChart({
+  data,
+  series,
+  variant = "daily",
+}: {
+  data?: GetPricesResponse;
+  series?: CompareChartSeriesInput[];
+  variant?: PriceChartVariant;
+}) {
+  const chartSeries = useMemo<CompareChartSeriesInput[]>(() => {
+    if (series) return series;
+    if (!data) return [];
+    return [{ id: "series0", ticker: data.ticker, color: "var(--accent)", data }];
+  }, [data, series]);
+  const compareMode = chartSeries.length > 1;
+  const { rows, series: seriesMeta } = useMemo(
+    () => buildCompareChartRows(chartSeries, { normalizeToFirstClose: compareMode }),
+    [chartSeries, compareMode],
+  );
+  const metaByValueKey = useMemo(
+    () => new Map(seriesMeta.map((item) => [compareValueKey(item.id), item])),
+    [seriesMeta],
+  );
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -87,9 +117,24 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+    <div
+      role="img"
+      aria-label="Price over time line chart"
+      style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" }}
+    >
+      {seriesMeta.length > 1 && (
+        <ul className="chart-legend" aria-label="Compared tickers">
+          {seriesMeta.map((item) => (
+            <li key={item.id} className="chart-legend-item">
+              <span className="chart-legend-swatch" style={{ backgroundColor: item.color }} />
+              <span>{item.ticker}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" minHeight={320}>
+          <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
@@ -105,13 +150,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
-            dataKey="price"
             domain={["auto", "auto"]}
             width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
+            tickFormatter={(v: number) => (compareMode ? v.toFixed(0) : formatPrice(v))}
             dx={-10}
           />
           <Tooltip
@@ -123,26 +167,44 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               boxShadow: "var(--shadow)",
               padding: "12px",
             }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
+            labelFormatter={(_, payload: unknown) => {
+              const t = (tooltipItems(payload)[0]?.payload as { t?: number } | undefined)?.t;
               if (typeof t === "number") {
                 return formatTooltipWhen(t, variant, spanDays);
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: unknown, name: unknown, item: unknown) => {
+              const fallbackName = String(name ?? "");
+              if (typeof value !== "number") return [String(value ?? ""), fallbackName];
+              const tooltipItem = item as TooltipItem;
+              const meta = tooltipItem.dataKey ? metaByValueKey.get(String(tooltipItem.dataKey)) : undefined;
+              if (!meta) return [formatPrice(value), fallbackName];
+              const close = tooltipItem.payload?.[compareCloseKey(meta.id)];
+              const formattedClose = typeof close === "number" ? formatPrice(close) : "—";
+              const formattedValue = compareMode
+                ? `${value.toFixed(2)} index (${formattedClose}${meta.currency ? ` ${meta.currency}` : ""})`
+                : `${formattedClose}${meta.currency ? ` ${meta.currency}` : ""}`;
+              return [formattedValue, meta.ticker];
+            }}
           />
-          <Line
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+          {seriesMeta.map((item) => (
+            <Line
+              key={item.id}
+              type="linear"
+              dataKey={compareValueKey(item.id)}
+              name={item.ticker}
+              stroke={item.color}
+              strokeWidth={3}
+              dot={false}
+              connectNulls
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: item.color }}
+              isAnimationActive={false}
+            />
+          ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

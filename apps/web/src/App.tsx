@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
+import { useEffect, useId, useState, useMemo, useRef, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
@@ -34,6 +34,10 @@ const HORIZONS = [
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
+const MAX_COMPARE_TICKERS = 5;
+const TICKER_RE = /^[A-Za-z0-9._^=-]{1,32}$/;
+const SERIES_COLORS = ["#f54e00", "#2563eb", "#15803d", "#7e22ce", "#b45309"] as const;
+
 function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
@@ -46,51 +50,158 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   };
 }
 
+function normalizeTickerInput(raw: string): string {
+  return raw.trim().toUpperCase();
+}
+
+function formatLoadErrors(errors: Record<string, string>): string | null {
+  const entries = Object.entries(errors);
+  if (entries.length === 0) return null;
+  return entries.map(([ticker, message]) => `${ticker}: ${message}`).join("; ");
+}
+
 export default function App() {
   const formId = useId();
-  const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
-  const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const [tickers, setTickers] = useState<string[]>([DEFAULT_TICKER]);
+  const [inputTicker, setInputTicker] = useState<string>("");
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
-  const [data, setData] = useState<GetPricesResponse | null>(null);
+  const [dataByTicker, setDataByTicker] = useState<Record<string, GetPricesResponse>>({});
+  const [loadErrors, setLoadErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const horizon = HORIZONS[horizonIndex];
-    const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
-    setLoading(false);
-    if (!res.ok) {
-      setData(null);
-      setError(res.error.error ?? "Request failed");
-      return;
-    }
-    setData(res.data);
-  }, [ticker, horizonIndex]);
+  const dataByTickerRef = useRef<Record<string, GetPricesResponse>>({});
+  dataByTickerRef.current = dataByTicker;
+  const prevHorizonIndexRef = useRef(horizonIndex);
 
   useEffect(() => {
+    let cancelled = false;
+    const horizonChanged = prevHorizonIndexRef.current !== horizonIndex;
+    prevHorizonIndexRef.current = horizonIndex;
+
+    async function load() {
+      const horizon = HORIZONS[horizonIndex];
+
+      const tickersToFetch = horizonChanged
+        ? tickers
+        : tickers.filter((t) => !dataByTickerRef.current[t]);
+
+      if (tickersToFetch.length === 0) {
+        setDataByTicker((current) => {
+          const tickerSet = new Set(tickers);
+          const next: Record<string, GetPricesResponse> = {};
+          for (const [t, data] of Object.entries(current)) {
+            if (tickerSet.has(t)) next[t] = data;
+          }
+          return next;
+        });
+        return;
+      }
+
+      const hasDisplayableData = tickers.some((t) => dataByTickerRef.current[t]);
+      if (!hasDisplayableData) {
+        setLoading(true);
+      }
+      setLoadErrors({});
+
+      const responses = await Promise.all(
+        tickersToFetch.map(async (ticker) => {
+          try {
+            const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
+            return { ticker, res };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Request failed";
+            return { ticker, res: { ok: false, error: { error: message, code: "INTERNAL" }, status: 0 } as const };
+          }
+        }),
+      );
+      if (cancelled) return;
+
+      const newData: Record<string, GetPricesResponse> = {};
+      const newErrors: Record<string, string> = {};
+      for (const { ticker, res } of responses) {
+        if (res.ok) {
+          newData[ticker] = res.data;
+        } else {
+          newErrors[ticker] = res.error.error ?? "Request failed";
+        }
+      }
+
+      setDataByTicker((current) => {
+        const tickerSet = new Set(tickers);
+        const next: Record<string, GetPricesResponse> = {};
+        if (!horizonChanged) {
+          for (const [t, data] of Object.entries(current)) {
+            if (tickerSet.has(t) && !tickersToFetch.includes(t)) {
+              next[t] = data;
+            }
+          }
+        }
+        Object.assign(next, newData);
+        return next;
+      });
+      setLoadErrors(newErrors);
+      setLoading(false);
+    }
+
     void load();
-  }, [load]);
+    return () => {
+      cancelled = true;
+    };
+  }, [tickers, horizonIndex]);
 
-  const slicedDaily = useMemo(() => {
-    if (!data) return null;
-    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
-  }, [data, horizonIndex]);
+  const displaySeries = useMemo(() => {
+    return tickers
+      .map((ticker) => dataByTicker[ticker])
+      .filter((data): data is GetPricesResponse => Boolean(data))
+      .map((data) => filterSeriesByHorizon(data, HORIZONS[horizonIndex].days));
+  }, [dataByTicker, horizonIndex, tickers]);
 
-  const displayData = useMemo(() => {
-    if (!slicedDaily) return null;
-    return slicedDaily;
-  }, [slicedDaily]);
+  const chartSeries = useMemo(
+    () =>
+      displaySeries.map((data, index) => ({
+        id: `series${index}`,
+        ticker: data.ticker,
+        color: SERIES_COLORS[index % SERIES_COLORS.length],
+        data,
+      })),
+    [displaySeries],
+  );
 
-  const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
-  const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
+  const loadErrorSummary = useMemo(() => formatLoadErrors(loadErrors), [loadErrors]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
-    setTicker(t);
+    const nextTicker = normalizeTickerInput(inputTicker);
+    setFormError(null);
+    if (!nextTicker) {
+      setFormError("Enter a ticker to add.");
+      return;
+    }
+    if (!TICKER_RE.test(nextTicker)) {
+      setFormError("Use letters, numbers, dots, underscores, carets, equals, or dashes only.");
+      return;
+    }
+    if (tickers.includes(nextTicker)) {
+      setFormError(`${nextTicker} is already on the chart.`);
+      return;
+    }
+    if (tickers.length >= MAX_COMPARE_TICKERS) {
+      setFormError(`Compare up to ${MAX_COMPARE_TICKERS} tickers at a time.`);
+      return;
+    }
+    setTickers((current) => [...current, nextTicker]);
+    setInputTicker("");
+  }
+
+  function removeTicker(ticker: string) {
+    if (tickers.length === 1) return;
+    setTickers((current) => current.filter((item) => item !== ticker));
+    setLoadErrors((current) => {
+      const { [ticker]: _removed, ...rest } = current;
+      return rest;
+    });
   }
 
   return (
@@ -109,7 +220,7 @@ export default function App() {
               value={inputTicker}
               onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
               className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
+              placeholder="Add ticker"
               maxLength={32}
             />
             <button
@@ -118,8 +229,28 @@ export default function App() {
               className="search-btn"
               disabled={loading}
             >
-              Search
+              Add
             </button>
+          </div>
+          {formError ? (
+            <p className="search-error" role="alert">{formError}</p>
+          ) : (
+            <p className="compare-help">Compare up to {MAX_COMPARE_TICKERS} symbols. Multi-symbol charts are indexed to 100 at each ticker&apos;s first visible close.</p>
+          )}
+          <div className="ticker-chips" aria-label="Selected tickers">
+            {tickers.map((ticker) => (
+              <span key={ticker} className="ticker-chip">
+                {ticker}
+                <button
+                  type="button"
+                  aria-label={`Remove ${ticker}`}
+                  onClick={() => removeTicker(ticker)}
+                  disabled={tickers.length === 1 || loading}
+                >
+                  &times;
+                </button>
+              </span>
+            ))}
           </div>
         </form>
       </header>
@@ -132,31 +263,43 @@ export default function App() {
           </div>
         )}
 
-        {!loading && error && (
+        {!loading && displaySeries.length === 0 && loadErrorSummary && (
           <div className="card error-banner" role="alert">
-            <strong>Could not load data.</strong> {error}
+            <strong>Could not load data.</strong> {loadErrorSummary}
           </div>
         )}
 
-        {!loading && !error && data && displayData && (
+        {!loading && displaySeries.length > 0 && (
           <>
+            {loadErrorSummary && (
+              <div className="card warning-banner" role="status">
+                <strong>Some tickers failed.</strong> {loadErrorSummary}
+              </div>
+            )}
             <div className="card content-card">
               <div className="content-toolbar">
                 <div className="metrics-block">
                   <div className="metrics-inline">
-                    <h2 className="ticker-display">{data.ticker}</h2>
-                    <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
-                    {(() => {
-                      const percentChange = formatPercentChange(displayData);
-                      if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
-                      return (
-                        <span className={`metric-badge ${statusClass}`}>
-                          {percentChange.text}
-                        </span>
-                      );
-                    })()}
+                    <h2 className="ticker-display">{displaySeries.map((item) => item.ticker).join(" / ")}</h2>
+                    <div className="series-metrics" aria-label="Series metrics">
+                      {displaySeries.map((item, index) => {
+                        const percentChange = formatPercentChange(item);
+                        const statusClass = percentChange?.isPositive ? "positive" : percentChange?.isNegative ? "negative" : "muted";
+                        return (
+                          <span key={item.ticker} className={`metric-badge series-badge ${statusClass}`}>
+                            <span className="metric-swatch" style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }} />
+                            {item.ticker} {formatLast(item.lastPrice, item.currency)}
+                            {percentChange ? ` ${percentChange.text}` : ""}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
+                  <p className="chart-note">
+                    {displaySeries.length > 1
+                      ? "Compare mode indexes each line to 100 at its first visible close."
+                      : "Single-symbol mode shows absolute close price."}
+                  </p>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
@@ -175,21 +318,23 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
-                  data={displayData}
+                  series={chartSeries}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                 />
               </div>
             </div>
-            <div className="actions-footer">
-              <button
-                type="button"
-                className="btn-export"
-                onClick={() => downloadPricesCsv(displayData)}
-                title="Export CSV"
-              >
-                Export CSV
-              </button>
-            </div>
+            {displaySeries.length === 1 && (
+              <div className="actions-footer">
+                <button
+                  type="button"
+                  className="btn-export"
+                  onClick={() => downloadPricesCsv(displaySeries[0])}
+                  title="Export CSV"
+                >
+                  Export CSV
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>
