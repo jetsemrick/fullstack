@@ -78,7 +78,6 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const horizonChanged = prevHorizonIndexRef.current !== horizonIndex;
-    prevHorizonIndexRef.current = horizonIndex;
 
     async function load() {
       const horizon = HORIZONS[horizonIndex];
@@ -103,7 +102,13 @@ export default function App() {
       if (!hasDisplayableData) {
         setLoading(true);
       }
-      setLoadErrors({});
+      setLoadErrors((current) => {
+        const next: Record<string, string> = {};
+        for (const [t, err] of Object.entries(current)) {
+          if (!tickersToFetch.includes(t)) next[t] = err;
+        }
+        return next;
+      });
 
       const responses = await Promise.all(
         tickersToFetch.map(async (ticker) => {
@@ -117,6 +122,7 @@ export default function App() {
         }),
       );
       if (cancelled) return;
+      prevHorizonIndexRef.current = horizonIndex;
 
       const newData: Record<string, GetPricesResponse> = {};
       const newErrors: Record<string, string> = {};
@@ -141,7 +147,14 @@ export default function App() {
         Object.assign(next, newData);
         return next;
       });
-      setLoadErrors(newErrors);
+      setLoadErrors((current) => {
+        const next: Record<string, string> = {};
+        for (const [t, err] of Object.entries(current)) {
+          if (!tickersToFetch.includes(t)) next[t] = err;
+        }
+        Object.assign(next, newErrors);
+        return next;
+      });
       setLoading(false);
     }
 
