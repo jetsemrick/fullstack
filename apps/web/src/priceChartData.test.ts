@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildCompareChartRows,
+  buildPriceVolumeRows,
+  compareCloseKey,
+  compareValueKey,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+  seriesHasVolume,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -38,6 +46,64 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("buildCompareChartRows", () => {
+  test("aligns mismatched dates on one timestamp index", () => {
+    const aapl: GetPricesResponse = {
+      ticker: "AAPL",
+      currency: "USD",
+      lastPrice: 110,
+      series: [
+        { timestamp: 1, close: 100, volume: null },
+        { timestamp: 3, close: 110, volume: null },
+      ],
+    };
+    const msft: GetPricesResponse = {
+      ticker: "MSFT",
+      currency: "USD",
+      lastPrice: 60,
+      series: [
+        { timestamp: 2, close: 50, volume: null },
+        { timestamp: 3, close: 60, volume: null },
+      ],
+    };
+
+    const result = buildCompareChartRows(
+      [
+        { id: "series0", ticker: "AAPL", color: "#f54e00", data: aapl },
+        { id: "series1", ticker: "MSFT", color: "#2563eb", data: msft },
+      ],
+      { normalizeToFirstClose: true },
+    );
+
+    expect(result.rows.map((row) => row.t)).toEqual([1000, 2000, 3000]);
+    expect(result.rows[0][compareValueKey("series0")]).toBe(100);
+    expect(result.rows[1][compareValueKey("series1")]).toBe(100);
+    expect(result.rows[2][compareValueKey("series0")]).toBeCloseTo(110);
+    expect(result.rows[2][compareValueKey("series1")]).toBe(120);
+    expect(result.rows[2][compareCloseKey("series1")]).toBe(60);
+  });
+
+  test("keeps absolute prices for a single symbol", () => {
+    const data: GetPricesResponse = {
+      ticker: "AAPL",
+      currency: "USD",
+      lastPrice: 202,
+      series: [
+        { timestamp: 1, close: 198, volume: null },
+        { timestamp: 2, close: 202, volume: null },
+      ],
+    };
+
+    const result = buildCompareChartRows(
+      [{ id: "series0", ticker: "AAPL", color: "#f54e00", data }],
+      { normalizeToFirstClose: false },
+    );
+
+    expect(result.rows[0][compareValueKey("series0")]).toBe(198);
+    expect(result.rows[1][compareValueKey("series0")]).toBe(202);
   });
 });
 

@@ -40,7 +40,9 @@ bun run dev:web
 
 The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
 
-After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
+After data loads, add more symbols from the search box to compare up to five tickers on the same chart. The app keeps the existing `GET /api/prices` contract and issues parallel client requests per ticker; if one symbol fails, successful symbols continue to render with a warning. Multi-symbol charts align series by timestamp and normalize each line to an index of 100 at that ticker's first visible close, while single-symbol charts continue to show absolute close price.
+
+Use **Export CSV** to download the current single-symbol series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
 ### Environment (optional)
 

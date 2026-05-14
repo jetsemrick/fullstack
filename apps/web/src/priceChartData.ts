@@ -8,6 +8,34 @@ export type PriceVolumeRow = {
   volumeBar: number;
 };
 
+export type CompareChartSeriesInput = {
+  id: string;
+  ticker: string;
+  color: string;
+  data: GetPricesResponse;
+};
+
+export type CompareChartSeriesMeta = {
+  id: string;
+  ticker: string;
+  color: string;
+  currency: string | null;
+  firstClose: number;
+};
+
+export type CompareChartRow = {
+  t: number;
+  [key: string]: number;
+};
+
+export function compareValueKey(id: string): string {
+  return `${id}Value`;
+}
+
+export function compareCloseKey(id: string): string {
+  return `${id}Close`;
+}
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
@@ -32,4 +60,41 @@ export function formatVolumeAxis(n: number): string {
 export function formatVolumeTooltip(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+export function buildCompareChartRows(
+  series: CompareChartSeriesInput[],
+  options: { normalizeToFirstClose: boolean },
+): { rows: CompareChartRow[]; series: CompareChartSeriesMeta[] } {
+  const rowsByTimestamp = new Map<number, CompareChartRow>();
+  const usableSeries: CompareChartSeriesMeta[] = [];
+
+  for (const item of series) {
+    const points = item.data.series.filter((point) => Number.isFinite(point.close));
+    const firstPoint = points.find((point) => point.close > 0);
+    if (!firstPoint) continue;
+
+    usableSeries.push({
+      id: item.id,
+      ticker: item.ticker,
+      color: item.color,
+      currency: item.data.currency,
+      firstClose: firstPoint.close,
+    });
+
+    for (const point of points) {
+      const t = point.timestamp * 1000;
+      const row = rowsByTimestamp.get(t) ?? { t };
+      row[compareCloseKey(item.id)] = point.close;
+      row[compareValueKey(item.id)] = options.normalizeToFirstClose
+        ? (point.close / firstPoint.close) * 100
+        : point.close;
+      rowsByTimestamp.set(t, row);
+    }
+  }
+
+  return {
+    rows: Array.from(rowsByTimestamp.values()).sort((a, b) => a.t - b.t),
+    series: usableSeries,
+  };
 }

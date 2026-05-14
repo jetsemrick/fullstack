@@ -113,7 +113,9 @@
 
 .search-form {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
 }
 
 .search-input-wrapper {
@@ -166,6 +168,61 @@
   cursor: not-allowed;
 }
 
+.compare-help,
+.search-error,
+.chart-note {
+  margin: 0;
+  max-width: 360px;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.search-error {
+  color: #ba3b3b;
+}
+
+.ticker-chips {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-width: 360px;
+}
+
+.ticker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg);
+  padding: 0.18rem 0.25rem 0.18rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ticker-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ticker-chip button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
@@ -206,7 +263,7 @@
 
 .metrics-inline {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.25rem;
   flex-wrap: wrap;
 }
@@ -245,6 +302,28 @@
   color: #ba3b3b;
   background: #fdf5f5;
   border-color: #f5c2c2;
+}
+
+.series-metrics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.series-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.metric-swatch,
+.chart-legend-swatch {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
 }
 
 .btn-export {
@@ -308,6 +387,36 @@
   font-size: 0.95rem;
   border-width: 1px;
   border-style: solid;
+}
+
+.warning-banner {
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+  font-size: 0.9rem;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--fg-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .sr-only {
