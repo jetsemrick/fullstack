@@ -125,7 +125,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               tickFormatter={(v: number) => formatVolumeAxis(v)}
             />
           )}
-          <Tooltip
+          <Tooltip<number | string, string>
             contentStyle={{
               background: "var(--card)",
               border: `1px solid var(--card-border)`,
@@ -141,8 +141,8 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string | null, name) => {
-              if (name === "Volume") {
+            formatter={(value, name) => {
+              if (name === "volume") {
                 return [typeof value === "number" ? formatVolumeTooltip(value) : formatVolumeTooltip(null), "Volume"];
               }
               return [typeof value === "number" ? formatPrice(value) : value, "Close"];
@@ -152,7 +152,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             <Bar
               yAxisId="volume"
               dataKey="volume"
-              name="Volume"
               fill="var(--fg-muted)"
               fillOpacity={0.22}
               maxBarSize={10}
@@ -163,7 +162,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             yAxisId="price"
             type="linear"
             dataKey="price"
-            name="Close"
             stroke="var(--accent)"
             strokeWidth={3}
             dot={false}
