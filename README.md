@@ -40,7 +40,9 @@ bun run dev:web
 
 The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
 
-After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
+Add up to **five** ticker symbols via **Add**; the chart overlays **indexed % change vs the first visible bar per symbol** by default (switch to raw **Close price** when you need absolute levels — scales differ heavily across symbols).
+
+After data loads, use **Export CSV** to download the **primary ticker’s** visible series only (UTC date column; one ticker per export). Broader export follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
 ### Environment (optional)
 
@@ -52,7 +54,10 @@ After data loads, use **Export CSV** to download the current series as one row p
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL` – normalized Yahoo Finance chart series (close + optional volume timestamps). Omitting `range` / `interval` uses package defaults (**max** window, **1d** bars). Allowed `range`: `1d`, `5d`, `1mo`, `3mo`, `6mo`, `1y`, `2y`, `5y`, `10y`, `ytd`, `max`. Allowed `interval`: `1m`, `2m`, `5m`, `15m`, `30m`, `60m`, `90m`, `1h`, `1d`, `5d`, `1wk`, `1mo`, `3mo`. Invalid values → `400 VALIDATION`.
+
+The web UI calls `/api/prices` once **per ticker** using the horizons above (`1d`+`5m` for Today, multi-day ranges with `1d`, etc.).
+- `GET /api/market-context` – aggregated US-market context (indexes and session hints) for the market strip.
 
 ## Test
 
@@ -60,7 +65,7 @@ After data loads, use **Export CSV** to download the current series as one row p
 bun test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Runs API tests (`apps/api`) plus chart helper modules in `apps/web/src/**/*.test.ts` — Yahoo `parseResult`, HTTP handler validation, and comparison-merge helpers.)
 
 ## Typecheck
 

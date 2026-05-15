@@ -4,6 +4,12 @@
   --fg-muted: #6b726b;
   --accent: #93af93;
   --accent-hover: #7b997b;
+  /* Multi-series line chart (comparison); distinct hues, sufficient contrast vs --card */
+  --chart-series-1: #93af93;
+  --chart-series-2: #3d6b91;
+  --chart-series-3: #8b6b9e;
+  --chart-series-4: #b07a48;
+  --chart-series-5: #3d8f7a;
   --card: #ffffff;
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
