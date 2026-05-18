@@ -14,12 +14,18 @@
   gap: 1rem 1.5rem;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 @media (max-width: 640px) {
   .header {
     grid-template-columns: 1fr;
   }
 
-  .search-form {
+  .header-controls {
     justify-self: end;
   }
 }
@@ -52,7 +58,7 @@
 }
 
 .market-status--open {
-  color: #2b703e;
+  color: var(--positive);
 }
 
 .market-status--closed {
@@ -93,12 +99,12 @@
 }
 
 .market-strip__pct--up {
-  color: #2b703e;
+  color: var(--positive);
   font-weight: 500;
 }
 
 .market-strip__pct--down {
-  color: #ba3b3b;
+  color: var(--negative);
   font-weight: 500;
 }
 
@@ -128,7 +134,7 @@
 
 .search-input-wrapper:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(147, 175, 147, 0.2);
+  box-shadow: 0 0 0 3px rgba(245, 78, 0, 0.15);
 }
 
 .search-input {
@@ -236,15 +242,15 @@
 }
 
 .metric-badge.positive {
-  color: #2b703e;
-  background: #edf5ee;
-  border-color: #d1e2d3;
+  color: var(--positive);
+  background: var(--positive-bg);
+  border-color: var(--positive-border);
 }
 
 .metric-badge.negative {
-  color: #ba3b3b;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
+  color: var(--negative);
+  background: var(--negative-bg);
+  border-color: var(--negative-border);
 }
 
 .btn-export {
@@ -269,6 +275,31 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--bg);
+  border-color: var(--fg-muted);
+}
+
+.theme-toggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .chart-container {
@@ -302,9 +333,9 @@
 
 .error-banner {
   padding: 1.5rem;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
-  color: #ba3b3b;
+  background: var(--negative-bg);
+  border-color: var(--negative-border);
+  color: var(--negative);
   font-size: 0.95rem;
   border-width: 1px;
   border-style: solid;
@@ -348,7 +379,7 @@
 }
 
 .horizon-btn.active {
-  background: #edf5ee;
-  color: #2b703e;
-  border-color: #d1e2d3;
+  background: var(--positive-bg);
+  color: var(--positive);
+  border-color: var(--positive-border);
 }
