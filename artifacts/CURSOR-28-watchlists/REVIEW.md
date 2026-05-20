@@ -1,5 +1,7 @@
 # CURSOR-28 — Watchlists review artifact
 
+**Feature demo:** see [`DEMO.md`](./DEMO.md) for `demo.mp4` and step-by-step screenshots.
+
 ## Summary
 
 Implements client-side named watchlists for Stock Visualizer with `localStorage` persistence (`stock-visualizer-watchlists-v1`).
