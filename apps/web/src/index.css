@@ -4,6 +4,10 @@
   --fg-muted: #6b726b;
   --accent: #93af93;
   --accent-hover: #7b997b;
+  --ema50: #4a6fa5;
+  --ema200: #8b6b4a;
+  --cross-golden: #2b703e;
+  --cross-death: #ba3b3b;
   --card: #ffffff;
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);

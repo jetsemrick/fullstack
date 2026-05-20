@@ -277,6 +277,85 @@
   width: 100%;
 }
 
+.price-chart-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  height: 100%;
+}
+
+.price-chart-canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chart-legend__swatch {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.chart-legend__swatch--close {
+  background: var(--accent);
+  height: 4px;
+}
+
+.chart-legend__swatch--ema50 {
+  background: var(--ema50);
+}
+
+.chart-legend__swatch--ema200 {
+  background: var(--ema200);
+}
+
+.chart-legend__swatch--golden {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cross-golden);
+}
+
+.chart-legend__swatch--death {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cross-death);
+}
+
+.chart-ema-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.metric-badge.golden {
+  color: #2b703e;
+  background: #edf5ee;
+  border-color: #d1e2d3;
+}
+
+.metric-badge.death {
+  color: #ba3b3b;
+  background: #fdf5f5;
+  border-color: #f5c2c2;
+}
+
 .loading-card {
   padding: 2rem;
   display: flex;

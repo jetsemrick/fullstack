@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
+import { formatCrossoverDate, formatCrossoverLabel, type EmaCrossover } from "./ema";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import "./app.css";
@@ -53,21 +54,35 @@ export default function App() {
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
+  const [emaSource, setEmaSource] = useState<GetPricesResponse | null>(null);
+  const [visibleCrossovers, setVisibleCrossovers] = useState<EmaCrossover[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isIntraday = horizonIndex === 0;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setEmaSource(null);
+    setVisibleCrossovers([]);
     const horizon = HORIZONS[horizonIndex];
-    const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
+    const needsEmaHistory = horizonIndex !== 0;
+    const [res, emaRes] = await Promise.all([
+      fetchPrices({ ticker, range: horizon.range, interval: horizon.interval }),
+      needsEmaHistory
+        ? fetchPrices({ ticker, range: "max", interval: "1d" })
+        : Promise.resolve(null),
+    ]);
     setLoading(false);
     if (!res.ok) {
       setData(null);
+      setEmaSource(null);
       setError(res.error.error ?? "Request failed");
       return;
     }
     setData(res.data);
+    setEmaSource(emaRes?.ok ? emaRes.data : null);
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
@@ -86,6 +101,11 @@ export default function App() {
 
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
+
+  const latestVisibleCrossover = useMemo(() => {
+    if (visibleCrossovers.length === 0) return null;
+    return visibleCrossovers[visibleCrossovers.length - 1]!;
+  }, [visibleCrossovers]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -156,6 +176,15 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {!isIntraday && latestVisibleCrossover && (
+                      <span
+                        className={`metric-badge ${latestVisibleCrossover.type}`}
+                        title={formatCrossoverLabel(latestVisibleCrossover.type)}
+                      >
+                        {latestVisibleCrossover.type === "golden" ? "Golden cross" : "Death cross"}{" "}
+                        {formatCrossoverDate(latestVisibleCrossover.timestamp)}
+                      </span>
+                    )}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
@@ -176,7 +205,9 @@ export default function App() {
               >
                 <PriceChart
                   data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  variant={isIntraday ? "intraday" : "daily"}
+                  emaSource={isIntraday ? null : emaSource}
+                  onCrossoversReady={setVisibleCrossovers}
                 />
               </div>
             </div>
