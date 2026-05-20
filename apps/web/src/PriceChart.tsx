@@ -141,7 +141,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string, name, item) => {
+            formatter={(value, name, item) => {
               if (name === "Volume") {
                 const volume = (item?.payload as { volume?: number | null } | undefined)?.volume ?? null;
                 return [formatVolumeTooltip(volume), "Volume"];
