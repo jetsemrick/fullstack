@@ -71,7 +71,7 @@ export default function App() {
     const [res, emaRes] = await Promise.all([
       fetchPrices({ ticker, range: horizon.range, interval: horizon.interval }),
       needsEmaHistory
-        ? fetchPrices({ ticker, range: "max", interval: "1d" })
+        ? fetchPrices({ ticker, range: "5y", interval: "1d" })
         : Promise.resolve(null),
     ]);
     setLoading(false);
