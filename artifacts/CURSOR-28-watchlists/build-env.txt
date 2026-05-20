@@ -1,0 +1,3 @@
+1.3.13
+branch: cursor/watchlists-for-stock-visualizer-712b
+3ce8cac chore(cursor): add reset-demo skill

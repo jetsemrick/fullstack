@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { WatchlistPanel } from "./WatchlistPanel";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -93,6 +94,11 @@ export default function App() {
     setTicker(t);
   }
 
+  const selectTicker = useCallback((t: string) => {
+    setInputTicker(t);
+    setTicker(t);
+  }, []);
+
   return (
     <div className="shell">
       <header className="header">
@@ -123,6 +129,8 @@ export default function App() {
           </div>
         </form>
       </header>
+
+      <WatchlistPanel onSelectTicker={selectTicker} />
 
       <main className="main-content">
         {loading && (

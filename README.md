@@ -42,6 +42,10 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+### Watchlists
+
+Named watchlists (create, rename, delete) and add/remove symbols are stored in the browser via **`localStorage`** under the key `stock-visualizer-watchlists-v1`. The active watchlist selection is restored on reload; the chart still defaults to **AAPL** on first visit. Click a watchlist symbol to load its chart; **Export CSV** uses the same series as the main chart.
+
 ### Environment (optional)
 
 | Variable | Default | Description |
