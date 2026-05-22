@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { DEFAULT_TICKER, isValidTicker, normalizeTicker, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { Watchlists } from "./Watchlists";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -89,9 +90,20 @@ export default function App() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    const t = normalizeTicker(inputTicker) || DEFAULT_TICKER;
+    if (!isValidTicker(t)) {
+      setError("Enter a valid symbol (letters, digits, . - _ ^ =).");
+      return;
+    }
     setTicker(t);
   }
+
+  const handleSelectTicker = useCallback((t: string) => {
+    const normalized = normalizeTicker(t);
+    if (!isValidTicker(normalized)) return;
+    setInputTicker(normalized);
+    setTicker(normalized);
+  }, []);
 
   return (
     <div className="shell">
@@ -125,6 +137,8 @@ export default function App() {
       </header>
 
       <main className="main-content">
+        <Watchlists currentTicker={ticker} onSelectTicker={handleSelectTicker} />
+
         {loading && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
              <div className="skeleton-toolbar" />

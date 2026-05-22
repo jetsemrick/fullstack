@@ -38,3 +38,13 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/**
+ * A user-managed named list of tickers. Persisted client-side (e.g. `localStorage`).
+ * Tickers are stored in canonical form (`normalizeTicker`): trimmed and upper-cased.
+ */
+export interface Watchlist {
+  id: string;
+  name: string;
+  tickers: string[];
+}
