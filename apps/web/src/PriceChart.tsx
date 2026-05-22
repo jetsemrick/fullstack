@@ -115,12 +115,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         width: "100%",
         height: "100%",
         display: "grid",
-        gridTemplateRows: hasVolume ? "minmax(0, 1fr) 112px" : "minmax(0, 1fr)",
+        gridTemplateRows: hasVolume ? "minmax(0, 1fr) 140px" : "minmax(0, 1fr)",
         gap: hasVolume ? "0.5rem" : 0,
       }}
     >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: hasVolume ? 58 : 10, left: 0, bottom: hasVolume ? 0 : 0 }} syncId="price-volume">
+        <LineChart data={rows} margin={{ top: 10, right: hasVolume ? 58 : 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
@@ -193,7 +193,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             Volume
           </span>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} margin={{ top: 12, right: 10, left: 0, bottom: 0 }} syncId="price-volume">
+            <BarChart data={rows} margin={{ top: 12, right: 10, left: 0, bottom: 10 }}>
               <XAxis
                 dataKey="t"
                 type="number"
@@ -205,6 +205,8 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 axisLine={false}
                 tickFormatter={tickFormatter}
                 minTickGap={variant === "intraday" ? 0 : 32}
+                height={32}
+                tickMargin={8}
                 dy={10}
               />
               <YAxis
