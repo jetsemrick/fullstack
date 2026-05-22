@@ -17,14 +17,16 @@ import {
 interface WatchlistsProps {
   /** Currently-displayed ticker on the chart. Used to highlight the active chip. */
   currentTicker: string;
-  /** Invoked when a user picks a ticker from a list (or restored on first mount). */
+  /** Invoked when a user picks a ticker from a list. */
   onSelectTicker: (ticker: string) => void;
 }
 
 /**
- * Watchlists side panel. Persists to `localStorage` so a reload restores the
- * user's lists and last-active ticker. Validation mirrors the API's shared
- * `TICKER_REGEX` to fail fast before a network call.
+ * Watchlists side panel. Reads/writes `localStorage` so lists, the active list,
+ * and the last-selected ticker survive reloads. The restore on first paint is
+ * handled by `App` reading `getInitialTicker(DEFAULT_TICKER)` synchronously
+ * into its `ticker` state — that avoids racing two `fetchPrices` calls on
+ * mount. Validation mirrors the API's shared `TICKER_REGEX`.
  */
 export function Watchlists({ currentTicker, onSelectTicker }: WatchlistsProps) {
   const ids = useId();
@@ -33,21 +35,16 @@ export function Watchlists({ currentTicker, onSelectTicker }: WatchlistsProps) {
   const [addError, setAddError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
-  // Restore the last persisted ticker exactly once on first mount; otherwise the
-  // chart effect would override fresh user picks every render.
-  const restoredRef = useRef(false);
 
   useEffect(() => {
     saveState(state);
   }, [state]);
 
+  // Keep `lastTicker` in sync with whichever ticker the chart is showing,
+  // including manual searches that bypass the watchlist chips.
   useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-    if (state.lastTicker && state.lastTicker !== currentTicker) {
-      onSelectTicker(state.lastTicker);
-    }
-  }, [state.lastTicker, currentTicker, onSelectTicker]);
+    setState((s) => (s.lastTicker === currentTicker ? s : setLastTicker(s, currentTicker)));
+  }, [currentTicker]);
 
   useEffect(() => {
     if (renaming) renameInputRef.current?.select();
@@ -58,7 +55,6 @@ export function Watchlists({ currentTicker, onSelectTicker }: WatchlistsProps) {
   const handleSelectTicker = useCallback(
     (ticker: string) => {
       onSelectTicker(ticker);
-      setState((s) => setLastTicker(s, ticker));
     },
     [onSelectTicker],
   );

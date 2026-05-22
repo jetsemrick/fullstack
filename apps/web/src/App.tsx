@@ -5,6 +5,7 @@ import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { Watchlists } from "./Watchlists";
+import { getInitialTicker } from "./watchlistsStorage";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -49,8 +50,11 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
 
 export default function App() {
   const formId = useId();
-  const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
-  const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  // Lazy initializer reads the persisted last ticker so the very first fetch
+  // targets the right symbol — avoids a race between an initial AAPL fetch and
+  // a follow-up restore fetch overwriting each other's data.
+  const [ticker, setTicker] = useState<string>(() => getInitialTicker(DEFAULT_TICKER));
+  const [inputTicker, setInputTicker] = useState<string>(() => getInitialTicker(DEFAULT_TICKER));
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);

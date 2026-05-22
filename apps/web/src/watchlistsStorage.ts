@@ -91,6 +91,18 @@ export function loadState(storage: Storage = window.localStorage): WatchlistsSta
   }
 }
 
+/**
+ * Synchronously read the persisted `lastTicker` for use as a `useState`
+ * initializer. Returning a valid ticker here lets `App` start the first
+ * `fetchPrices` call with the correct symbol and avoids a stale/in-flight
+ * AAPL fetch racing the restored ticker's fetch on mount.
+ */
+export function getInitialTicker(fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const state = loadState();
+  return state.lastTicker ?? fallback;
+}
+
 export function saveState(state: WatchlistsState, storage: Storage = window.localStorage): void {
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(state));
