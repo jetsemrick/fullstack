@@ -170,59 +170,75 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         </LineChart>
       </ResponsiveContainer>
       {hasVolume && (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} margin={{ top: 0, right: 10, left: 0, bottom: 0 }} syncId="price-volume">
-            <XAxis
-              dataKey="t"
-              type="number"
-              domain={xDomain}
-              scale="time"
-              ticks={variant === "intraday" ? intradayTicks : undefined}
-              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={tickFormatter}
-              minTickGap={variant === "intraday" ? 0 : 32}
-              dy={10}
-            />
-            <YAxis
-              dataKey="volumeBar"
-              orientation="right"
-              domain={[0, "dataMax"]}
-              width={48}
-              tick={{ fill: "var(--fg-muted)", fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => formatVolumeAxis(v)}
-              label={{
-                value: "Volume",
-                position: "insideRight",
-                angle: -90,
-                fill: "var(--fg-muted)",
-                fontSize: 11,
-              }}
-            />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              labelFormatter={(_, payload) => {
-                const t = (payload?.[0]?.payload as { t?: number })?.t;
-                if (typeof t === "number") {
-                  return formatTooltipWhen(t, variant, spanDays);
-                }
-                return "";
-              }}
-              formatter={volumeTooltipFormatter}
-            />
-            <Bar
-              dataKey="volumeBar"
-              name="Volume"
-              fill="var(--accent)"
-              fillOpacity={0.45}
-              maxBarSize={18}
-              isAnimationActive={false}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        <div
+          style={{
+            minHeight: 0,
+            borderTop: "1px solid var(--card-border)",
+            paddingTop: "0.35rem",
+            position: "relative",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              left: 60,
+              top: "0.35rem",
+              color: "var(--fg-muted)",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
+          >
+            Volume
+          </span>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} margin={{ top: 12, right: 10, left: 0, bottom: 0 }} syncId="price-volume">
+              <XAxis
+                dataKey="t"
+                type="number"
+                domain={xDomain}
+                scale="time"
+                ticks={variant === "intraday" ? intradayTicks : undefined}
+                tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={tickFormatter}
+                minTickGap={variant === "intraday" ? 0 : 32}
+                dy={10}
+              />
+              <YAxis
+                dataKey="volumeBar"
+                orientation="right"
+                domain={[0, "dataMax"]}
+                width={48}
+                tick={{ fill: "var(--fg-muted)", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => formatVolumeAxis(v)}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelFormatter={(_, payload) => {
+                  const t = (payload?.[0]?.payload as { t?: number })?.t;
+                  if (typeof t === "number") {
+                    return formatTooltipWhen(t, variant, spanDays);
+                  }
+                  return "";
+                }}
+                formatter={volumeTooltipFormatter}
+              />
+              <Bar
+                dataKey="volumeBar"
+                name="Volume"
+                fill="var(--accent)"
+                fillOpacity={0.85}
+                maxBarSize={18}
+                isAnimationActive={false}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );
