@@ -69,12 +69,8 @@ const tooltipStyle = {
   padding: "12px",
 };
 
-function priceTooltipFormatter(value: number | string) {
-  return [typeof value === "number" ? formatPrice(value) : value, "Close"];
-}
-
-function volumeTooltipFormatter(_value: number | string, _name: string, item: { payload?: PriceVolumeRow }) {
-  return [formatVolumeTooltip(item.payload?.volume ?? null), "Volume"];
+function tooltipRow(payload?: Array<{ payload?: PriceVolumeRow }>): PriceVolumeRow | null {
+  return payload?.[0]?.payload ?? null;
 }
 
 export type PriceChartVariant = "daily" | "intraday";
@@ -147,15 +143,16 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dx={-10}
           />
           <Tooltip
-            contentStyle={tooltipStyle}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
-              }
-              return "";
+            content={({ active, payload }) => {
+              const row = tooltipRow(payload as Array<{ payload?: PriceVolumeRow }> | undefined);
+              if (!active || !row) return null;
+              return (
+                <div style={tooltipStyle}>
+                  <div>{formatTooltipWhen(row.t, variant, spanDays)}</div>
+                  <div>Close : {formatPrice(row.price)}</div>
+                </div>
+              );
             }}
-            formatter={priceTooltipFormatter}
           />
           <Line
             type="linear"
@@ -220,15 +217,16 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 tickFormatter={(v: number) => formatVolumeAxis(v)}
               />
               <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={(_, payload) => {
-                  const t = (payload?.[0]?.payload as { t?: number })?.t;
-                  if (typeof t === "number") {
-                    return formatTooltipWhen(t, variant, spanDays);
-                  }
-                  return "";
+                content={({ active, payload }) => {
+                  const row = tooltipRow(payload as Array<{ payload?: PriceVolumeRow }> | undefined);
+                  if (!active || !row) return null;
+                  return (
+                    <div style={tooltipStyle}>
+                      <div>{formatTooltipWhen(row.t, variant, spanDays)}</div>
+                      <div>Volume : {formatVolumeTooltip(row.volume)}</div>
+                    </div>
+                  );
                 }}
-                formatter={volumeTooltipFormatter}
               />
               <Bar
                 dataKey="volumeBar"
