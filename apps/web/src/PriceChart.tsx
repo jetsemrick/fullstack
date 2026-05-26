@@ -177,7 +177,19 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       </div>
 
       {showVolume && (
-        <div style={{ flex: "1 1 25%", minHeight: 90 }}>
+        <div style={{ flex: "1 1 25%", minHeight: 110, display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              paddingLeft: Y_AXIS_WIDTH,
+              fontSize: 11,
+              color: "var(--fg-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              marginBottom: 2,
+            }}
+          >
+            Volume
+          </div>
           <ResponsiveContainer width="100%" height="100%" minHeight={90}>
             <BarChart data={rows} margin={CHART_MARGIN} syncId={SYNC_ID}>
               <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
@@ -202,14 +214,8 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => formatVolumeAxis(v)}
+                tickCount={3}
                 dx={-10}
-                label={{
-                  value: "Volume",
-                  angle: -90,
-                  position: "insideLeft",
-                  offset: 18,
-                  style: { fill: "var(--fg-muted)", fontSize: 11, textAnchor: "middle" },
-                }}
               />
               <Tooltip
                 cursor={{ fill: "var(--card-border)", opacity: 0.4 }}
