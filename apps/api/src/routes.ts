@@ -1,5 +1,5 @@
 import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
-import { DEFAULT_TICKER } from "@stock/shared";
+import { isValidTicker, normalizeTicker } from "@stock/shared";
 import { fetchYahooChart } from "./yahoo";
 import { fetchMajorIndexQuotes } from "./yahoo-quote";
 
@@ -57,13 +57,6 @@ function errBody(message: string, code: ApiErrorBody["code"], details?: string):
   return { error: message, code, details };
 }
 
-const TICKER_RE = /^[A-Za-z0-9._^=-]{1,32}$/;
-
-function normalizeTicker(raw: string | null): string {
-  if (!raw || !raw.trim()) return DEFAULT_TICKER;
-  return raw.trim().toUpperCase();
-}
-
 /**
  * Main HTTP entry for the API. Used by the Bun server in `index.ts` and by tests.
  */
@@ -78,7 +71,7 @@ export async function handleApiRequest(req: Request): Promise<Response> {
   if (url.pathname === "/api/prices" && req.method === "GET") {
     const tickerRaw = url.searchParams.get("ticker");
     const ticker = normalizeTicker(tickerRaw);
-    if (!TICKER_RE.test(ticker)) {
+    if (!isValidTicker(ticker)) {
       return jsonResponse(errBody("Invalid ticker format", "VALIDATION"), { status: 400, headers: corsHeaders() });
     }
     try {

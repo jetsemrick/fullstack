@@ -16,6 +16,12 @@ export interface GetPricesResponse {
   series: PricePoint[];
 }
 
+export interface Watchlist {
+  id: string;
+  name: string;
+  tickers: string[];
+}
+
 export interface ApiErrorBody {
   error: string;
   code: "VALIDATION" | "UPSTREAM" | "NOT_FOUND" | "INTERNAL";

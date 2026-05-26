@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { DEFAULT_TICKER, TICKER_MAX_LENGTH, isValidTicker, normalizeTicker, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { Watchlists } from "./Watchlists";
+import { getInitialTicker } from "./watchlistsStorage";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -48,8 +50,9 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
 
 export default function App() {
   const formId = useId();
-  const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
-  const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const initialTicker = useMemo(() => getInitialTicker(DEFAULT_TICKER), []);
+  const [ticker, setTicker] = useState<string>(initialTicker);
+  const [inputTicker, setInputTicker] = useState<string>(initialTicker);
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
@@ -87,10 +90,21 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
 
+  const selectTicker = useCallback((nextTicker: string) => {
+    setTicker(nextTicker);
+    setInputTicker(nextTicker);
+  }, []);
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
-    setTicker(t);
+    const t = normalizeTicker(inputTicker, DEFAULT_TICKER);
+    if (!isValidTicker(t)) {
+      setLoading(false);
+      setData(null);
+      setError("Invalid ticker format");
+      return;
+    }
+    selectTicker(t);
   }
 
   return (
@@ -110,7 +124,7 @@ export default function App() {
               onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
               className="search-input"
               placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
+              maxLength={TICKER_MAX_LENGTH}
             />
             <button
               id={`${formId}-submit`}
@@ -125,6 +139,8 @@ export default function App() {
       </header>
 
       <main className="main-content">
+        <Watchlists currentTicker={ticker} loading={loading} onSelectTicker={selectTicker} />
+
         {loading && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
              <div className="skeleton-toolbar" />
