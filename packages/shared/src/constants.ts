@@ -8,7 +8,7 @@ export const TICKER_MAX_LENGTH = 32 as const;
 
 export const TICKER_REGEX = /^[A-Za-z0-9._^=-]{1,32}$/;
 
-export function normalizeTicker(raw: string | null | undefined, fallback = DEFAULT_TICKER): string {
+export function normalizeTicker(raw: string | null | undefined, fallback: string = DEFAULT_TICKER): string {
   const normalized = raw?.trim().toUpperCase();
   return normalized || fallback;
 }
