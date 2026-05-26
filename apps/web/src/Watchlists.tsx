@@ -77,6 +77,16 @@ export function Watchlists({ currentTicker, loading, onSelectTicker }: Watchlist
     updateState(removeTickerFromWatchlist(state, activeWatchlist.id, ticker));
   }
 
+  function onTickerInputChange(value: string) {
+    setTickerInput(value.toUpperCase());
+    setMessage(null);
+  }
+
+  function onWatchlistTickerSelect(symbol: string) {
+    setMessage(null);
+    onSelectTicker(symbol);
+  }
+
   return (
     <section className="card watchlists-card" aria-labelledby={`${id}-heading`}>
       <div className="watchlists-header">
@@ -118,7 +128,7 @@ export function Watchlists({ currentTicker, loading, onSelectTicker }: Watchlist
               id={`${id}-ticker`}
               type="text"
               value={tickerInput}
-              onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
+              onChange={(e) => onTickerInputChange(e.target.value)}
               className="watchlists-input"
               placeholder="Add ticker"
               maxLength={TICKER_MAX_LENGTH}
@@ -137,7 +147,7 @@ export function Watchlists({ currentTicker, loading, onSelectTicker }: Watchlist
                   <button
                     type="button"
                     className="watchlist-chip-main"
-                    onClick={() => onSelectTicker(symbol)}
+                    onClick={() => onWatchlistTickerSelect(symbol)}
                     disabled={loading}
                     aria-pressed={symbol === currentTicker}
                   >
