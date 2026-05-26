@@ -84,6 +84,7 @@ export function Watchlists({ currentTicker, loading, onSelectTicker }: Watchlist
 
   function onWatchlistTickerSelect(symbol: string) {
     setMessage(null);
+    setTickerInput("");
     onSelectTicker(symbol);
   }
 
