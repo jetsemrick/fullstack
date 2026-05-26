@@ -29,6 +29,23 @@ export async function fetchPrices(params: {
   return { ok: true, data: json as GetPricesResponse };
 }
 
+export type TickerFetchResult =
+  | { ticker: string; ok: true; data: GetPricesResponse }
+  | { ticker: string; ok: false; error: ApiErrorBody; status: number };
+
+export async function fetchPricesForTickers(
+  tickers: readonly string[],
+  params: { range?: string; interval?: string },
+): Promise<TickerFetchResult[]> {
+  return Promise.all(
+    tickers.map(async (ticker) => {
+      const res = await fetchPrices({ ticker, ...params });
+      if (res.ok) return { ticker, ok: true as const, data: res.data };
+      return { ticker, ok: false as const, error: res.error, status: res.status };
+    }),
+  );
+}
+
 export async function fetchMarketContext(): Promise<
   { ok: true; data: MarketContextResponse } | { ok: false; error: ApiErrorBody; status: number }
 > {

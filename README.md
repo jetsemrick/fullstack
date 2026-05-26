@@ -42,6 +42,12 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+### Compare multiple tickers
+
+Use **Add** in the header to overlay up to **5** symbols on one chart. Each series is **indexed to 100** at the first point in the selected horizon so differently priced stocks can be compared fairly. The chart shows a legend, per-ticker colors, and tooltips with indexed values. If one symbol fails to load, successful symbols still render and a warning lists the failures.
+
+Export CSV remains available for **single-ticker** view only (primary symbol).
+
 ### Environment (optional)
 
 | Variable | Default | Description |
@@ -52,7 +58,7 @@ After data loads, use **Export CSV** to download the current series as one row p
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL&range=1y&interval=1d` – normalized price series. Optional `range` and `interval` query params are validated against Yahoo allowlists. The web app fetches one symbol per request; compare mode issues parallel requests client-side (no batch endpoint).
 
 ## Test
 
@@ -60,7 +66,7 @@ After data loads, use **Export CSV** to download the current series as one row p
 bun test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Runs from the repo root: `apps/api` tests for Yahoo parsing and HTTP routes, plus `apps/web` unit tests for chart/compare helpers.)
 
 ## Typecheck
 
