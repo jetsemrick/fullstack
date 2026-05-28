@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { DEFAULT_TICKER, MAX_COMPARE_TICKERS, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
+import { ComparePriceChart } from "./ComparePriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { COMPARE_SERIES_COLORS, summarizeLoadResults, type LoadedTickerResult } from "./compareChartData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -46,82 +48,145 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   };
 }
 
+const TICKER_RE = /^[A-Za-z0-9._^=-]{1,32}$/;
+
 export default function App() {
   const formId = useId();
-  const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
-  const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const [tickers, setTickers] = useState<string[]>([DEFAULT_TICKER]);
+  const [inputTicker, setInputTicker] = useState<string>("");
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
-  const [data, setData] = useState<GetPricesResponse | null>(null);
+  const [seriesByTicker, setSeriesByTicker] = useState<Map<string, GetPricesResponse>>(new Map());
+  const [loadFailures, setLoadFailures] = useState<{ ticker: string; error: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const compareMode = tickers.length > 1;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
+    const results: LoadedTickerResult[] = await Promise.all(
+      tickers.map(async (ticker): Promise<LoadedTickerResult> => {
+        const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
+        if (!res.ok) {
+          return { ok: false, ticker, error: res.error.error ?? "Request failed" };
+        }
+        return { ok: true, ticker: res.data.ticker, data: res.data };
+      }),
+    );
     setLoading(false);
-    if (!res.ok) {
-      setData(null);
-      setError(res.error.error ?? "Request failed");
-      return;
+    const { successes, failures } = summarizeLoadResults(results);
+    setLoadFailures(failures);
+    const next = new Map<string, GetPricesResponse>();
+    for (const data of successes) {
+      next.set(data.ticker, data);
     }
-    setData(res.data);
-  }, [ticker, horizonIndex]);
+    setSeriesByTicker(next);
+    if (successes.length === 0) {
+      setError(failures.map((f) => `${f.ticker}: ${f.error}`).join("; ") || "Request failed");
+    } else {
+      setError(null);
+    }
+  }, [tickers, horizonIndex]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const slicedDaily = useMemo(() => {
-    if (!data) return null;
-    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
-  }, [data, horizonIndex]);
+  const horizonDays = HORIZONS[horizonIndex].days;
 
-  const displayData = useMemo(() => {
-    if (!slicedDaily) return null;
-    return slicedDaily;
-  }, [slicedDaily]);
+  const displayDatasets = useMemo(() => {
+    return tickers
+      .map((t) => seriesByTicker.get(t))
+      .filter((d): d is GetPricesResponse => d != null)
+      .map((d) => filterSeriesByHorizon(d, horizonDays));
+  }, [tickers, seriesByTicker, horizonDays]);
 
-  const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
-  const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
+  const primaryData = displayDatasets[0] ?? null;
+
+  function addTicker(raw: string) {
+    const t = raw.trim().toUpperCase() || DEFAULT_TICKER;
+    if (!TICKER_RE.test(t)) return;
+    setTickers((prev) => {
+      if (prev.includes(t)) return prev;
+      if (prev.length >= MAX_COMPARE_TICKERS) return prev;
+      return [...prev, t];
+    });
+    setInputTicker("");
+  }
+
+  function removeTicker(t: string) {
+    setTickers((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((x) => x !== t);
+    });
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
-    setTicker(t);
+    addTicker(inputTicker);
   }
+
+  const atCap = tickers.length >= MAX_COMPARE_TICKERS;
 
   return (
     <div className="shell">
       <header className="header">
         <MarketStrip />
-        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
-          <div className="search-input-wrapper">
-            <input
-              id={`${formId}-ticker`}
-              name="ticker"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
-            />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
-            >
-              Search
-            </button>
+        <div className="header-search-col">
+          <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+            <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">
+              Add ticker to compare
+            </label>
+            <div className="search-input-wrapper">
+              <input
+                id={`${formId}-ticker`}
+                name="ticker"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                className="search-input"
+                placeholder={atCap ? `Max ${MAX_COMPARE_TICKERS} symbols` : `e.g. MSFT`}
+                maxLength={32}
+                disabled={atCap}
+              />
+              <button
+                id={`${formId}-submit`}
+                type="submit"
+                className="search-btn"
+                disabled={loading || atCap}
+              >
+                Add
+              </button>
+            </div>
+          </form>
+          <div className="ticker-chips" role="list" aria-label="Compared tickers">
+            {tickers.map((t, i) => (
+              <span
+                key={t}
+                className="ticker-chip"
+                role="listitem"
+                style={{ borderColor: compareMode ? COMPARE_SERIES_COLORS[i % COMPARE_SERIES_COLORS.length] : undefined }}
+              >
+                <span className="ticker-chip__label">{t}</span>
+                {tickers.length > 1 && (
+                  <button
+                    type="button"
+                    className="ticker-chip__remove"
+                    onClick={() => removeTicker(t)}
+                    aria-label={`Remove ${t}`}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            ))}
           </div>
-        </form>
+        </div>
       </header>
 
       <main className="main-content">
@@ -132,31 +197,78 @@ export default function App() {
           </div>
         )}
 
-        {!loading && error && (
+        {!loading && error && displayDatasets.length === 0 && (
           <div className="card error-banner" role="alert">
             <strong>Could not load data.</strong> {error}
           </div>
         )}
 
-        {!loading && !error && data && displayData && (
+        {!loading && loadFailures.length > 0 && displayDatasets.length > 0 && (
+          <div className="card partial-error-banner" role="status">
+            <strong>Some symbols failed to load:</strong>{" "}
+            {loadFailures.map((f) => `${f.ticker} (${f.error})`).join("; ")}
+          </div>
+        )}
+
+        {!loading && displayDatasets.length > 0 && (
           <>
             <div className="card content-card">
               <div className="content-toolbar">
                 <div className="metrics-block">
-                  <div className="metrics-inline">
-                    <h2 className="ticker-display">{data.ticker}</h2>
-                    <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
-                    {(() => {
-                      const percentChange = formatPercentChange(displayData);
-                      if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
-                      return (
-                        <span className={`metric-badge ${statusClass}`}>
-                          {percentChange.text}
+                  {compareMode ? (
+                    <>
+                      <p className="compare-mode-hint">
+                        Compare mode: lines show <strong>% change from period start</strong> (indexed for alignment).
+                      </p>
+                      <div className="metrics-compare-grid">
+                        {displayDatasets.map((d, i) => {
+                          const pct = formatPercentChange(d);
+                          const statusClass = pct?.isPositive
+                            ? "positive"
+                            : pct?.isNegative
+                              ? "negative"
+                              : "muted";
+                          return (
+                            <div key={d.ticker} className="metrics-compare-row">
+                              <span
+                                className="metrics-compare-swatch"
+                                style={{ background: COMPARE_SERIES_COLORS[i % COMPARE_SERIES_COLORS.length] }}
+                                aria-hidden
+                              />
+                              <h2 className="ticker-display ticker-display--sm">{d.ticker}</h2>
+                              <span className="metric-badge">{formatLast(d.lastPrice, d.currency)}</span>
+                              {pct && (
+                                <span className={`metric-badge ${statusClass}`}>{pct.text}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    primaryData && (
+                      <div className="metrics-inline">
+                        <h2 className="ticker-display">{primaryData.ticker}</h2>
+                        <span className="metric-badge">
+                          {formatLast(primaryData.lastPrice, primaryData.currency)}
                         </span>
-                      );
-                    })()}
-                  </div>
+                        {(() => {
+                          const percentChange = formatPercentChange(primaryData);
+                          if (!percentChange) return null;
+                          const statusClass = percentChange.isPositive
+                            ? "positive"
+                            : percentChange.isNegative
+                              ? "negative"
+                              : "muted";
+                          return (
+                            <span className={`metric-badge ${statusClass}`}>
+                              {percentChange.text}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )
+                  )}
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
@@ -172,24 +284,35 @@ export default function App() {
               </div>
               <div
                 className="chart-container"
-                aria-label="Price chart"
+                aria-label={compareMode ? "Multi-ticker compare chart" : "Price chart"}
               >
-                <PriceChart
-                  data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
-                />
+                {compareMode ? (
+                  <ComparePriceChart
+                    datasets={displayDatasets}
+                    variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  />
+                ) : (
+                  primaryData && (
+                    <PriceChart
+                      data={primaryData}
+                      variant={horizonIndex === 0 ? "intraday" : "daily"}
+                    />
+                  )
+                )}
               </div>
             </div>
-            <div className="actions-footer">
-              <button
-                type="button"
-                className="btn-export"
-                onClick={() => downloadPricesCsv(displayData)}
-                title="Export CSV"
-              >
-                Export CSV
-              </button>
-            </div>
+            {!compareMode && primaryData && (
+              <div className="actions-footer">
+                <button
+                  type="button"
+                  className="btn-export"
+                  onClick={() => downloadPricesCsv(primaryData)}
+                  title="Export CSV"
+                >
+                  Export CSV
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>

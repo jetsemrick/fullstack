@@ -4,5 +4,8 @@ export const DEFAULT_INTERVAL = "1d" as const;
 
 export const DEFAULT_TICKER = "AAPL" as const;
 
+/** Maximum symbols on the multi-ticker compare chart (CURSOR-23). */
+export const MAX_COMPARE_TICKERS = 5;
+
 /** Yahoo symbols for S&P 500, Dow Jones Industrial Average, and Nasdaq Composite quotes. */
 export const MAJOR_INDEX_SYMBOLS = ["^GSPC", "^DJI", "^IXIC"] as const;
