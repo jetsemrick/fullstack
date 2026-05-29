@@ -21,6 +21,14 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
   }));
 }
 
+export function maxVolume(rows: PriceVolumeRow[]): number {
+  let max = 0;
+  for (const r of rows) {
+    if (r.volumeBar > max) max = r.volumeBar;
+  }
+  return max;
+}
+
 export function formatVolumeAxis(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "0";
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
