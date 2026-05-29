@@ -96,7 +96,10 @@ export default function App() {
   return (
     <div className="shell">
       <header className="header">
-        <MarketStrip />
+        <div className="header-brand">
+          <h1 className="title">Cursor Trade</h1>
+          <MarketStrip />
+        </div>
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
           <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
           <div className="search-input-wrapper">

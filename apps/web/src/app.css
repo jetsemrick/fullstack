@@ -14,6 +14,13 @@
   gap: 1rem 1.5rem;
 }
 
+.header-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   .header {
     grid-template-columns: 1fr;
