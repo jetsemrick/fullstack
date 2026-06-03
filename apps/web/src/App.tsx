@@ -114,6 +114,8 @@ export default function App() {
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
+    // Fetching depends on ticker/horizon changes and synchronizes remote data into local state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
