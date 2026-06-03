@@ -42,6 +42,8 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+Use **Watchlists** to create named lists of ticker symbols, add/remove symbols, and click a saved symbol to load it into the current chart. Watchlists, the active list, and the last selected ticker persist in `localStorage` under `stock-visualizer:watchlists:v1`; clearing browser storage resets the app to the default ticker.
+
 ### Environment (optional)
 
 | Variable | Default | Description |
@@ -52,7 +54,7 @@ After data loads, use **Export CSV** to download the current series as one row p
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL&range=max&interval=1d` – normalized price series for the requested ticker and Yahoo chart window.
 
 ## Test
 
@@ -60,7 +62,17 @@ After data loads, use **Export CSV** to download the current series as one row p
 bun test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Runs shared validation tests, API tests, and web helper tests from the repo root.)
+
+### End-to-end (browser)
+
+Playwright drives the real UI in Chromium. The dev server starts automatically unless one is already running on port 5173.
+
+```bash
+bun run test:e2e
+```
+
+The watchlists journey test mocks `/api/prices` and `/api/market-context` so chart loads stay deterministic without relying on Yahoo.
 
 ## Typecheck
 

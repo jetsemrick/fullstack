@@ -62,6 +62,67 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.series[0].close).toBe(198.1);
   });
 
+  test("accepts special Yahoo ticker symbols", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      const body = {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                symbol: "^GSPC",
+                regularMarketPrice: 5000,
+              },
+              timestamp: [1700000000],
+              indicators: { quote: [{ close: [5000], volume: [1000000] }] },
+            },
+          ],
+          error: null,
+        },
+      };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=%5EGSPC"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ticker: string };
+    expect(body.ticker).toBe("^GSPC");
+  });
+
+  test("normalizes lowercase ticker before fetching", async () => {
+    let requestedUrl = "";
+    globalThis.fetch = mock((url) => {
+      requestedUrl = typeof url === "string" ? url : url.toString();
+      const body = {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                symbol: "MSFT",
+                regularMarketPrice: 400,
+              },
+              timestamp: [1700000000],
+              indicators: { quote: [{ close: [400], volume: [1000000] }] },
+            },
+          ],
+          error: null,
+        },
+      };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=msft"));
+    expect(res.status).toBe(200);
+    expect(requestedUrl).toContain("/chart/MSFT?");
+    const body = (await res.json()) as { ticker: string };
+    expect(body.ticker).toBe("MSFT");
+  });
+
   test("returns 200 and market context when Yahoo quote JSON is valid", async () => {
     const quotePath = join(import.meta.dir, "fixtures", "minimal-quote.json");
     const quoteFixture = await readFile(quotePath, "utf-8");

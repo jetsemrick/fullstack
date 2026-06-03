@@ -7,10 +7,12 @@
     "dev:api": "bun run --cwd apps/api dev",
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
-    "test": "bun run --cwd apps/api test",
+    "test": "bun run --cwd packages/shared test && bun run --cwd apps/api test && bun run --cwd apps/web test",
+    "test:e2e": "playwright test",
     "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "concurrently": "^9.1.0"
   }
 }

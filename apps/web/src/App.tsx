@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { useCallback, useEffect, useId, useState, useMemo, useRef, type FormEvent } from "react";
+import { DEFAULT_TICKER, isValidTicker, normalizeTicker, TICKER_MAX_LENGTH, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { Watchlists } from "./Watchlists";
+import { getInitialTicker } from "./watchlistsStorage";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -48,13 +50,19 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
 
 export default function App() {
   const formId = useId();
-  const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
-  const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const initialTickerRef = useRef<string | null>(null);
+  if (initialTickerRef.current === null) {
+    initialTickerRef.current = getInitialTicker(DEFAULT_TICKER);
+  }
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const [ticker, setTicker] = useState<string>(() => initialTickerRef.current ?? DEFAULT_TICKER);
+  const [inputTicker, setInputTicker] = useState<string>(() => initialTickerRef.current ?? DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,9 +97,23 @@ export default function App() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    const t = normalizeTicker(inputTicker, DEFAULT_TICKER);
+    if (!isValidTicker(t)) {
+      setSearchError("Invalid ticker format.");
+      return;
+    }
+    setSearchError(null);
+    setInputTicker(t);
     setTicker(t);
   }
+
+  const onSelectWatchlistTicker = useCallback((selectedTicker: string) => {
+    setSearchError(null);
+    setInputTicker(selectedTicker);
+    setTicker(selectedTicker);
+    chartRef.current?.focus({ preventScroll: true });
+    chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   return (
     <div className="shell">
@@ -108,9 +130,11 @@ export default function App() {
               spellCheck={false}
               value={inputTicker}
               onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+              aria-invalid={searchError ? "true" : undefined}
+              aria-describedby={searchError ? `${formId}-search-error` : undefined}
               className="search-input"
               placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
+              maxLength={TICKER_MAX_LENGTH}
             />
             <button
               id={`${formId}-submit`}
@@ -121,10 +145,17 @@ export default function App() {
               Search
             </button>
           </div>
+          {searchError && (
+            <p id={`${formId}-search-error`} className="search-error" role="alert">
+              {searchError}
+            </p>
+          )}
         </form>
       </header>
 
       <main className="main-content">
+        <Watchlists currentTicker={ticker} onSelectTicker={onSelectWatchlistTicker} />
+
         {loading && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
              <div className="skeleton-toolbar" />
@@ -171,8 +202,10 @@ export default function App() {
                 </div>
               </div>
               <div
+                ref={chartRef}
                 className="chart-container"
                 aria-label="Price chart"
+                tabIndex={-1}
               >
                 <PriceChart
                   data={displayData}

@@ -6,3 +6,5 @@ dist
 .env.local
 coverage
 .vite
+playwright-report
+test-results
