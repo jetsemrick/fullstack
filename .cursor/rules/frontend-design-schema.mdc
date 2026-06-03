@@ -13,8 +13,9 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 | Token | Role |
 |-------|------|
 | `--bg`, `--fg`, `--fg-muted` | Page background, primary text, secondary text (~60% feel—use muted for hints) |
-| `--accent`, `--accent-hover` | Primary actions, focus ring, emphasis borders |
-| `--card`, `--card-border`, `--shadow` | Elevated surfaces and separation |
+| `--accent`, `--accent-hover`, `--accent-fg`, `--focus-ring` | Primary actions, focus ring, emphasis borders |
+| `--card`, `--card-border`, `--control-shadow`, `--shadow` | Elevated surfaces and separation |
+| `--positive-*`, `--negative-*` | Market movement, status badges, and error states |
 | `--radius`, `--radius-sm` | Default and smaller corner radius |
 | `--font` | Inter stack; body already sets `font-family` — inherit in components |
 

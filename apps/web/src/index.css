@@ -4,12 +4,66 @@
   --fg-muted: #6b726b;
   --accent: #93af93;
   --accent-hover: #7b997b;
+  --accent-fg: #ffffff;
   --card: #ffffff;
   --card-border: #e2e4e0;
+  --focus-ring: rgba(147, 175, 147, 0.2);
+  --control-shadow: 0 2px 8px rgba(43, 48, 43, 0.04);
+  --positive-fg: #2b703e;
+  --positive-bg: #edf5ee;
+  --positive-border: #d1e2d3;
+  --negative-fg: #ba3b3b;
+  --negative-bg: #fdf5f5;
+  --negative-border: #f5c2c2;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
   --radius: 20px;
   --radius-sm: 10px;
   --font: "Inter", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14120b;
+    --fg: #edecec;
+    --fg-muted: rgba(237, 236, 236, 0.6);
+    --accent: #f54e00;
+    --accent-hover: #ff6b26;
+    --accent-fg: #ffffff;
+    --card: #1b1913;
+    --card-border: #2b2923;
+    --focus-ring: rgba(245, 78, 0, 0.28);
+    --control-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+    --positive-fg: #83d19a;
+    --positive-bg: rgba(43, 112, 62, 0.2);
+    --positive-border: rgba(131, 209, 154, 0.22);
+    --negative-fg: #ff9a9a;
+    --negative-bg: rgba(186, 59, 59, 0.18);
+    --negative-border: rgba(255, 154, 154, 0.2);
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.24);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14120b;
+  --fg: #edecec;
+  --fg-muted: rgba(237, 236, 236, 0.6);
+  --accent: #f54e00;
+  --accent-hover: #ff6b26;
+  --accent-fg: #ffffff;
+  --card: #1b1913;
+  --card-border: #2b2923;
+  --focus-ring: rgba(245, 78, 0, 0.28);
+  --control-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+  --positive-fg: #83d19a;
+  --positive-bg: rgba(43, 112, 62, 0.2);
+  --positive-border: rgba(131, 209, 154, 0.22);
+  --negative-fg: #ff9a9a;
+  --negative-bg: rgba(186, 59, 59, 0.18);
+  --negative-border: rgba(255, 154, 154, 0.2);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.24);
+  color-scheme: dark;
 }
 
 *,
