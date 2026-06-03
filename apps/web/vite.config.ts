@@ -8,7 +8,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:3001",
+        // Use IPv4 loopback — on macOS `localhost` often resolves to ::1 first,
+        // which can hit a different process than the Bun API on 127.0.0.1:3001.
+        target: "http://127.0.0.1:3001",
         changeOrigin: true,
       },
     },
