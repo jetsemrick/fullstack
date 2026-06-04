@@ -86,6 +86,8 @@ export default function App() {
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
+    // The chart data request is the external system this effect synchronizes with.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
