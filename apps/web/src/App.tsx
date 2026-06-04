@@ -34,6 +34,15 @@ const HORIZONS = [
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
+type Theme = "light" | "dark";
+
+const THEME_STORAGE_KEY = "stock-visualizer-theme";
+
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
+}
+
 function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
@@ -51,6 +60,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +84,11 @@ export default function App() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
   const slicedDaily = useMemo(() => {
     if (!data) return null;
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
@@ -93,35 +108,47 @@ export default function App() {
     setTicker(t);
   }
 
+  const isDarkTheme = theme === "dark";
+
   return (
     <div className="shell">
       <header className="header">
         <MarketStrip />
-        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
-          <div className="search-input-wrapper">
-            <input
-              id={`${formId}-ticker`}
-              name="ticker"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
-            />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
-            >
-              Search
-            </button>
-          </div>
-        </form>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="theme-toggle"
+            aria-pressed={isDarkTheme}
+            onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
+          >
+            {isDarkTheme ? "Light mode" : "Dark mode"}
+          </button>
+          <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+            <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+            <div className="search-input-wrapper">
+              <input
+                id={`${formId}-ticker`}
+                name="ticker"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                className="search-input"
+                placeholder={`e.g. ${DEFAULT_TICKER}`}
+                maxLength={32}
+              />
+              <button
+                id={`${formId}-submit`}
+                type="submit"
+                className="search-btn"
+                disabled={loading}
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
       </header>
 
       <main className="main-content">

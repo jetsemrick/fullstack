@@ -6,10 +6,35 @@
   --accent-hover: #7b997b;
   --card: #ffffff;
   --card-border: #e2e4e0;
+  --positive-fg: #2b703e;
+  --positive-bg: #edf5ee;
+  --positive-border: #d1e2d3;
+  --negative-fg: #ba3b3b;
+  --negative-bg: #fdf5f5;
+  --negative-border: #f5c2c2;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
   --radius: 20px;
   --radius-sm: 10px;
   --font: "Inter", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #14120b;
+  --fg: #edecec;
+  --fg-muted: rgba(237, 236, 236, 0.6);
+  --accent: #f54e00;
+  --accent-hover: #d84400;
+  --card: #1b1913;
+  --card-border: #2b2923;
+  --positive-fg: #8fd39e;
+  --positive-bg: rgba(143, 211, 158, 0.12);
+  --positive-border: rgba(143, 211, 158, 0.25);
+  --negative-fg: #ff9a9a;
+  --negative-bg: rgba(255, 154, 154, 0.12);
+  --negative-border: rgba(255, 154, 154, 0.25);
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.18);
+  color-scheme: dark;
 }
 
 *,
@@ -31,6 +56,7 @@ body {
   color: var(--fg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 button,
