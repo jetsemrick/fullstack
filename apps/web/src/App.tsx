@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
+import { useId, useState, useMemo, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
-import { fetchPrices } from "./api";
+import { ComparePriceChart } from "./ComparePriceChart";
+import { CompareTickerBar } from "./CompareTickerBar";
+import { buildCompareChartRows, MAX_COMPARE_TICKERS, type NormalizeMode } from "./compareChartData";
 import { downloadPricesCsv } from "./exportCsv";
+import { HORIZONS } from "./filterSeriesByHorizon";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { useComparePrices } from "./useComparePrices";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -23,26 +27,7 @@ function formatPercentChange(data: GetPricesResponse | null) {
   return {
     text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
     isPositive: pct > 0,
-    isNegative: pct < 0
-  };
-}
-
-const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
-];
-
-function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
-  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60;
-  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
-  return {
-    ...data,
-    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+    isNegative: pct < 0,
   };
 }
 
@@ -50,55 +35,76 @@ export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const [compareTickers, setCompareTickers] = useState<string[]>([DEFAULT_TICKER]);
+  const [normalizeMode, setNormalizeMode] = useState<NormalizeMode>("indexed");
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
 
-  const [data, setData] = useState<GetPricesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const compareEnabled = horizonIndex !== 0;
+  const horizon = HORIZONS[horizonIndex]!;
+  const fetchTickers = compareEnabled ? compareTickers : [ticker];
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const horizon = HORIZONS[horizonIndex];
-    const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
-    setLoading(false);
-    if (!res.ok) {
-      setData(null);
-      setError(res.error.error ?? "Request failed");
-      return;
-    }
-    setData(res.data);
-  }, [ticker, horizonIndex]);
+  const { loaded, errors, loading } = useComparePrices(fetchTickers, horizon, true);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const primarySymbol = compareEnabled ? (compareTickers[0] ?? ticker) : ticker;
 
-  const slicedDaily = useMemo(() => {
-    if (!data) return null;
-    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
-  }, [data, horizonIndex]);
+  const primaryData = useMemo(() => {
+    return loaded.find((d) => d.ticker === primarySymbol) ?? loaded[0] ?? null;
+  }, [loaded, primarySymbol]);
 
-  const displayData = useMemo(() => {
-    if (!slicedDaily) return null;
-    return slicedDaily;
-  }, [slicedDaily]);
+  const displayData = primaryData;
 
-  const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
-  const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
+  const compareChart = useMemo(() => {
+    if (!compareEnabled || loaded.length < 2) return null;
+    return buildCompareChartRows(loaded, normalizeMode);
+  }, [compareEnabled, loaded, normalizeMode]);
+
+  const showCompareChart = compareChart !== null && compareChart.rows.length > 0;
+  const allFailed = !loading && loaded.length === 0 && fetchTickers.length > 0;
+  const globalError =
+    allFailed && errors.length > 0
+      ? errors.map((e) => `${e.ticker}: ${e.message}`).join("; ")
+      : null;
+
+  const lastPriceDisplay = displayData?.lastPrice ?? null;
+  const currencyDisplay = displayData?.currency ?? null;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
     setTicker(t);
+    setCompareTickers((prev) => {
+      if (!compareEnabled || prev.length === 0) return [t];
+      return [t, ...prev.slice(1)];
+    });
   }
+
+  function handleAddCompare(symbol: string) {
+    setCompareTickers((prev) => {
+      if (prev.includes(symbol)) return prev;
+      if (prev.length >= MAX_COMPARE_TICKERS) return prev;
+      return [...prev, symbol];
+    });
+  }
+
+  function handleRemoveCompare(symbol: string) {
+    setCompareTickers((prev) => {
+      const next = prev.filter((t) => t !== symbol);
+      if (next.length === 0) return [ticker];
+      return next;
+    });
+  }
+
+  const showContent = !loading || loaded.length > 0;
+  const showSkeleton = loading && loaded.length === 0;
 
   return (
     <div className="shell">
       <header className="header">
         <MarketStrip />
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">
+            Ticker
+          </label>
           <div className="search-input-wrapper">
             <input
               id={`${formId}-ticker`}
@@ -112,12 +118,7 @@ export default function App() {
               placeholder={`e.g. ${DEFAULT_TICKER}`}
               maxLength={32}
             />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
-            >
+            <button id={`${formId}-submit`} type="submit" className="search-btn" disabled={loading && loaded.length === 0}>
               Search
             </button>
           </div>
@@ -125,38 +126,54 @@ export default function App() {
       </header>
 
       <main className="main-content">
-        {loading && (
+        {showSkeleton && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
-             <div className="skeleton-toolbar" />
-             <div className="skeleton-chart" />
+            <div className="skeleton-toolbar" />
+            <div className="skeleton-chart" />
           </div>
         )}
 
-        {!loading && error && (
+        {!showSkeleton && globalError && (
           <div className="card error-banner" role="alert">
-            <strong>Could not load data.</strong> {error}
+            <strong>Could not load data.</strong> {globalError}
           </div>
         )}
 
-        {!loading && !error && data && displayData && (
+        {showContent && !globalError && displayData && (
           <>
             <div className="card content-card">
               <div className="content-toolbar">
                 <div className="metrics-block">
                   <div className="metrics-inline">
-                    <h2 className="ticker-display">{data.ticker}</h2>
+                    <h2 className="ticker-display">{displayData.ticker}</h2>
                     <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
                     {(() => {
                       const percentChange = formatPercentChange(displayData);
                       if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
+                      const statusClass = percentChange.isPositive
+                        ? "positive"
+                        : percentChange.isNegative
+                          ? "negative"
+                          : "muted";
                       return (
-                        <span className={`metric-badge ${statusClass}`}>
-                          {percentChange.text}
-                        </span>
+                        <span className={`metric-badge ${statusClass}`}>{percentChange.text}</span>
                       );
                     })()}
+                    {compareEnabled && compareTickers.length >= 2 && (
+                      <span className="metric-badge muted">
+                        Comparing {compareTickers.length} symbols
+                      </span>
+                    )}
                   </div>
+                  <CompareTickerBar
+                    tickers={compareTickers}
+                    normalizeMode={normalizeMode}
+                    compareEnabled={compareEnabled}
+                    errors={errors}
+                    onAdd={handleAddCompare}
+                    onRemove={handleRemoveCompare}
+                    onNormalizeModeChange={setNormalizeMode}
+                  />
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
@@ -170,14 +187,19 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div
-                className="chart-container"
-                aria-label="Price chart"
-              >
-                <PriceChart
-                  data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
-                />
+              <div className="chart-container" aria-label="Price chart">
+                {showCompareChart && compareChart ? (
+                  <ComparePriceChart
+                    rows={compareChart.rows}
+                    tickers={compareChart.tickers}
+                    normalizeMode={normalizeMode}
+                  />
+                ) : (
+                  <PriceChart
+                    data={displayData}
+                    variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  />
+                )}
               </div>
             </div>
             <div className="actions-footer">
@@ -186,6 +208,7 @@ export default function App() {
                 className="btn-export"
                 onClick={() => downloadPricesCsv(displayData)}
                 title="Export CSV"
+                disabled={compareEnabled && compareTickers.length > 1}
               >
                 Export CSV
               </button>

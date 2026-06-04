@@ -42,6 +42,18 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+### Compare mode
+
+On **1 Year**, **5 Year**, or **All Time** horizons, use **Compare** to overlay up to **5** tickers on one chart:
+
+- Symbols are fetched in parallel via separate `GET /api/prices` calls (one per ticker).
+- Series are aligned on **UTC calendar days**; mismatched dates are handled with gaps rather than failing the whole chart.
+- **Indexed** (default) rebases each line to 100 at its first point so relative performance is comparable; switch to **Absolute** for raw close prices.
+- Compare is disabled on the **Today** (intraday) horizon.
+- If one symbol fails to load, others still render with per-symbol error messages.
+
+Tracked in Linear as [CURSOR-23](https://linear.app/jemrick/issue/CURSOR-23/feature-compare-multiple-tickers-on-one-price-chart).
+
 ### Environment (optional)
 
 | Variable | Default | Description |
