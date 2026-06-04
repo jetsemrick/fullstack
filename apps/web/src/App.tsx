@@ -43,6 +43,11 @@ function getInitialTheme(): Theme {
   return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
 }
 
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+}
+
 function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
@@ -85,8 +90,7 @@ export default function App() {
   }, [load]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    applyTheme(theme);
   }, [theme]);
 
   const slicedDaily = useMemo(() => {
@@ -110,6 +114,12 @@ export default function App() {
 
   const isDarkTheme = theme === "dark";
 
+  function onToggleTheme() {
+    const nextTheme = isDarkTheme ? "light" : "dark";
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
+  }
+
   return (
     <div className="shell">
       <header className="header">
@@ -119,7 +129,7 @@ export default function App() {
             type="button"
             className="theme-toggle"
             aria-pressed={isDarkTheme}
-            onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
+            onClick={onToggleTheme}
           >
             {isDarkTheme ? "Light mode" : "Dark mode"}
           </button>
