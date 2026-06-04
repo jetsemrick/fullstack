@@ -1,15 +1,27 @@
 :root {
-  --bg: #f4f5f3;
-  --fg: #2b302b;
-  --fg-muted: #6b726b;
-  --accent: #93af93;
-  --accent-hover: #7b997b;
-  --card: #ffffff;
-  --card-border: #e2e4e0;
-  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
+  /* Beach theme: sandy backgrounds, ocean blues, sunset corals */
+  --bg: #faf6f0;
+  --bg-gradient: linear-gradient(180deg, #e8f4f8 0%, #faf6f0 30%, #fdf8f3 100%);
+  --fg: #2c4a5e;
+  --fg-muted: #7a9ba8;
+  --accent: #20b2aa;
+  --accent-hover: #1a9690;
+  --card: #fffefa;
+  --card-border: #e0d8c8;
+  --shadow: 0 4px 16px rgba(44, 74, 94, 0.08), 0 1px 4px rgba(44, 74, 94, 0.04);
   --radius: 20px;
   --radius-sm: 10px;
   --font: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Beach accent colors */
+  --ocean: #20b2aa;
+  --ocean-light: #e6f7f6;
+  --ocean-border: #b8e0dd;
+  --coral: #e07a5f;
+  --coral-light: #fdf0ed;
+  --coral-border: #f5c4b8;
+  --sand: #d4a574;
+  --sunset: #f4a261;
 }
 
 *,
@@ -27,10 +39,12 @@ body,
 
 body {
   font-family: var(--font);
-  background: var(--bg);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
   color: var(--fg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 button,
