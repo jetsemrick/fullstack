@@ -1,4 +1,4 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
+import type { ApiErrorBody, GetPricesResponse, GetBatchPricesResponse, MarketContextResponse } from "@stock/shared";
 
 export async function fetchPrices(params: {
   ticker: string;
@@ -27,6 +27,33 @@ export async function fetchPrices(params: {
     return { ok: false, status: res.status, error: err };
   }
   return { ok: true, data: json as GetPricesResponse };
+}
+
+export async function fetchPricesBatch(params: {
+  tickers: string[];
+  range?: string;
+  interval?: string;
+}): Promise<{ ok: true; data: GetBatchPricesResponse } | { ok: false; error: ApiErrorBody; status: number }> {
+  const q = new URLSearchParams({ tickers: params.tickers.join(",") });
+  if (params.range) q.set("range", params.range);
+  if (params.interval) q.set("interval", params.interval);
+  const res = await fetch(`/api/prices/batch?${q.toString()}`);
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return {
+      ok: false,
+      status: res.status,
+      error: { error: "Invalid response", code: "INTERNAL" },
+    };
+  }
+  if (!res.ok) {
+    const err = json as ApiErrorBody;
+    return { ok: false, status: res.status, error: err };
+  }
+  return { ok: true, data: json as GetBatchPricesResponse };
 }
 
 export async function fetchMarketContext(): Promise<

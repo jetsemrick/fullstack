@@ -38,3 +38,26 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** Single ticker result in a batch response (success case). */
+export interface BatchTickerSuccess {
+  ticker: string;
+  ok: true;
+  data: GetPricesResponse;
+}
+
+/** Single ticker result in a batch response (error case). */
+export interface BatchTickerError {
+  ticker: string;
+  ok: false;
+  error: string;
+  code: ApiErrorBody["code"];
+}
+
+/** Discriminated union for per-ticker batch results. */
+export type BatchTickerResult = BatchTickerSuccess | BatchTickerError;
+
+/** Response from GET /api/prices/batch. Partial failures are allowed. */
+export interface GetBatchPricesResponse {
+  results: BatchTickerResult[];
+}
