@@ -9,18 +9,28 @@
 
 .header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: start;
   gap: 1rem 1.5rem;
 }
 
 @media (max-width: 640px) {
   .header {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
   }
 
   .search-form {
-    justify-self: end;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+  }
+
+  .search-input {
+    flex: 1;
+    min-width: 0;
   }
 }
 
@@ -52,7 +62,7 @@
 }
 
 .market-status--open {
-  color: #2b703e;
+  color: var(--color-positive);
 }
 
 .market-status--closed {
@@ -93,12 +103,12 @@
 }
 
 .market-strip__pct--up {
-  color: #2b703e;
+  color: var(--color-positive);
   font-weight: 500;
 }
 
 .market-strip__pct--down {
-  color: #ba3b3b;
+  color: var(--color-negative);
   font-weight: 500;
 }
 
@@ -122,13 +132,13 @@
   border: 1px solid var(--card-border);
   border-radius: 999px;
   padding: 0.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--search-shadow);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search-input-wrapper:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(147, 175, 147, 0.2);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .search-input {
@@ -148,7 +158,7 @@
 .search-btn {
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--btn-on-accent);
   border-radius: 999px;
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
@@ -236,15 +246,15 @@
 }
 
 .metric-badge.positive {
-  color: #2b703e;
-  background: #edf5ee;
-  border-color: #d1e2d3;
+  color: var(--color-positive);
+  background: var(--color-positive-bg);
+  border-color: var(--color-positive-border);
 }
 
 .metric-badge.negative {
-  color: #ba3b3b;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
+  color: var(--color-negative);
+  background: var(--color-negative-bg);
+  border-color: var(--color-negative-border);
 }
 
 .btn-export {
@@ -302,9 +312,9 @@
 
 .error-banner {
   padding: 1.5rem;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
-  color: #ba3b3b;
+  background: var(--color-negative-bg);
+  border-color: var(--color-negative-border);
+  color: var(--color-negative);
   font-size: 0.95rem;
   border-width: 1px;
   border-style: solid;
@@ -348,7 +358,29 @@
 }
 
 .horizon-btn.active {
-  background: #edf5ee;
-  color: #2b703e;
-  border-color: #d1e2d3;
+  background: var(--color-positive-bg);
+  color: var(--color-positive);
+  border-color: var(--color-positive-border);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--fg-muted);
 }
