@@ -1,9 +1,21 @@
 import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { DEFAULT_TICKER, TICKER_MAX_LENGTH, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import {
+  addTickerToActiveWatchlist,
+  cleanWatchlistName,
+  createDefaultWatchlistState,
+  getActiveWatchlist,
+  readWatchlistState,
+  removeTickerFromActiveWatchlist,
+  uniqueWatchlistName,
+  validateTickerInput,
+  writeWatchlistState,
+  type WatchlistState,
+} from "./watchlists";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -46,11 +58,23 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   };
 }
 
+function createWatchlistId(): string {
+  return `watchlist-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
+  const [watchlistTickerInput, setWatchlistTickerInput] = useState<string>("");
   const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
+  const [watchlistState, setWatchlistState] = useState<WatchlistState>(() => {
+    if (typeof window === "undefined") return createDefaultWatchlistState();
+    return readWatchlistState(window.localStorage);
+  });
+  const activeWatchlist = useMemo(() => getActiveWatchlist(watchlistState), [watchlistState]);
+  const [watchlistNameInput, setWatchlistNameInput] = useState<string>(activeWatchlist.name);
+  const [watchlistFeedback, setWatchlistFeedback] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +98,14 @@ export default function App() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    writeWatchlistState(window.localStorage, watchlistState);
+  }, [watchlistState]);
+
+  useEffect(() => {
+    setWatchlistNameInput(activeWatchlist.name);
+  }, [activeWatchlist.id, activeWatchlist.name]);
+
   const slicedDaily = useMemo(() => {
     if (!data) return null;
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
@@ -89,8 +121,87 @@ export default function App() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
-    setTicker(t);
+    const validated = validateTickerInput(inputTicker.trim() ? inputTicker : DEFAULT_TICKER);
+    if (!validated.ok) {
+      setLoading(false);
+      setData(null);
+      setError(validated.error);
+      return;
+    }
+    setError(null);
+    setInputTicker(validated.ticker);
+    setTicker(validated.ticker);
+  }
+
+  function selectWatchlistTicker(nextTicker: string) {
+    setError(null);
+    setInputTicker(nextTicker);
+    setTicker(nextTicker);
+  }
+
+  function onCreateWatchlist() {
+    const id = createWatchlistId();
+    setWatchlistState((state) => {
+      const name = uniqueWatchlistName(state.watchlists);
+      return {
+        watchlists: [...state.watchlists, { id, name, tickers: [] }],
+        activeWatchlistId: id,
+      };
+    });
+    setWatchlistFeedback({ type: "success", text: "Created watchlist." });
+  }
+
+  function onRenameWatchlist(e: FormEvent) {
+    e.preventDefault();
+    const name = cleanWatchlistName(watchlistNameInput);
+    if (!name) {
+      setWatchlistFeedback({ type: "error", text: "Watchlist name cannot be empty." });
+      return;
+    }
+    const duplicate = watchlistState.watchlists.some(
+      (watchlist) => watchlist.id !== activeWatchlist.id && watchlist.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (duplicate) {
+      setWatchlistFeedback({ type: "error", text: "Use a unique watchlist name." });
+      return;
+    }
+    setWatchlistState((state) => ({
+      ...state,
+      watchlists: state.watchlists.map((watchlist) =>
+        watchlist.id === state.activeWatchlistId ? { ...watchlist, name } : watchlist,
+      ),
+    }));
+    setWatchlistFeedback({ type: "success", text: "Renamed watchlist." });
+  }
+
+  function onDeleteWatchlist() {
+    if (watchlistState.watchlists.length <= 1) return;
+    setWatchlistState((state) => {
+      const remaining = state.watchlists.filter((watchlist) => watchlist.id !== state.activeWatchlistId);
+      return { watchlists: remaining, activeWatchlistId: remaining[0].id };
+    });
+    setWatchlistFeedback({ type: "success", text: "Deleted watchlist." });
+  }
+
+  function onAddTickerToWatchlist(e: FormEvent) {
+    e.preventDefault();
+    const validated = validateTickerInput(watchlistTickerInput);
+    if (!validated.ok) {
+      setWatchlistFeedback({ type: "error", text: validated.error });
+      return;
+    }
+    const alreadySaved = activeWatchlist.tickers.includes(validated.ticker);
+    setWatchlistState((state) => addTickerToActiveWatchlist(state, validated.ticker));
+    setWatchlistTickerInput("");
+    setWatchlistFeedback({
+      type: alreadySaved ? "error" : "success",
+      text: alreadySaved ? `${validated.ticker} is already in this watchlist.` : `Added ${validated.ticker}.`,
+    });
+  }
+
+  function onRemoveTickerFromWatchlist(nextTicker: string) {
+    setWatchlistState((state) => removeTickerFromActiveWatchlist(state, nextTicker));
+    setWatchlistFeedback({ type: "success", text: `Removed ${nextTicker}.` });
   }
 
   return (
@@ -110,7 +221,7 @@ export default function App() {
               onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
               className="search-input"
               placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
+              maxLength={TICKER_MAX_LENGTH}
             />
             <button
               id={`${formId}-submit`}
@@ -125,6 +236,102 @@ export default function App() {
       </header>
 
       <main className="main-content">
+        <section className="card watchlist-card" aria-labelledby={`${formId}-watchlists`}>
+          <div className="watchlist-topline">
+            <div>
+              <h2 id={`${formId}-watchlists`} className="watchlist-title">Watchlists</h2>
+              <p className="watchlist-subtitle">Saved in this browser for quick chart switching.</p>
+            </div>
+            <div className="watchlist-actions">
+              <button type="button" className="watchlist-btn" onClick={onCreateWatchlist}>
+                New
+              </button>
+              <button
+                type="button"
+                className="watchlist-btn danger"
+                onClick={onDeleteWatchlist}
+                disabled={watchlistState.watchlists.length <= 1}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <div className="watchlist-grid">
+            <label className="watchlist-field">
+              <span>Current list</span>
+              <select
+                value={watchlistState.activeWatchlistId}
+                onChange={(e) => {
+                  setWatchlistState((state) => ({ ...state, activeWatchlistId: e.target.value }));
+                  setWatchlistFeedback(null);
+                }}
+              >
+                {watchlistState.watchlists.map((watchlist) => (
+                  <option key={watchlist.id} value={watchlist.id}>
+                    {watchlist.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <form className="watchlist-inline-form" onSubmit={onRenameWatchlist}>
+              <label className="watchlist-field">
+                <span>Name</span>
+                <input
+                  type="text"
+                  value={watchlistNameInput}
+                  onChange={(e) => setWatchlistNameInput(e.target.value)}
+                  maxLength={40}
+                />
+              </label>
+              <button type="submit" className="watchlist-btn">Rename</button>
+            </form>
+
+            <form className="watchlist-inline-form" onSubmit={onAddTickerToWatchlist}>
+              <label className="watchlist-field">
+                <span>Add ticker</span>
+                <input
+                  type="text"
+                  value={watchlistTickerInput}
+                  onChange={(e) => setWatchlistTickerInput(e.target.value.toUpperCase())}
+                  placeholder="MSFT"
+                  maxLength={TICKER_MAX_LENGTH}
+                />
+              </label>
+              <button type="submit" className="watchlist-btn">Add</button>
+            </form>
+          </div>
+
+          {watchlistFeedback ? (
+            <p className={`watchlist-feedback ${watchlistFeedback.type}`} role={watchlistFeedback.type === "error" ? "alert" : "status"}>
+              {watchlistFeedback.text}
+            </p>
+          ) : null}
+
+          <div className="ticker-chip-list" aria-label={`${activeWatchlist.name} tickers`}>
+            {activeWatchlist.tickers.length ? (
+              activeWatchlist.tickers.map((watchlistTicker) => (
+                <span className={`ticker-chip ${watchlistTicker === ticker ? "active" : ""}`} key={watchlistTicker}>
+                  <button type="button" onClick={() => selectWatchlistTicker(watchlistTicker)}>
+                    {watchlistTicker}
+                  </button>
+                  <button
+                    type="button"
+                    className="ticker-chip-remove"
+                    onClick={() => onRemoveTickerFromWatchlist(watchlistTicker)}
+                    aria-label={`Remove ${watchlistTicker} from ${activeWatchlist.name}`}
+                  >
+                    Remove
+                  </button>
+                </span>
+              ))
+            ) : (
+              <span className="watchlist-empty">No tickers saved yet.</span>
+            )}
+          </div>
+        </section>
+
         {loading && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
              <div className="skeleton-toolbar" />

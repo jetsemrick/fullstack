@@ -170,6 +170,7 @@
   display: flex;
   flex-direction: column;
   min-height: 500px;
+  gap: 1rem;
 }
 
 .card {
@@ -268,7 +269,6 @@
 .actions-footer {
   display: flex;
   justify-content: flex-end;
-  margin-top: 1rem;
 }
 
 .chart-container {
@@ -351,4 +351,159 @@
   background: #edf5ee;
   color: #2b703e;
   border-color: #d1e2d3;
+}
+
+.watchlist-card {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.watchlist-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.watchlist-title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+.watchlist-subtitle {
+  margin: 0.15rem 0 0;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.watchlist-actions,
+.watchlist-inline-form {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1fr) minmax(220px, 1fr);
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.watchlist-field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.watchlist-field input,
+.watchlist-field select {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.45rem 0.6rem;
+  min-width: 0;
+}
+
+.watchlist-btn {
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.watchlist-btn:hover:enabled {
+  border-color: var(--fg-muted);
+}
+
+.watchlist-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.watchlist-btn.danger {
+  color: #ba3b3b;
+}
+
+.watchlist-feedback {
+  margin: -0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.watchlist-feedback.success {
+  color: #2b703e;
+}
+
+.watchlist-feedback.error {
+  color: #ba3b3b;
+}
+
+.ticker-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+
+.ticker-chip {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.ticker-chip.active {
+  border-color: #d1e2d3;
+  background: #edf5ee;
+}
+
+.ticker-chip button {
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ticker-chip-remove {
+  border-left: 1px solid var(--card-border) !important;
+  color: var(--fg-muted) !important;
+  font-weight: 500 !important;
+}
+
+.watchlist-empty {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 820px) {
+  .watchlist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .watchlist-topline,
+  .watchlist-inline-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .watchlist-actions {
+    align-self: flex-start;
+  }
 }

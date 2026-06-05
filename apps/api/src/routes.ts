@@ -1,5 +1,5 @@
 import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
-import { DEFAULT_TICKER } from "@stock/shared";
+import { DEFAULT_TICKER, TICKER_PATTERN } from "@stock/shared";
 import { fetchYahooChart } from "./yahoo";
 import { fetchMajorIndexQuotes } from "./yahoo-quote";
 
@@ -57,7 +57,7 @@ function errBody(message: string, code: ApiErrorBody["code"], details?: string):
   return { error: message, code, details };
 }
 
-const TICKER_RE = /^[A-Za-z0-9._^=-]{1,32}$/;
+const TICKER_RE = new RegExp(TICKER_PATTERN);
 
 function normalizeTicker(raw: string | null): string {
   if (!raw || !raw.trim()) return DEFAULT_TICKER;
