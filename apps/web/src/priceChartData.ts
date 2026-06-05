@@ -21,6 +21,20 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
   }));
 }
 
+/**
+ * Upper bound for the volume axis. Inflating past the tallest bar keeps volume
+ * confined to the lower ~30% of the plot so the price line stays the focus.
+ * Returns 0 when there is no positive volume (axis/series omitted).
+ */
+export function volumeAxisMax(rows: PriceVolumeRow[]): number {
+  let max = 0;
+  for (const r of rows) {
+    if (Number.isFinite(r.volumeBar) && r.volumeBar > max) max = r.volumeBar;
+  }
+  if (max <= 0) return 0;
+  return max / 0.3;
+}
+
 export function formatVolumeAxis(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "0";
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;

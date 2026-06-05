@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import { buildPriceVolumeRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip, volumeAxisMax } from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -38,6 +38,22 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("volumeAxisMax", () => {
+  test("zero when no positive volume", () => {
+    expect(volumeAxisMax([])).toBe(0);
+    expect(
+      volumeAxisMax([{ t: 1, price: 1, volume: null, volumeBar: 0 }]),
+    ).toBe(0);
+  });
+  test("scales tallest bar to ~30% of the axis", () => {
+    const rows = [
+      { t: 1, price: 1, volume: 100, volumeBar: 100 },
+      { t: 2, price: 2, volume: 300, volumeBar: 300 },
+    ];
+    expect(volumeAxisMax(rows)).toBeCloseTo(1000, 6);
   });
 });
 

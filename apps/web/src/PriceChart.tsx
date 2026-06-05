@@ -16,6 +16,7 @@ import {
   formatVolumeAxis,
   formatVolumeTooltip,
   seriesHasVolume,
+  volumeAxisMax,
   type PriceVolumeRow,
 } from "./priceChartData";
 
@@ -67,13 +68,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const showVolume = seriesHasVolume(data.series);
 
-  // Cap the volume axis well above the tallest bar so volume occupies only the
-  // lower band of the plot and never obscures the price line.
-  const volumeDomainMax = useMemo(() => {
-    if (!showVolume) return 0;
-    const max = rows.reduce((m, r) => (r.volumeBar > m ? r.volumeBar : m), 0);
-    return max > 0 ? max * 4 : 0;
-  }, [rows, showVolume]);
+  // Inflate the volume axis so bars occupy only the lower band and never
+  // obscure the price line.
+  const volumeDomainMax = useMemo(
+    () => (showVolume ? volumeAxisMax(rows) : 0),
+    [rows, showVolume],
+  );
 
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
@@ -176,7 +176,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               dataKey="volumeBar"
               name="Volume"
               fill="var(--fg-muted)"
-              fillOpacity={0.28}
+              fillOpacity={0.5}
               maxBarSize={24}
               isAnimationActive={false}
             />
