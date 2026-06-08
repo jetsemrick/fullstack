@@ -279,6 +279,7 @@
   padding: 2rem;
   height: 450px;
   width: 100%;
+  user-select: none;
 }
 
 .loading-card {
