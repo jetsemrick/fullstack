@@ -112,6 +112,7 @@ export function PriceChart({
   onSelectionChange?: (selection: PriceChartSelection | null) => void;
 }) {
   const chartRef = useRef<HTMLDivElement | null>(null);
+  const dragRangeRef = useRef<{ startMs: number; endMs: number } | null>(null);
   const [dragRange, setDragRange] = useState<{ startMs: number; endMs: number } | null>(null);
   const [selection, setSelection] = useState<PriceChartSelection | null>(null);
   const rows = chartData(data);
@@ -139,6 +140,7 @@ export function PriceChart({
   }, [variant, intradayDomain]);
 
   const clearSelection = useCallback(() => {
+    dragRangeRef.current = null;
     setDragRange(null);
     setSelection(null);
     onSelectionChange?.(null);
@@ -168,33 +170,43 @@ export function PriceChart({
     if (t == null) return;
     setSelection(null);
     onSelectionChange?.(null);
-    setDragRange({ startMs: t, endMs: t });
+    const nextRange = { startMs: t, endMs: t };
+    dragRangeRef.current = nextRange;
+    setDragRange(nextRange);
   }, [onSelectionChange]);
 
   const onMouseMove = useCallback((state: unknown) => {
     const t = timestampFromChartState(state);
     if (t == null) return;
-    setDragRange((current) => current ? { ...current, endMs: t } : current);
+    setDragRange((current) => {
+      if (!current) return current;
+      const nextRange = { ...current, endMs: t };
+      dragRangeRef.current = nextRange;
+      return nextRange;
+    });
   }, []);
 
   const finalizeSelection = useCallback((startMs: number, endMs: number) => {
     const nextSelection = selectionFromRange(rows, startMs, endMs);
     setSelection(nextSelection);
     onSelectionChange?.(nextSelection);
+    dragRangeRef.current = null;
     setDragRange(null);
   }, [onSelectionChange, rows]);
 
   const onMouseUp = useCallback((state: unknown) => {
-    if (!dragRange) return;
-    const endMs = timestampFromChartState(state) ?? dragRange.endMs;
-    finalizeSelection(dragRange.startMs, endMs);
-  }, [dragRange, finalizeSelection]);
+    const currentRange = dragRangeRef.current;
+    if (!currentRange) return;
+    const endMs = timestampFromChartState(state) ?? currentRange.endMs;
+    finalizeSelection(currentRange.startMs, endMs);
+  }, [finalizeSelection]);
 
   useEffect(() => {
     if (!dragRange) return;
-    const currentRange = dragRange;
 
     function onDocumentMouseUp() {
+      const currentRange = dragRangeRef.current;
+      if (!currentRange) return;
       finalizeSelection(currentRange.startMs, currentRange.endMs);
     }
 
