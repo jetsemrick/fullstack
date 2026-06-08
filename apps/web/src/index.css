@@ -4,12 +4,75 @@
   --fg-muted: #6b726b;
   --accent: #93af93;
   --accent-hover: #7b997b;
+  --on-accent: #ffffff;
   --card: #ffffff;
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
+  --focus-ring: rgba(147, 175, 147, 0.2);
+  --input-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  --color-up: #2b703e;
+  --color-down: #ba3b3b;
+  --color-up-bg: #edf5ee;
+  --color-up-border: #d1e2d3;
+  --color-down-bg: #fdf5f5;
+  --color-down-border: #f5c2c2;
   --radius: 20px;
   --radius-sm: 10px;
   --font: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141614;
+    --fg: #e8ebe8;
+    --fg-muted: #9aa39a;
+    --accent: #7b997b;
+    --accent-hover: #93af93;
+    --on-accent: #141614;
+    --card: #1e211e;
+    --card-border: #2f352f;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --focus-ring: rgba(147, 175, 147, 0.25);
+    --input-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --color-up: #5cb87a;
+    --color-down: #e07070;
+    --color-up-bg: rgba(92, 184, 122, 0.12);
+    --color-up-border: rgba(92, 184, 122, 0.28);
+    --color-down-bg: rgba(224, 112, 112, 0.12);
+    --color-down-border: rgba(224, 112, 112, 0.28);
+  }
+}
+
+[data-theme="dark"] {
+  --bg: #141614;
+  --fg: #e8ebe8;
+  --fg-muted: #9aa39a;
+  --accent: #7b997b;
+  --accent-hover: #93af93;
+  --on-accent: #141614;
+  --card: #1e211e;
+  --card-border: #2f352f;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --focus-ring: rgba(147, 175, 147, 0.25);
+  --input-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --color-up: #5cb87a;
+  --color-down: #e07070;
+  --color-up-bg: rgba(92, 184, 122, 0.12);
+  --color-up-border: rgba(92, 184, 122, 0.28);
+  --color-down-bg: rgba(224, 112, 112, 0.12);
+  --color-down-border: rgba(224, 112, 112, 0.28);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 *,
@@ -31,6 +94,7 @@ body {
   color: var(--fg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 button,
