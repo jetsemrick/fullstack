@@ -99,12 +99,9 @@ export default function App() {
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state is tied to the async ticker fetch lifecycle.
     void load();
   }, [load]);
-
-  useEffect(() => {
-    setChartSelection(null);
-  }, [ticker, horizonIndex]);
 
   const slicedDaily = useMemo(() => {
     if (!data) return null;
@@ -122,6 +119,7 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setChartSelection(null);
     setTicker(t);
   }
 
@@ -204,7 +202,10 @@ export default function App() {
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setChartSelection(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -217,6 +218,7 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${ticker}-${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                   onSelectionChange={setChartSelection}

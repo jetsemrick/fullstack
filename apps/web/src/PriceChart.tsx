@@ -145,10 +145,6 @@ export function PriceChart({
   }, [onSelectionChange]);
 
   useEffect(() => {
-    clearSelection();
-  }, [clearSelection, data, variant]);
-
-  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") clearSelection();
     }
