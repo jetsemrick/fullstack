@@ -95,7 +95,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       style={{ width: "100%", height: "100%" }}
     >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: hasVolume ? 12 : 10, left: 0, bottom: 0 }}>
+        <ComposedChart data={rows} margin={{ top: 10, right: hasVolume ? 24 : 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
@@ -130,8 +130,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
               tickLine={false}
               axisLine={false}
+              label={{ value: "Volume", angle: -90, position: "insideRight", fill: "var(--fg-muted)", fontSize: 12 }}
               tickFormatter={(v: number) => formatVolumeAxis(v)}
-              dx={6}
+              tickMargin={8}
             />
           ) : null}
           <Tooltip
