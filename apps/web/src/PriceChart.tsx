@@ -177,16 +177,29 @@ export function PriceChart({
     setDragRange((current) => current ? { ...current, endMs: t } : current);
   }, []);
 
-  const onMouseUp = useCallback((state: unknown) => {
-    setDragRange((current) => {
-      if (!current) return null;
-      const endMs = timestampFromChartState(state) ?? current.endMs;
-      const nextSelection = selectionFromRange(rows, current.startMs, endMs);
-      setSelection(nextSelection);
-      onSelectionChange?.(nextSelection);
-      return null;
-    });
+  const finalizeSelection = useCallback((startMs: number, endMs: number) => {
+    const nextSelection = selectionFromRange(rows, startMs, endMs);
+    setSelection(nextSelection);
+    onSelectionChange?.(nextSelection);
+    setDragRange(null);
   }, [onSelectionChange, rows]);
+
+  const onMouseUp = useCallback((state: unknown) => {
+    if (!dragRange) return;
+    const endMs = timestampFromChartState(state) ?? dragRange.endMs;
+    finalizeSelection(dragRange.startMs, endMs);
+  }, [dragRange, finalizeSelection]);
+
+  useEffect(() => {
+    if (!dragRange) return;
+
+    function onDocumentMouseUp() {
+      finalizeSelection(dragRange.startMs, dragRange.endMs);
+    }
+
+    document.addEventListener("mouseup", onDocumentMouseUp);
+    return () => document.removeEventListener("mouseup", onDocumentMouseUp);
+  }, [dragRange, finalizeSelection]);
 
   const visibleRange = dragRange ?? selection;
 
