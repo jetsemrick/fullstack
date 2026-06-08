@@ -192,9 +192,10 @@ export function PriceChart({
 
   useEffect(() => {
     if (!dragRange) return;
+    const currentRange = dragRange;
 
     function onDocumentMouseUp() {
-      finalizeSelection(dragRange.startMs, dragRange.endMs);
+      finalizeSelection(currentRange.startMs, currentRange.endMs);
     }
 
     document.addEventListener("mouseup", onDocumentMouseUp);
