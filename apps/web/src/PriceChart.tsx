@@ -1,7 +1,8 @@
 import {
+  Bar,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -9,13 +10,8 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import { buildPriceVolumeRows, formatVolumeAxis, formatVolumeTooltip, seriesHasVolume } from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -60,7 +56,8 @@ function formatPrice(n: number): string {
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+  const rows = buildPriceVolumeRows(data);
+  const hasVolume = seriesHasVolume(data.series);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -84,12 +81,21 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, intradayDomain]);
 
+  const volumeDomain = useMemo((): [number, number] => {
+    const maxVolume = rows.reduce((max, row) => Math.max(max, row.volumeBar), 0);
+    return [0, maxVolume > 0 ? maxVolume * 4 : 1];
+  }, [rows]);
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      role="img"
+      aria-label={hasVolume ? "Price over time line chart with volume bars" : "Price over time line chart"}
+      style={{ width: "100%", height: "100%" }}
+    >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart data={rows} margin={{ top: 10, right: hasVolume ? 12 : 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
@@ -105,6 +111,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
+            yAxisId="price"
             dataKey="price"
             domain={["auto", "auto"]}
             width={60}
@@ -114,6 +121,19 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             tickFormatter={(v: number) => formatPrice(v)}
             dx={-10}
           />
+          {hasVolume ? (
+            <YAxis
+              yAxisId="volume"
+              orientation="right"
+              domain={volumeDomain}
+              width={56}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatVolumeAxis(v)}
+              dx={6}
+            />
+          ) : null}
           <Tooltip
             contentStyle={{
               background: "var(--card)",
@@ -123,25 +143,37 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               boxShadow: "var(--shadow)",
               padding: "12px",
             }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
+            labelFormatter={(label) => (typeof label === "number" ? formatTooltipWhen(label, variant, spanDays) : "")}
+            formatter={(value, name, item) => {
+              if (name === "Volume") {
+                return [formatVolumeTooltip(item.payload?.volume ?? null), "Volume"];
               }
-              return "";
+              return [typeof value === "number" ? formatPrice(value) : value, "Close"];
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
+          {hasVolume ? (
+            <Bar
+              yAxisId="volume"
+              dataKey="volumeBar"
+              name="Volume"
+              fill="var(--volume)"
+              opacity={0.42}
+              maxBarSize={18}
+              isAnimationActive={false}
+            />
+          ) : null}
           <Line
+            yAxisId="price"
             type="linear"
             dataKey="price"
+            name="Close"
             stroke="var(--accent)"
             strokeWidth={3}
             dot={false}
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
