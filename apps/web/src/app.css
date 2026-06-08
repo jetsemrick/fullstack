@@ -277,6 +277,24 @@
   width: 100%;
 }
 
+.price-chart-interactive {
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  user-select: none;
+  touch-action: none;
+}
+
+.metric-badge.selection-range {
+  font-size: 0.9rem;
+}
+
+.selection-range-label {
+  margin-right: 0.45rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
 .loading-card {
   padding: 2rem;
   display: flex;
