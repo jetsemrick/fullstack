@@ -87,7 +87,7 @@ function timestampFromChartState(state: unknown): number | null {
   return null;
 }
 
-function selectionFromRange(rows: ChartRow[], a: number, b: number): PriceChartSelection | null {
+export function getPriceChartSelectionFromRange(rows: ChartRow[], a: number, b: number): PriceChartSelection | null {
   const startMs = Math.min(a, b);
   const endMs = Math.max(a, b);
   if (startMs === endMs) return null;
@@ -187,7 +187,7 @@ export function PriceChart({
   }, []);
 
   const finalizeSelection = useCallback((startMs: number, endMs: number) => {
-    const nextSelection = selectionFromRange(rows, startMs, endMs);
+    const nextSelection = getPriceChartSelectionFromRange(rows, startMs, endMs);
     setSelection(nextSelection);
     onSelectionChange?.(nextSelection);
     dragRangeRef.current = null;
