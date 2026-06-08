@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import { getPriceChartSelectionFromRange, type PriceChartSelection } from "./priceChartSelection";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
 
 const chartData = (data: GetPricesResponse) =>
@@ -60,16 +61,6 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-type ChartRow = ReturnType<typeof chartData>[number];
-
-export type PriceChartSelection = {
-  startMs: number;
-  endMs: number;
-  startPrice: number;
-  endPrice: number;
-  pointCount: number;
-};
-
 type ChartPointerState = {
   activeLabel?: unknown;
   activePayload?: Array<{ payload?: { t?: number } }>;
@@ -85,21 +76,6 @@ function timestampFromChartState(state: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
-}
-
-export function getPriceChartSelectionFromRange(rows: ChartRow[], a: number, b: number): PriceChartSelection | null {
-  const startMs = Math.min(a, b);
-  const endMs = Math.max(a, b);
-  if (startMs === endMs) return null;
-  const selectedRows = rows.filter((row) => row.t >= startMs && row.t <= endMs);
-  if (selectedRows.length < 2) return null;
-  return {
-    startMs: selectedRows[0]!.t,
-    endMs: selectedRows[selectedRows.length - 1]!.t,
-    startPrice: selectedRows[0]!.price,
-    endPrice: selectedRows[selectedRows.length - 1]!.price,
-    pointCount: selectedRows.length,
-  };
 }
 
 export function PriceChart({

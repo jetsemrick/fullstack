@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getPriceChartSelectionFromRange } from "./PriceChart";
+import { getPriceChartSelectionFromRange } from "./priceChartSelection";
 
 const rows = [
   { t: 1_000, price: 100 },

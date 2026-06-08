@@ -2,8 +2,9 @@ import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
-import { PriceChart, type PriceChartSelection } from "./PriceChart";
+import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import type { PriceChartSelection } from "./priceChartSelection";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
