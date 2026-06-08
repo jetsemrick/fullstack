@@ -247,6 +247,10 @@
   border-color: #f5c2c2;
 }
 
+.metric-badge.selection-change {
+  font-size: 0.9rem;
+}
+
 .btn-export {
   border: 1px solid var(--card-border);
   background: transparent;
