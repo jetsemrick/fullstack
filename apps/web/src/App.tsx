@@ -50,7 +50,7 @@ export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
-  const [horizonIndex, setHorizonIndex] = useState<number>(HORIZONS.length - 1);
+  const [horizonIndex, setHorizonIndex] = useState<number>(0);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
