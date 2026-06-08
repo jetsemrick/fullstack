@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>Cursor Trade</title>
+    <script>
+      (function () {
+        var key = "stock-visualizer-theme";
+        try {
+          var stored = localStorage.getItem(key);
+          if (stored === "dark" || stored === "light") {
+            document.documentElement.dataset.theme = stored;
+            return;
+          }
+        } catch (e) {}
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

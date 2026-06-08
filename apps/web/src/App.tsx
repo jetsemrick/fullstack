@@ -6,6 +6,32 @@ import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import "./app.css";
 
+type ThemeMode = "light" | "dark";
+
+const THEME_STORAGE_KEY = "stock-visualizer-theme";
+
+function isThemeMode(value: string | null): value is ThemeMode {
+  return value === "light" || value === "dark";
+}
+
+function readStoredTheme(): ThemeMode | null {
+  try {
+    const value = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isThemeMode(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSystemTheme(): ThemeMode {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function getInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") return "light";
+  return readStoredTheme() ?? getSystemTheme();
+}
+
 function formatLast(v: number | null, currency: string | null) {
   if (v == null) return "—";
   const cur = currency ? ` ${currency}` : "";
@@ -51,10 +77,27 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemThemeChange = (event: MediaQueryListEvent) => {
+      if (readStoredTheme() === null) {
+        setTheme(event.matches ? "dark" : "light");
+      }
+    };
+
+    media.addEventListener("change", onSystemThemeChange);
+    return () => media.removeEventListener("change", onSystemThemeChange);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,35 +136,60 @@ export default function App() {
     setTicker(t);
   }
 
+  function onToggleTheme() {
+    const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch {
+      // Theme switching should keep working even if storage is unavailable.
+    }
+    setTheme(nextTheme);
+  }
+
   return (
     <div className="shell">
       <header className="header">
         <MarketStrip />
-        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
-          <div className="search-input-wrapper">
-            <input
-              id={`${formId}-ticker`}
-              name="ticker"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
-            />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
-            >
-              Search
-            </button>
-          </div>
-        </form>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="theme-toggle"
+            data-theme-state={theme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            aria-pressed={theme === "dark"}
+            onClick={onToggleTheme}
+          >
+            <span className="theme-toggle__label">{theme === "dark" ? "Dark" : "Light"}</span>
+            <span className="theme-toggle__track" aria-hidden>
+              <span className="theme-toggle__thumb" />
+            </span>
+          </button>
+          <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+            <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+            <div className="search-input-wrapper">
+              <input
+                id={`${formId}-ticker`}
+                name="ticker"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                className="search-input"
+                placeholder={`e.g. ${DEFAULT_TICKER}`}
+                maxLength={32}
+              />
+              <button
+                id={`${formId}-submit`}
+                type="submit"
+                className="search-btn"
+                disabled={loading}
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
       </header>
 
       <main className="main-content">
