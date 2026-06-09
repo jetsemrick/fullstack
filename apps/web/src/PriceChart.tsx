@@ -2,13 +2,15 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import { getPriceChartSelectionFromRange, type PriceChartSelection } from "./priceChartSelection";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
 
 const chartData = (data: GetPricesResponse) =>
@@ -59,8 +61,37 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+type ChartPointerState = {
+  activeLabel?: unknown;
+  activePayload?: Array<{ payload?: { t?: number } }>;
+};
+
+function timestampFromChartState(state: unknown): number | null {
+  const chartState = state as ChartPointerState | undefined;
+  const payloadTime = chartState?.activePayload?.[0]?.payload?.t;
+  if (typeof payloadTime === "number") return payloadTime;
+  if (typeof chartState?.activeLabel === "number") return chartState.activeLabel;
+  if (typeof chartState?.activeLabel === "string") {
+    const parsed = Number(chartState.activeLabel);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+export function PriceChart({
+  data,
+  variant = "daily",
+  onSelectionChange,
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  onSelectionChange?: (selection: PriceChartSelection | null) => void;
+}) {
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const dragRangeRef = useRef<{ startMs: number; endMs: number } | null>(null);
+  const [dragRange, setDragRange] = useState<{ startMs: number; endMs: number } | null>(null);
+  const [selection, setSelection] = useState<PriceChartSelection | null>(null);
+  const rows = useMemo(() => chartData(data), [data]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -84,12 +115,103 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, intradayDomain]);
 
+  const clearSelection = useCallback(() => {
+    dragRangeRef.current = null;
+    setDragRange(null);
+    setSelection(null);
+    onSelectionChange?.(null);
+  }, [onSelectionChange]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") clearSelection();
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (!selection) return;
+      if (chartRef.current?.contains(event.target as Node)) return;
+      clearSelection();
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [clearSelection, selection]);
+
+  const onMouseDown = useCallback((state: unknown) => {
+    const t = timestampFromChartState(state);
+    if (t == null) return;
+    setSelection(null);
+    onSelectionChange?.(null);
+    const nextRange = { startMs: t, endMs: t };
+    dragRangeRef.current = nextRange;
+    setDragRange(nextRange);
+  }, [onSelectionChange]);
+
+  const onMouseMove = useCallback((state: unknown) => {
+    const t = timestampFromChartState(state);
+    if (t == null) return;
+    setDragRange((current) => {
+      if (!current) return current;
+      const nextRange = { ...current, endMs: t };
+      dragRangeRef.current = nextRange;
+      return nextRange;
+    });
+  }, []);
+
+  const finalizeSelection = useCallback((startMs: number, endMs: number) => {
+    const nextSelection = getPriceChartSelectionFromRange(rows, startMs, endMs);
+    setSelection(nextSelection);
+    onSelectionChange?.(nextSelection);
+    dragRangeRef.current = null;
+    setDragRange(null);
+  }, [onSelectionChange, rows]);
+
+  const onMouseUp = useCallback((state: unknown) => {
+    const currentRange = dragRangeRef.current;
+    if (!currentRange) return;
+    const endMs = timestampFromChartState(state) ?? currentRange.endMs;
+    finalizeSelection(currentRange.startMs, endMs);
+  }, [finalizeSelection]);
+
+  useEffect(() => {
+    if (!dragRange) return;
+
+    function onDocumentMouseUp() {
+      const currentRange = dragRangeRef.current;
+      if (!currentRange) return;
+      finalizeSelection(currentRange.startMs, currentRange.endMs);
+    }
+
+    document.addEventListener("mouseup", onDocumentMouseUp);
+    return () => document.removeEventListener("mouseup", onDocumentMouseUp);
+  }, [dragRange, finalizeSelection]);
+
+  const visibleRange = dragRange ?? selection;
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={chartRef}
+      role="img"
+      aria-label="Price over time line chart. Drag horizontally to select a range; press Escape to clear the selection."
+      style={{ width: "100%", height: "100%" }}
+    >
+      <p className="sr-only">
+        Range selection is available with pointer drag on the chart. Keyboard users can press Escape to clear the active selection.
+      </p>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <LineChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+        >
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
@@ -132,6 +254,17 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             }}
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
+          {visibleRange && visibleRange.startMs !== visibleRange.endMs && (
+            <ReferenceArea
+              x1={Math.min(visibleRange.startMs, visibleRange.endMs)}
+              x2={Math.max(visibleRange.startMs, visibleRange.endMs)}
+              stroke="var(--accent)"
+              strokeOpacity={0.45}
+              fill="var(--accent)"
+              fillOpacity={0.12}
+              ifOverflow="visible"
+            />
+          )}
           <Line
             type="linear"
             dataKey="price"

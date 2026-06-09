@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import type { PriceChartSelection } from "./priceChartSelection";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -25,6 +26,33 @@ function formatPercentChange(data: GetPricesResponse | null) {
     isPositive: pct > 0,
     isNegative: pct < 0
   };
+}
+
+function formatSignedDelta(v: number, currency: string | null) {
+  const sign = v > 0 ? "+" : v < 0 ? "-" : "";
+  const cur = currency ? ` ${currency}` : "";
+  return `${sign}${Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
+}
+
+function formatSignedPercent(v: number) {
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
+function changeStatusClass(v: number) {
+  if (v > 0) return "positive";
+  if (v < 0) return "negative";
+  return "muted";
+}
+
+function formatSelectionLabel(selection: PriceChartSelection) {
+  const start = new Date(selection.startMs);
+  const end = new Date(selection.endMs);
+  const sameDay = start.toDateString() === end.toDateString();
+  if (sameDay) {
+    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}, ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  }
+  return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${end.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 }
 
 const HORIZONS = [
@@ -55,6 +83,7 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chartSelection, setChartSelection] = useState<PriceChartSelection | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +100,7 @@ export default function App() {
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state is tied to the async ticker fetch lifecycle.
     void load();
   }, [load]);
 
@@ -90,6 +120,7 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setChartSelection(null);
     setTicker(t);
   }
 
@@ -156,13 +187,26 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {chartSelection && (() => {
+                      const dollarChange = chartSelection.endPrice - chartSelection.startPrice;
+                      const percentChange = chartSelection.startPrice === 0 ? 0 : (dollarChange / chartSelection.startPrice) * 100;
+                      const statusClass = changeStatusClass(dollarChange);
+                      return (
+                        <span className={`metric-badge selection-change ${statusClass}`}>
+                          Selection {formatSelectionLabel(chartSelection)}: {formatSignedDelta(dollarChange, currencyDisplay)} ({formatSignedPercent(percentChange)})
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setChartSelection(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -175,8 +219,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${ticker}-${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onSelectionChange={setChartSelection}
                 />
               </div>
             </div>
