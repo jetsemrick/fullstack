@@ -1,7 +1,8 @@
 import {
+  Bar,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -10,12 +11,12 @@ import {
 import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
+import {
+  buildPriceVolumeRows,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -60,7 +61,8 @@ function formatPrice(n: number): string {
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+  const rows = buildPriceVolumeRows(data);
+  const hasVolume = useMemo(() => seriesHasVolume(data.series), [data.series]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -89,7 +91,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   return (
     <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart data={rows} margin={{ top: 10, right: hasVolume ? 60 : 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="t"
@@ -105,6 +107,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
+            yAxisId="price"
             dataKey="price"
             domain={["auto", "auto"]}
             width={60}
@@ -114,6 +117,20 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             tickFormatter={(v: number) => formatPrice(v)}
             dx={-10}
           />
+          {hasVolume && (
+            <YAxis
+              yAxisId="volume"
+              orientation="right"
+              dataKey="volumeBar"
+              domain={[0, (dataMax: number) => dataMax * 3]}
+              width={50}
+              tick={{ fill: "var(--fg-muted)", fontSize: 10 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatVolumeAxis}
+              dx={5}
+            />
+          )}
           <Tooltip
             contentStyle={{
               background: "var(--card)",
@@ -130,9 +147,25 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value, name, props) => {
+              if (name === "volumeBar") {
+                const vol = (props.payload as { volume?: number | null })?.volume;
+                return [formatVolumeTooltip(vol ?? null), "Volume"] as const;
+              }
+              return [typeof value === "number" ? formatPrice(value) : String(value ?? ""), "Close"] as const;
+            }}
           />
+          {hasVolume && (
+            <Bar
+              yAxisId="volume"
+              dataKey="volumeBar"
+              fill="var(--fg-muted)"
+              opacity={0.25}
+              isAnimationActive={false}
+            />
+          )}
           <Line
+            yAxisId="price"
             type="linear"
             dataKey="price"
             stroke="var(--accent)"
@@ -141,7 +174,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
