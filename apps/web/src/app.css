@@ -268,6 +268,8 @@
 .actions-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
   margin-top: 1rem;
 }
 
@@ -351,4 +353,135 @@
   background: #edf5ee;
   color: #2b703e;
   border-color: #d1e2d3;
+}
+
+.partial-error-banner {
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  background: #fff8ed;
+  border-color: #f0d9a8;
+  color: #8a5a00;
+  font-size: 0.9rem;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.compare-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.compare-input-wrapper {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.compare-input {
+  flex: 1;
+  min-width: 140px;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--fg);
+}
+
+.compare-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.compare-add-btn {
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.compare-add-btn:hover:enabled {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.compare-add-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.compare-notice {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #ba3b3b;
+}
+
+.compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.compare-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.55rem 0.35rem 0.75rem;
+  border: 2px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 0.8125rem;
+}
+
+.compare-chip__ticker {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.compare-chip__price,
+.compare-chip__pct {
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-chip__pct.positive {
+  color: #2b703e;
+}
+
+.compare-chip__pct.negative {
+  color: #ba3b3b;
+}
+
+.compare-chip__pct.muted {
+  color: var(--fg-muted);
+}
+
+.compare-chip__remove {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+
+.compare-chip__remove:hover {
+  color: var(--fg);
+}
+
+.compare-mode-note {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.export-hint {
+  font-size: 0.8125rem;
+  margin-right: auto;
 }
