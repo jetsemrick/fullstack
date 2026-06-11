@@ -277,6 +277,29 @@
   width: 100%;
 }
 
+.chart-selection-stats {
+  position: absolute;
+  top: 0;
+  left: 60px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+}
+
+.chart-selection-stats__range {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .loading-card {
   padding: 2rem;
   display: flex;
