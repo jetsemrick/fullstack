@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CategoricalChartState } from "recharts/types/chart/types";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
@@ -142,26 +142,48 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   const [selection, setSelection] = useState<{ a: number; b: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Mirror of the in-progress drag so a window-level mouseup (which fires even
+  // when the pointer is released outside the plot area) can commit reliably.
+  const dragRef = useRef<{ start: number | null; end: number | null; active: boolean }>({
+    start: null,
+    end: null,
+    active: false,
+  });
+
   function clearSelection() {
+    dragRef.current = { start: null, end: null, active: false };
     setSelection(null);
     setDragStart(null);
     setDragEnd(null);
     setIsDragging(false);
   }
 
-  // Escape clears any active or in-progress selection. State setters are stable,
-  // so the listener subscribes once.
+  function commitDrag() {
+    const { start, end, active } = dragRef.current;
+    if (!active) return;
+    dragRef.current.active = false;
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+    // A real drag commits a selection; a plain click (start === end) clears it.
+    setSelection(start != null && end != null && start !== end ? { a: start, b: end } : null);
+  }
+
+  // Commit on any mouseup (covers release outside the chart). Escape clears.
+  // State setters and the ref are stable, so this listener subscribes once.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setSelection(null);
-        setDragStart(null);
-        setDragEnd(null);
-        setIsDragging(false);
-      }
+    function onUp() {
+      commitDrag();
     }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") clearSelection();
+    }
+    window.addEventListener("mouseup", onUp);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const activeBounds = isDragging
@@ -186,28 +208,20 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       clearSelection();
       return;
     }
+    dragRef.current = { start: label, end: label, active: true };
     setIsDragging(true);
     setDragStart(label);
     setDragEnd(label);
+    setSelection(null);
   }
 
   function onMouseMove(s: CategoricalChartState | null) {
-    if (!isDragging) return;
+    if (!dragRef.current.active) return;
     const label = labelFromState(s);
-    if (label != null) setDragEnd(label);
-  }
-
-  function onMouseUp() {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (dragStart != null && dragEnd != null && dragStart !== dragEnd) {
-      setSelection({ a: dragStart, b: dragEnd });
-    } else {
-      // A plain click (no drag) clears any existing selection.
-      setSelection(null);
+    if (label != null) {
+      dragRef.current.end = label;
+      setDragEnd(label);
     }
-    setDragStart(null);
-    setDragEnd(null);
   }
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
@@ -236,7 +250,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
         >
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
