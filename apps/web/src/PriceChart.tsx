@@ -12,10 +12,14 @@ import { useEffect, useRef, useState } from "react";
 import type { CategoricalChartState } from "recharts/types/chart/types";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
+import {
+  computeRangeChange,
+  formatSignedPercent,
+  formatSignedPrice,
+  type RangeRow,
+} from "./rangeSelection";
 
-type Row = { t: number; price: number };
-
-const chartData = (data: GetPricesResponse): Row[] =>
+const chartData = (data: GetPricesResponse): RangeRow[] =>
   data.series.map((p) => ({
     t: p.timestamp * 1000,
     price: p.close,
@@ -61,56 +65,6 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-type SelectionStats = {
-  startMs: number;
-  endMs: number;
-  startClose: number;
-  endClose: number;
-  diff: number;
-  pct: number;
-  status: "positive" | "negative" | "muted";
-};
-
-/**
- * Net change between the first and last close *within* the selected window.
- * Endpoints snap to actual data points (Recharts `activeLabel`), so series gaps
- * resolve to the nearest real points at each edge. Returns null when the window
- * holds fewer than two points (avoids misleading stats on zero/tiny selections).
- */
-function computeSelection(rows: Row[], a: number | null, b: number | null): SelectionStats | null {
-  if (a == null || b == null) return null;
-  const lo = Math.min(a, b);
-  const hi = Math.max(a, b);
-  if (lo === hi) return null;
-  const inWindow = rows.filter((r) => r.t >= lo && r.t <= hi);
-  if (inWindow.length < 2) return null;
-  const startClose = inWindow[0]!.price;
-  const endClose = inWindow[inWindow.length - 1]!.price;
-  if (!startClose) return null;
-  const diff = endClose - startClose;
-  const pct = (diff / startClose) * 100;
-  const status = diff > 0 ? "positive" : diff < 0 ? "negative" : "muted";
-  return {
-    startMs: inWindow[0]!.t,
-    endMs: inWindow[inWindow.length - 1]!.t,
-    startClose,
-    endClose,
-    diff,
-    pct,
-    status,
-  };
-}
-
-function formatSignedPrice(n: number): string {
-  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
-  return `${sign}$${formatPrice(Math.abs(n))}`;
-}
-
-function formatSignedPercent(n: number): string {
-  const sign = n > 0 ? "+" : "";
-  return `${sign}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-}
-
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
@@ -149,6 +103,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     end: null,
     active: false,
   });
+  // Last x-axis label the pointer resolved to, used as a fallback when a
+  // mousedown/mouseup event lands without a fresh `activeLabel`.
+  const hoverLabelRef = useRef<number | null>(null);
 
   function clearSelection() {
     dragRef.current = { start: null, end: null, active: false };
@@ -158,25 +115,42 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     setIsDragging(false);
   }
 
-  function commitDrag() {
-    const { start, end, active } = dragRef.current;
-    if (!active) return;
+  function syncSelectionFromDrag() {
+    const { start, end } = dragRef.current;
+    // A real drag (start !== end) yields a selection; a click (start === end) clears it.
+    setSelection(start != null && end != null && start !== end ? { a: start, b: end } : null);
+  }
+
+  function finalizeDrag() {
+    if (!dragRef.current.active) return;
     dragRef.current.active = false;
     setIsDragging(false);
     setDragStart(null);
     setDragEnd(null);
-    // A real drag commits a selection; a plain click (start === end) clears it.
-    setSelection(start != null && end != null && start !== end ? { a: start, b: end } : null);
+    syncSelectionFromDrag();
   }
 
-  // Commit on any mouseup (covers release outside the chart). Escape clears.
-  // State setters and the ref are stable, so this listener subscribes once.
+  // Escape clears the selection. Mouseup also finalizes as a backup, though the
+  // primary finalize path is detecting button release in `onMouseMove` (below),
+  // which is resilient to environments that don't deliver a mouseup to window.
   useEffect(() => {
     function onUp() {
-      commitDrag();
+      if (!dragRef.current.active) return;
+      dragRef.current.active = false;
+      const { start, end } = dragRef.current;
+      setIsDragging(false);
+      setDragStart(null);
+      setDragEnd(null);
+      setSelection(start != null && end != null && start !== end ? { a: start, b: end } : null);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") clearSelection();
+      if (e.key === "Escape") {
+        dragRef.current = { start: null, end: null, active: false };
+        setSelection(null);
+        setDragStart(null);
+        setDragEnd(null);
+        setIsDragging(false);
+      }
     }
     window.addEventListener("mouseup", onUp);
     window.addEventListener("keydown", onKey);
@@ -192,7 +166,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       ? { a: selection.a, b: selection.b }
       : { a: null, b: null };
 
-  const stats = computeSelection(rows, activeBounds.a, activeBounds.b);
+  const stats = computeRangeChange(rows, activeBounds.a, activeBounds.b);
 
   function labelFromState(s: CategoricalChartState | null): number | null {
     // Recharts types `activeLabel` as string, but a numeric (time) axis yields a number at runtime.
@@ -202,8 +176,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return Number.isFinite(n) ? n : null;
   }
 
+  function leftButtonHeld(e: MouseEvent | undefined): boolean {
+    return ((e?.buttons ?? 0) & 1) === 1;
+  }
+
   function onMouseDown(s: CategoricalChartState | null) {
-    const label = labelFromState(s);
+    const label = labelFromState(s) ?? hoverLabelRef.current;
     if (label == null) {
       clearSelection();
       return;
@@ -215,13 +193,29 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     setSelection(null);
   }
 
-  function onMouseMove(s: CategoricalChartState | null) {
-    if (!dragRef.current.active) return;
+  function onMouseMove(s: CategoricalChartState | null, e?: MouseEvent) {
     const label = labelFromState(s);
+    if (label != null) hoverLabelRef.current = label;
+    if (!dragRef.current.active) return;
+    // Extend and commit the selection live so it persists even if a trailing
+    // mouseup never reaches the page.
     if (label != null) {
       dragRef.current.end = label;
       setDragEnd(label);
+      syncSelectionFromDrag();
     }
+    // If the button is no longer held, the drag has ended — finalize (the
+    // selection is already committed above). This covers environments that do
+    // not deliver a mouseup to the window.
+    if (!leftButtonHeld(e)) finalizeDrag();
+  }
+
+  function onMouseUp(s: CategoricalChartState | null) {
+    const label = labelFromState(s) ?? hoverLabelRef.current;
+    if (label != null && dragRef.current.active) {
+      dragRef.current.end = label;
+    }
+    finalizeDrag();
   }
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
@@ -248,8 +242,10 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         <LineChart
           data={rows}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          throttleDelay={0}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
         >
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
