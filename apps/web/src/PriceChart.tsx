@@ -154,7 +154,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         </ResponsiveContainer>
       </div>
       {hasVolume && (
-        <div style={{ flex: "0 0 104px", minHeight: 96 }}>
+        <div style={{ flex: "0 0 104px", minHeight: 96, display: "flex", flexDirection: "column" }}>
           <div
             style={{
               color: "var(--fg-muted)",
@@ -168,47 +168,49 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           >
             Volume
           </div>
-          <ResponsiveContainer width="100%" height="calc(100% - 1.25rem)" minHeight={72}>
-            <BarChart data={rows} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="t"
-                type="number"
-                domain={xDomain}
-                scale="time"
-                ticks={variant === "intraday" ? intradayTicks : undefined}
-                tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={tickFormatter}
-                minTickGap={variant === "intraday" ? 0 : 32}
-                dy={10}
-              />
-              <YAxis
-                dataKey="volumeBar"
-                domain={[0, "dataMax"]}
-                orientation="right"
-                width={60}
-                tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v: number) => formatVolumeAxis(v)}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={labelFormatter}
-                formatter={(_, __, item) => [formatVolumeTooltip(item.payload.volume), "Volume"]}
-              />
-              <Bar
-                dataKey="volumeBar"
-                fill="var(--fg-muted)"
-                opacity={0.35}
-                maxBarSize={18}
-                isAnimationActive={false}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ flex: "1 1 auto", minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minHeight={72}>
+              <BarChart data={rows} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={xDomain}
+                  scale="time"
+                  ticks={variant === "intraday" ? intradayTicks : undefined}
+                  tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={tickFormatter}
+                  minTickGap={variant === "intraday" ? 0 : 32}
+                  dy={10}
+                />
+                <YAxis
+                  dataKey="volumeBar"
+                  domain={[0, "dataMax"]}
+                  orientation="right"
+                  width={60}
+                  tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => formatVolumeAxis(v)}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  labelFormatter={labelFormatter}
+                  formatter={(_, __, item) => [formatVolumeTooltip(item.payload.volume), "Volume"]}
+                />
+                <Bar
+                  dataKey="volumeBar"
+                  fill="var(--fg-muted)"
+                  opacity={0.35}
+                  maxBarSize={18}
+                  isAnimationActive={false}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
