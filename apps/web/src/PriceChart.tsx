@@ -1,4 +1,6 @@
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -15,6 +17,7 @@ const chartData = (data: GetPricesResponse) =>
   data.series.map((p) => ({
     t: p.timestamp * 1000,
     price: p.close,
+    volume: p.volume,
   }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
@@ -57,10 +60,20 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatVolume(n: number): string {
+  return Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
+}
+
+function formatTooltipVolume(value: number | null): string {
+  if (value === null) return "N/A";
+  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
   const rows = chartData(data);
+  const hasVolume = rows.some((row) => row.volume !== null);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -86,63 +99,136 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const tooltipStyle = {
+    background: "var(--card)",
+    border: `1px solid var(--card-border)`,
+    borderRadius: "12px",
+    color: "var(--fg)",
+    boxShadow: "var(--shadow)",
+    padding: "12px",
+  };
+
+  const labelFormatter = (_: unknown, payload: unknown) => {
+    const items = payload as Array<{ payload?: { t?: number } }> | undefined;
+    const t = items?.[0]?.payload?.t;
+    if (typeof t === "number") {
+      return formatTooltipWhen(t, variant, spanDays);
+    }
+    return "";
+  };
+
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="t"
-            type="number"
-            domain={xDomain}
-            scale="time"
-            ticks={variant === "intraday" ? intradayTicks : undefined}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={tickFormatter}
-            minTickGap={variant === "intraday" ? 0 : 32}
-            dy={10}
-          />
-          <YAxis
-            dataKey="price"
-            domain={["auto", "auto"]}
-            width={60}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
-            dx={-10}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--card)",
-              border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
-              color: "var(--fg)",
-              boxShadow: "var(--shadow)",
-              padding: "12px",
+    <div
+      role="img"
+      aria-label={hasVolume ? "Price line chart with trading volume bars" : "Price over time line chart"}
+      style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", gap: "0.75rem" }}
+    >
+      <div style={{ flex: "1 1 auto", minHeight: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" minHeight={hasVolume ? 240 : 320}>
+          <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="t"
+              type="number"
+              domain={xDomain}
+              scale="time"
+              ticks={variant === "intraday" ? intradayTicks : undefined}
+              hide={hasVolume}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={tickFormatter}
+              minTickGap={variant === "intraday" ? 0 : 32}
+              dy={10}
+            />
+            <YAxis
+              dataKey="price"
+              domain={["auto", "auto"]}
+              width={60}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatPrice(v)}
+              dx={-10}
+            />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              labelFormatter={labelFormatter}
+              formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            />
+            <Line
+              type="linear"
+              dataKey="price"
+              stroke="var(--accent)"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      {hasVolume && (
+        <div style={{ flex: "0 0 104px", minHeight: 96 }}>
+          <div
+            style={{
+              color: "var(--fg-muted)",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              marginLeft: "4px",
+              marginBottom: "0.15rem",
             }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
-              }
-              return "";
-            }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
-          />
-          <Line
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+          >
+            Volume
+          </div>
+          <ResponsiveContainer width="100%" height="calc(100% - 1.25rem)" minHeight={72}>
+            <BarChart data={rows} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="t"
+                type="number"
+                domain={xDomain}
+                scale="time"
+                ticks={variant === "intraday" ? intradayTicks : undefined}
+                tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={tickFormatter}
+                minTickGap={variant === "intraday" ? 0 : 32}
+                dy={10}
+              />
+              <YAxis
+                dataKey="volume"
+                domain={[0, "dataMax"]}
+                orientation="right"
+                width={60}
+                tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => formatVolume(v)}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelFormatter={labelFormatter}
+                formatter={(value: number | string | null) => [
+                  typeof value === "number" || value === null ? formatTooltipVolume(value) : value,
+                  "Volume",
+                ]}
+              />
+              <Bar
+                dataKey="volume"
+                fill="var(--fg-muted)"
+                opacity={0.35}
+                maxBarSize={18}
+                isAnimationActive={false}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
