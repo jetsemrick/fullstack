@@ -11,14 +11,8 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import { buildPriceVolumeRows, formatVolumeAxis, formatVolumeTooltip, seriesHasVolume } from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-    volume: p.volume,
-  }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -60,20 +54,11 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function formatVolume(n: number): string {
-  return Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
-}
-
-function formatTooltipVolume(value: number | null): string {
-  if (value === null) return "N/A";
-  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
-  const hasVolume = rows.some((row) => row.volume !== null);
+  const rows = buildPriceVolumeRows(data);
+  const hasVolume = seriesHasVolume(data.series);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -200,26 +185,23 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 dy={10}
               />
               <YAxis
-                dataKey="volume"
+                dataKey="volumeBar"
                 domain={[0, "dataMax"]}
                 orientation="right"
                 width={60}
                 tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) => formatVolume(v)}
+                tickFormatter={(v: number) => formatVolumeAxis(v)}
                 allowDecimals={false}
               />
               <Tooltip
                 contentStyle={tooltipStyle}
                 labelFormatter={labelFormatter}
-                formatter={(value: number | string | null) => [
-                  typeof value === "number" || value === null ? formatTooltipVolume(value) : value,
-                  "Volume",
-                ]}
+                formatter={(_, __, item) => [formatVolumeTooltip(item.payload.volume), "Volume"]}
               />
               <Bar
-                dataKey="volume"
+                dataKey="volumeBar"
                 fill="var(--fg-muted)"
                 opacity={0.35}
                 maxBarSize={18}
