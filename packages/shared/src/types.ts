@@ -38,3 +38,18 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** Single stock quote for the ticker tape. */
+export interface TickerQuote {
+  symbol: string;
+  shortName: string;
+  /** Last price (regular market). */
+  price: number | null;
+  /** Session percent change vs previous close. */
+  changePercent: number | null;
+}
+
+/** Response from /api/ticker-tape endpoint. */
+export interface TickerTapeResponse {
+  quotes: TickerQuote[];
+}

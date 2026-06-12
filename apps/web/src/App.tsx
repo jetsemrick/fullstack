@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { TickerTape } from "./TickerTape";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -94,9 +95,11 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
-      <header className="header">
-        <MarketStrip />
+    <>
+      <TickerTape />
+      <div className="shell">
+        <header className="header">
+          <MarketStrip />
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
           <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
           <div className="search-input-wrapper">
@@ -194,5 +197,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   );
 }

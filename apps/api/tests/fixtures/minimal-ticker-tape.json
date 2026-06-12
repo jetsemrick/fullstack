@@ -1,0 +1,22 @@
+{
+  "quoteResponse": {
+    "result": [
+      { "symbol": "AAPL", "shortName": "Apple Inc.", "regularMarketPrice": 198.5, "regularMarketChangePercent": 1.25 },
+      { "symbol": "MSFT", "shortName": "Microsoft Corporation", "regularMarketPrice": 415.2, "regularMarketChangePercent": -0.35 },
+      { "symbol": "GOOGL", "shortName": "Alphabet Inc.", "regularMarketPrice": 175.8, "regularMarketChangePercent": 0.82 },
+      { "symbol": "AMZN", "shortName": "Amazon.com, Inc.", "regularMarketPrice": 185.6, "regularMarketChangePercent": 2.1 },
+      { "symbol": "NVDA", "shortName": "NVIDIA Corporation", "regularMarketPrice": 125.3, "regularMarketChangePercent": 3.45 },
+      { "symbol": "META", "shortName": "Meta Platforms, Inc.", "regularMarketPrice": 520.7, "regularMarketChangePercent": -1.2 },
+      { "symbol": "TSLA", "shortName": "Tesla, Inc.", "regularMarketPrice": 248.9, "regularMarketChangePercent": -2.15 },
+      { "symbol": "JPM", "shortName": "JPMorgan Chase & Co.", "regularMarketPrice": 198.4, "regularMarketChangePercent": 0.55 },
+      { "symbol": "V", "shortName": "Visa Inc.", "regularMarketPrice": 285.6, "regularMarketChangePercent": 0.12 },
+      { "symbol": "UNH", "shortName": "UnitedHealth Group Incorporated", "regularMarketPrice": 520.1, "regularMarketChangePercent": -0.78 },
+      { "symbol": "JNJ", "shortName": "Johnson & Johnson", "regularMarketPrice": 155.4, "regularMarketChangePercent": 0.28 },
+      { "symbol": "WMT", "shortName": "Walmart Inc.", "regularMarketPrice": 165.2, "regularMarketChangePercent": 1.05 },
+      { "symbol": "XOM", "shortName": "Exxon Mobil Corporation", "regularMarketPrice": 112.8, "regularMarketChangePercent": -0.45 },
+      { "symbol": "PG", "shortName": "The Procter & Gamble Company", "regularMarketPrice": 168.9, "regularMarketChangePercent": 0.32 },
+      { "symbol": "MA", "shortName": "Mastercard Incorporated", "regularMarketPrice": 475.2, "regularMarketChangePercent": 0.68 }
+    ],
+    "error": null
+  }
+}
