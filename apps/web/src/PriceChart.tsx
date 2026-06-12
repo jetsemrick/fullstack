@@ -107,6 +107,13 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   // pointer is released outside the plot area) commits the correct window.
   const dragRef = useRef<{ start: number | null; end: number | null }>({ start: null, end: null });
 
+  // Most recent hovered x-axis label. Recharts sometimes dispatches the initial
+  // `onMouseDown` before it has computed an active tooltip index (notably on the
+  // intraday chart, whose data is clustered into a fixed session domain), so the
+  // mousedown state can arrive without an `activeLabel`. Tracking the last
+  // hovered label lets the drag start from the correct point in that case.
+  const hoverRef = useRef<number | null>(null);
+
   const clearAll = useCallback(() => {
     dragRef.current = { start: null, end: null };
     setDragStart(null);
@@ -123,9 +130,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const onMouseDown = useCallback(
     (s: ChartMouseState) => {
-      const label = labelFromState(s);
+      const label = labelFromState(s) ?? hoverRef.current;
       if (label == null) {
-        // Pressing outside the plot area clears any committed selection.
+        // Press with no known position (e.g. outside the plot area): clear.
         clearAll();
         return;
       }
@@ -139,8 +146,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const onMouseMove = useCallback(
     (s: ChartMouseState) => {
-      if (dragRef.current.start == null) return;
       const label = labelFromState(s);
+      if (label != null) hoverRef.current = label;
+      if (dragRef.current.start == null) return;
       if (label != null) {
         dragRef.current.end = label;
         setDragEnd(label);
