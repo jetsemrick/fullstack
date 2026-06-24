@@ -191,11 +191,11 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown, { capture: true });
     return () => {
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointerdown", onPointerDown, { capture: true });
     };
   }, [clearSelection, finalizeDrag]);
 
