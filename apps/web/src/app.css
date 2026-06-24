@@ -10,7 +10,7 @@
 .header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: stretch;
   gap: 1rem 1.5rem;
 }
 
@@ -116,11 +116,13 @@
 
 .search-form {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  justify-self: end;
 }
 
 .search-input-wrapper {
   display: flex;
+  align-items: center;
   background: var(--accent-contrast);
   border: 2px solid var(--sunburst);
   border-radius: var(--radius-sm);
@@ -142,6 +144,7 @@
   font-size: 0.95rem;
   outline: none;
   min-width: 200px;
+  min-height: 2.5rem;
   color: var(--fg);
   text-transform: uppercase;
 }
