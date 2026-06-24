@@ -1,5 +1,6 @@
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -8,14 +9,8 @@ import {
   YAxis,
 } from "recharts";
 import { useMemo } from "react";
-import type { GetPricesResponse } from "@stock/shared";
+import type { ComparisonRow } from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -57,12 +52,30 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatPercent(n: number): string {
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
-  const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+export type CompareSeriesConfig = {
+  ticker: string;
+  color: string;
+};
 
+export function PriceChart({
+  rows,
+  series,
+  normalized = true,
+  variant = "daily",
+}: {
+  rows: ComparisonRow[];
+  series: CompareSeriesConfig[];
+  normalized?: boolean;
+  variant?: PriceChartVariant;
+}) {
+  const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
     variant === "intraday"
@@ -84,10 +97,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, intradayDomain]);
 
-  if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  const seriesLabel = series.map((s) => s.ticker).join(", ");
+  const ariaLabel =
+    series.length > 1
+      ? `Price comparison chart for ${seriesLabel}, percent change from horizon start`
+      : `Price chart for ${series[0]?.ticker ?? "symbol"}`;
+
+  if (rows.length === 0) {
+    return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  }
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div role="img" aria-label={ariaLabel} style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
@@ -105,13 +126,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
-            dataKey="price"
             domain={["auto", "auto"]}
-            width={60}
+            width={normalized ? 56 : 60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
+            tickFormatter={(v: number) => (normalized ? formatPercent(v) : formatPrice(v))}
             dx={-10}
           />
           <Tooltip
@@ -130,17 +150,32 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: number | string, name: string) => {
+              if (typeof value !== "number") return [value, name];
+              return [normalized ? formatPercent(value) : formatPrice(value), name];
+            }}
           />
-          <Line
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
+          {series.length > 1 && (
+            <Legend
+              verticalAlign="top"
+              align="right"
+              wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+            />
+          )}
+          {series.map((s) => (
+            <Line
+              key={s.ticker}
+              type="linear"
+              dataKey={s.ticker}
+              name={s.ticker}
+              stroke={s.color}
+              strokeWidth={3}
+              dot={false}
+              connectNulls
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: s.color }}
+              isAnimationActive={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
