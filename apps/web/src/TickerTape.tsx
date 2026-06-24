@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TickerTapeQuote } from "@stock/shared";
 import { SP_TICKER_SYMBOLS } from "@stock/shared";
 import { fetchTickerTape } from "./api";
@@ -35,10 +35,15 @@ function TapeItem({ quote }: { quote: TickerTapeQuote }) {
   );
 }
 
+/** Marquee speed in pixels/second; duration is derived from track width for a consistent pace. */
+const SCROLL_SPEED_PX_PER_S = 70;
+
 export function TickerTape() {
   const [quotes, setQuotes] = useState<TickerTapeQuote[] | null>(null);
   const [failed, setFailed] = useState(false);
   const hasDataRef = useRef(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [durationS, setDurationS] = useState(30);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +67,17 @@ export function TickerTape() {
       window.clearInterval(iv);
     };
   }, []);
+
+  // Derive animation duration from one copy's width so the scroll pace is
+  // consistent regardless of how many symbols resolved.
+  useLayoutEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const oneCopyWidth = el.scrollWidth / 2;
+    if (oneCopyWidth > 0) {
+      setDurationS(Math.max(15, oneCopyWidth / SCROLL_SPEED_PX_PER_S));
+    }
+  }, [quotes]);
 
   if (quotes === null && failed) {
     return (
@@ -89,7 +105,7 @@ export function TickerTape() {
   return (
     <div className="ticker-tape" aria-label="Live S&P 500 stock prices">
       {/* Decorative scrolling track: duplicated so the marquee loops seamlessly. */}
-      <div className="ticker-tape__track" aria-hidden="true">
+      <div className="ticker-tape__track" aria-hidden="true" ref={trackRef} style={{ animationDuration: `${durationS}s` }}>
         {quotes.map((q) => (
           <TapeItem key={`a-${q.symbol}`} quote={q} />
         ))}
