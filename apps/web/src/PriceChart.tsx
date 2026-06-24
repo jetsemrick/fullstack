@@ -95,9 +95,8 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   }, [variant, intradayDomain]);
 
   const selectionDomain = useMemo((): [number, number] => {
-    if (variant === "intraday" && intradayDomain) return intradayDomain;
     return [rows[0]?.t ?? 0, rows[rows.length - 1]?.t ?? 0];
-  }, [variant, intradayDomain, rows]);
+  }, [rows]);
 
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragEnd, setDragEnd] = useState<number | null>(null);
@@ -117,7 +116,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   const timestampFromClientX = useCallback(
     (clientX: number, { clamp }: { clamp: boolean }): number | null => {
       const rect = wrapperRef.current?.getBoundingClientRect();
-      if (!rect) return null;
+      if (!rect || rows.length === 0) return null;
 
       const plotLeft = rect.left + PLOT_LEFT_OFFSET_PX;
       const plotRight = rect.right - PLOT_RIGHT_OFFSET_PX;
@@ -129,9 +128,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
       const ratio = Math.min(1, Math.max(0, rawRatio));
       const [domainStart, domainEnd] = selectionDomain;
-      return domainStart + (domainEnd - domainStart) * ratio;
+      const rawTimestamp = domainStart + (domainEnd - domainStart) * ratio;
+      return rows.reduce((nearest, row) =>
+        Math.abs(row.t - rawTimestamp) < Math.abs(nearest.t - rawTimestamp) ? row : nearest,
+      ).t;
     },
-    [selectionDomain],
+    [rows, selectionDomain],
   );
 
   const handlePointerDown = useCallback(
