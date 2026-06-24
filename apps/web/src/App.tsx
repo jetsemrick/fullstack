@@ -71,6 +71,8 @@ export default function App() {
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
+    // Data fetching is intentionally synchronized to ticker/horizon changes here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
