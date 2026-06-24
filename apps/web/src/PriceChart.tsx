@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
 import {
@@ -18,8 +18,8 @@ import {
   type RangeRow,
 } from "./rangeSelection";
 
-/** Minimal shape of the Recharts mouse-event state we rely on. */
-type ChartMouseState = { activeLabel?: string | number } | null;
+const PLOT_LEFT_OFFSET_PX = 60;
+const PLOT_RIGHT_OFFSET_PX = 10;
 
 const chartData = (data: GetPricesResponse): RangeRow[] =>
   data.series.map((p) => ({
@@ -94,6 +94,11 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, intradayDomain]);
 
+  const selectionDomain = useMemo((): [number, number] => {
+    if (variant === "intraday" && intradayDomain) return intradayDomain;
+    return [rows[0]?.t ?? 0, rows[rows.length - 1]?.t ?? 0];
+  }, [variant, intradayDomain, rows]);
+
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragEnd, setDragEnd] = useState<number | null>(null);
   const [selection, setSelection] = useState<{ a: number; b: number } | null>(null);
@@ -101,7 +106,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ start: number | null; end: number | null }>({ start: null, end: null });
-  const hoverRef = useRef<number | null>(null);
 
   const clearSelection = useCallback(() => {
     dragRef.current = { start: null, end: null };
@@ -110,37 +114,52 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     setSelection(null);
   }, []);
 
-  const labelFromState = useCallback((state: ChartMouseState): number | null => {
-    const value = state?.activeLabel;
-    if (value == null) return null;
-    const label = typeof value === "number" ? value : Number(value);
-    return Number.isFinite(label) ? label : null;
-  }, []);
+  const timestampFromClientX = useCallback(
+    (clientX: number, { clamp }: { clamp: boolean }): number | null => {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (!rect) return null;
 
-  const handleMouseDown = useCallback(
-    (state: ChartMouseState) => {
-      const label = labelFromState(state) ?? hoverRef.current;
-      if (label == null) {
+      const plotLeft = rect.left + PLOT_LEFT_OFFSET_PX;
+      const plotRight = rect.right - PLOT_RIGHT_OFFSET_PX;
+      const plotWidth = plotRight - plotLeft;
+      if (plotWidth <= 0) return null;
+
+      const rawRatio = (clientX - plotLeft) / plotWidth;
+      if (!clamp && (rawRatio < 0 || rawRatio > 1)) return null;
+
+      const ratio = Math.min(1, Math.max(0, rawRatio));
+      const [domainStart, domainEnd] = selectionDomain;
+      return domainStart + (domainEnd - domainStart) * ratio;
+    },
+    [selectionDomain],
+  );
+
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      const timestamp = timestampFromClientX(event.clientX, { clamp: false });
+      if (timestamp == null) {
         clearSelection();
         return;
       }
-      dragRef.current = { start: label, end: label };
-      setDragStart(label);
-      setDragEnd(label);
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragRef.current = { start: timestamp, end: timestamp };
+      setDragStart(timestamp);
+      setDragEnd(timestamp);
       setSelection(null);
     },
-    [clearSelection, labelFromState],
+    [clearSelection, timestampFromClientX],
   );
 
-  const handleMouseMove = useCallback(
-    (state: ChartMouseState) => {
-      const label = labelFromState(state);
-      if (label != null) hoverRef.current = label;
-      if (dragRef.current.start == null || label == null) return;
-      dragRef.current.end = label;
-      setDragEnd(label);
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (dragRef.current.start == null) return;
+      const timestamp = timestampFromClientX(event.clientX, { clamp: true });
+      if (timestamp == null) return;
+      dragRef.current.end = timestamp;
+      setDragEnd(timestamp);
     },
-    [labelFromState],
+    [timestampFromClientX],
   );
 
   const finalizeDrag = useCallback(() => {
@@ -153,7 +172,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   }, []);
 
   useEffect(() => {
-    function onMouseUp() {
+    function onPointerUp() {
       finalizeDrag();
     }
 
@@ -161,20 +180,20 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       if (event.key === "Escape") clearSelection();
     }
 
-    function onMouseDown(event: MouseEvent) {
+    function onPointerDown(event: PointerEvent) {
       const target = event.target;
       if (target instanceof Node && wrapperRef.current && !wrapperRef.current.contains(target)) {
         clearSelection();
       }
     }
 
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("pointerdown", onPointerDown);
     return () => {
-      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("pointerdown", onPointerDown);
     };
   }, [clearSelection, finalizeDrag]);
 
@@ -199,6 +218,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         position: "relative",
         userSelect: isDragging ? "none" : undefined,
       }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finalizeDrag}
     >
       {stats && (
         <div className="chart-selection-stats" role="status" aria-live="polite">
@@ -214,9 +236,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         <LineChart
           data={rows}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={finalizeDrag}
         >
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
