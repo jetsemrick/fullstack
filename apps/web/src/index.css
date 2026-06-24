@@ -12,6 +12,17 @@
   --font: "Inter", system-ui, -apple-system, sans-serif;
 }
 
+:root[data-theme="dark"] {
+  --bg: #1a1c1a;
+  --fg: #f4f5f3;
+  --fg-muted: #a0a6a0;
+  --accent: #7b997b;
+  --accent-hover: #93af93;
+  --card: #2b302b;
+  --card-border: #3d453d;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 *,
 *::before,
 *::after {
