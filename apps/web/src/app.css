@@ -1,3 +1,100 @@
+.ticker-tape {
+  width: 100%;
+  overflow: hidden;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  white-space: nowrap;
+}
+
+.ticker-tape__track {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker-scroll 60s linear infinite;
+}
+
+/* Pause the marquee on hover so users can read a passing quote. */
+.ticker-tape:hover .ticker-tape__track {
+  animation-play-state: paused;
+}
+
+.ticker-tape__track--static {
+  animation: none;
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  /* Track holds two identical copies, so -50% lands exactly one copy over for a seamless loop. */
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  border-right: 1px solid var(--card-border);
+}
+
+.ticker-tape__item--skeleton {
+  opacity: 0.4;
+}
+
+.ticker-tape__symbol {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.ticker-tape__price {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker-tape__pct {
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker-tape__pct--up {
+  color: #2b703e;
+  font-weight: 500;
+}
+
+.ticker-tape__pct--down {
+  color: #ba3b3b;
+  font-weight: 500;
+}
+
+.ticker-tape__pct--muted {
+  color: var(--fg-muted);
+}
+
+.ticker-tape--fallback {
+  padding: 0.5rem 1.25rem;
+}
+
+.ticker-tape__fallback-text {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape__track {
+    animation: none;
+  }
+
+  /* Without animation, let the static tape scroll horizontally instead of clipping. */
+  .ticker-tape {
+    overflow-x: auto;
+  }
+}
+
 .shell {
   max-width: 1000px;
   margin: 0 auto;

@@ -38,3 +38,19 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** One large-cap quote rendered in the scrolling ticker tape. */
+export interface TickerTapeQuote {
+  symbol: string;
+  /** Company short name when Yahoo provides one, otherwise the symbol. */
+  shortName: string;
+  /** Regular session last price when available. */
+  price: number | null;
+  /** Regular session percent change vs previous close when available. */
+  changePercent: number | null;
+}
+
+/** Batch quote payload for the top-of-page ticker tape (`/api/ticker-tape`). */
+export interface TickerTapeResponse {
+  quotes: TickerTapeQuote[];
+}
