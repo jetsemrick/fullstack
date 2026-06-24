@@ -138,4 +138,108 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
     expect(body.indexes[0]?.price).toBe(100);
   });
+
+  test("returns 200 and ticker tape quotes from a batched v7 quote", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const symbolsParam = new URL(u).searchParams.get("symbols") ?? "";
+        const result = symbolsParam
+          .split(",")
+          .filter(Boolean)
+          .map((symbol, i) => ({
+            symbol,
+            shortName: `${symbol} Inc.`,
+            regularMarketPrice: 100 + i,
+            regularMarketChangePercent: i % 2 === 0 ? 1.23 : -0.5,
+          }));
+        const body = { quoteResponse: { result, error: null } };
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number; changePercent: number }[] };
+    expect(body.quotes.length).toBeGreaterThanOrEqual(10);
+    expect(body.quotes[0]?.symbol).toBe("AAPL");
+    expect(body.quotes[0]?.price).toBe(100);
+    expect(body.quotes.every((q) => q.symbol.length > 0)).toBe(true);
+  });
+
+  test("ticker tape falls back to v8 chart and tolerates partial symbol failures", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const blocked = { finance: { result: null, error: { code: "Unauthorized", description: "blocked" } } };
+        return Promise.resolve(
+          new Response(JSON.stringify(blocked), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      if (u.includes("v8/finance/chart")) {
+        const m = /\/chart\/([^?]+)/.exec(u);
+        const decoded = m ? decodeURIComponent(m[1]) : "AAPL";
+        // Simulate one symbol failing upstream — the tape should still render the rest.
+        if (decoded === "TSLA") {
+          return Promise.resolve(new Response("rate limited", { status: 429 }));
+        }
+        const body = {
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: decoded,
+                  shortName: `${decoded} Inc.`,
+                  regularMarketPrice: 200,
+                  chartPreviousClose: 198,
+                },
+              },
+            ],
+            error: null,
+          },
+        };
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number }[] };
+    expect(body.quotes.length).toBeGreaterThanOrEqual(10);
+    expect(body.quotes.map((q) => q.symbol)).not.toContain("TSLA");
+    expect(body.quotes[0]?.price).toBe(200);
+  });
+
+  test("ticker tape returns 502 when all upstream quotes fail", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const blocked = { finance: { result: null, error: { code: "Unauthorized", description: "blocked" } } };
+        return Promise.resolve(
+          new Response(JSON.stringify(blocked), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("rate limited", { status: 429 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
+  });
 });

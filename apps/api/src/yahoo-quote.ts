@@ -1,5 +1,5 @@
-import type { MarketIndexQuote } from "@stock/shared";
-import { MAJOR_INDEX_SYMBOLS } from "@stock/shared";
+import type { MarketIndexQuote, TickerTapeQuote } from "@stock/shared";
+import { MAJOR_INDEX_SYMBOLS, SP_TICKER_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -233,4 +233,94 @@ export async function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
     marketState: null,
     indexes: [],
   };
+}
+
+export type TickerTapeAggregate = {
+  errorMessage: string | null;
+  quotes: TickerTapeQuote[];
+};
+
+const QUOTE_HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
+
+/** Order parsed quotes by the requested symbol list and drop unknown extras. */
+function orderBySymbols(symbols: readonly string[], quotes: TickerTapeQuote[]): TickerTapeQuote[] {
+  const bySymbol = new Map(quotes.map((q) => [q.symbol, q] as const));
+  const ordered: TickerTapeQuote[] = [];
+  for (const sym of symbols) {
+    const row = bySymbol.get(sym);
+    if (row) ordered.push(row);
+  }
+  return ordered;
+}
+
+/** Single batched v7 quote call for many symbols (preferred — one upstream request). */
+async function fetchTapeQuotesViaV7(symbols: readonly string[]): Promise<TickerTapeAggregate> {
+  const url = new URL(YAHOO_QUOTE_URL);
+  url.searchParams.set("symbols", symbols.join(","));
+  const res = await fetch(url, { headers: QUOTE_HEADERS });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return { errorMessage: `Invalid response (${res.status})`, quotes: [] };
+  }
+  const parsed = parseQuoteResponse(json);
+  if (!res.ok) {
+    return { errorMessage: parsed.errorMessage ?? `HTTP ${res.status}`, quotes: [] };
+  }
+  if (parsed.errorMessage) {
+    return { errorMessage: parsed.errorMessage, quotes: [] };
+  }
+  return { errorMessage: null, quotes: orderBySymbols(symbols, parsed.indexes) };
+}
+
+/**
+ * Per-symbol v8 chart fallback. Tolerates partial failures: individual symbols
+ * that fail are skipped, so the tape still renders whatever resolved.
+ */
+async function fetchTapeQuotesViaChart(symbols: readonly string[]): Promise<TickerTapeAggregate> {
+  const tasks = symbols.map(async (symbol) => {
+    try {
+      const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
+      url.searchParams.set("range", "1d");
+      url.searchParams.set("interval", "1d");
+      const res = await fetch(url, { headers: QUOTE_HEADERS });
+      const text = await res.text();
+      let json: unknown;
+      try {
+        json = JSON.parse(text) as unknown;
+      } catch {
+        return null;
+      }
+      const row = parseIndexFromChartBody(json);
+      if (!row || !res.ok) return null;
+      return { symbol: row.symbol, shortName: row.shortName, price: row.price, changePercent: row.changePercent };
+    } catch {
+      return null;
+    }
+  });
+  const rows = (await Promise.all(tasks)).filter((r): r is TickerTapeQuote => r !== null);
+  if (rows.length === 0) {
+    return { errorMessage: "No ticker quotes", quotes: [] };
+  }
+  return { errorMessage: null, quotes: orderBySymbols(symbols, rows) };
+}
+
+/**
+ * Batch quotes for the curated S&P ticker tape. Tries one v7 call first, then
+ * falls back to per-symbol v8 chart meta (same blocked-v7 pathway as
+ * `market-context`). Returns partial results when some symbols are unavailable.
+ */
+export async function fetchTickerTapeQuotes(): Promise<TickerTapeAggregate> {
+  const symbols = [...SP_TICKER_SYMBOLS];
+  const v7 = await fetchTapeQuotesViaV7(symbols);
+  if (!v7.errorMessage && v7.quotes.length > 0) {
+    return v7;
+  }
+  const viaChart = await fetchTapeQuotesViaChart(symbols);
+  if (viaChart.quotes.length > 0) {
+    return { errorMessage: null, quotes: viaChart.quotes };
+  }
+  return { errorMessage: v7.errorMessage ?? viaChart.errorMessage ?? "No ticker quotes", quotes: [] };
 }

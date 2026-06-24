@@ -1,4 +1,4 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
+import type { ApiErrorBody, GetPricesResponse, MarketContextResponse, TickerTapeResponse } from "@stock/shared";
 
 export async function fetchPrices(params: {
   ticker: string;
@@ -49,4 +49,26 @@ export async function fetchMarketContext(): Promise<
     return { ok: false, status: res.status, error: err };
   }
   return { ok: true, data: json as MarketContextResponse };
+}
+
+export async function fetchTickerTape(): Promise<
+  { ok: true; data: TickerTapeResponse } | { ok: false; error: ApiErrorBody; status: number }
+> {
+  const res = await fetch(`/api/ticker-tape`);
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return {
+      ok: false,
+      status: res.status,
+      error: { error: "Invalid response", code: "INTERNAL" },
+    };
+  }
+  if (!res.ok) {
+    const err = json as ApiErrorBody;
+    return { ok: false, status: res.status, error: err };
+  }
+  return { ok: true, data: json as TickerTapeResponse };
 }
