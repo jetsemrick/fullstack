@@ -90,7 +90,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+          <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="4 6" vertical={false} />
           <XAxis
             dataKey="t"
             type="number"
@@ -118,7 +118,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             contentStyle={{
               background: "var(--card)",
               border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
+              borderRadius: "var(--radius-sm)",
               color: "var(--fg)",
               boxShadow: "var(--shadow)",
               padding: "12px",
@@ -135,10 +135,10 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           <Line
             type="linear"
             dataKey="price"
-            stroke="var(--accent)"
+            stroke="var(--chart-line)"
             strokeWidth={3}
             dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+            activeDot={{ r: 6, stroke: "var(--sunburst)", strokeWidth: 2, fill: "var(--chart-line)" }}
             isAnimationActive={false}
           />
         </LineChart>

@@ -4,6 +4,15 @@ import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import {
+  ErrorBanner,
+  ExportButton,
+  LoadingChartCard,
+  RetroCard,
+  RetroMetricBadge,
+  RetroSearchForm,
+  RetroSegmentedControl,
+} from "./components/RetroUi";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -97,77 +106,46 @@ export default function App() {
     <div className="shell">
       <header className="header">
         <MarketStrip />
-        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
-          <div className="search-input-wrapper">
-            <input
-              id={`${formId}-ticker`}
-              name="ticker"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
-            />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
-            >
-              Search
-            </button>
-          </div>
-        </form>
+        <RetroSearchForm
+          formId={formId}
+          value={inputTicker}
+          disabled={loading}
+          placeholderTicker={DEFAULT_TICKER}
+          onChange={(value) => setInputTicker(value.toUpperCase())}
+          onSubmit={onSubmit}
+        />
       </header>
 
       <main className="main-content">
-        {loading && (
-          <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
-             <div className="skeleton-toolbar" />
-             <div className="skeleton-chart" />
-          </div>
-        )}
+        {loading && <LoadingChartCard />}
 
-        {!loading && error && (
-          <div className="card error-banner" role="alert">
-            <strong>Could not load data.</strong> {error}
-          </div>
-        )}
+        {!loading && error && <ErrorBanner error={error} />}
 
         {!loading && !error && data && displayData && (
           <>
-            <div className="card content-card">
+            <RetroCard className="content-card">
               <div className="content-toolbar">
                 <div className="metrics-block">
                   <div className="metrics-inline">
                     <h2 className="ticker-display">{data.ticker}</h2>
-                    <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
+                    <RetroMetricBadge>{formatLast(lastPriceDisplay, currencyDisplay)}</RetroMetricBadge>
                     {(() => {
                       const percentChange = formatPercentChange(displayData);
                       if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
+                      const tone = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
                       return (
-                        <span className={`metric-badge ${statusClass}`}>
+                        <RetroMetricBadge tone={tone}>
                           {percentChange.text}
-                        </span>
+                        </RetroMetricBadge>
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
-                  </div>
+                  <RetroSegmentedControl
+                    items={HORIZONS}
+                    activeIndex={horizonIndex}
+                    ariaLabel="Price history horizon"
+                    onSelect={setHorizonIndex}
+                  />
                 </div>
               </div>
               <div
@@ -179,16 +157,9 @@ export default function App() {
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                 />
               </div>
-            </div>
+            </RetroCard>
             <div className="actions-footer">
-              <button
-                type="button"
-                className="btn-export"
-                onClick={() => downloadPricesCsv(displayData)}
-                title="Export CSV"
-              >
-                Export CSV
-              </button>
+              <ExportButton onClick={() => downloadPricesCsv(displayData)} />
             </div>
           </>
         )}
