@@ -168,6 +168,9 @@ export default function App() {
 
   function removeTicker(ticker: string) {
     if (tickers.length <= 1) return;
+    if (ticker === tickers[0]) {
+      setInputTicker(tickers[1] ?? DEFAULT_TICKER);
+    }
     setTickers((prev) => prev.filter((t) => t !== ticker));
     setCompareNotice(null);
   }
