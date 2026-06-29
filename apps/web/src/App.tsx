@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { downloadPricesCsv } from "./exportCsv";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import "./app.css";
@@ -217,16 +216,6 @@ export default function App() {
                   Loading latest data...
                 </div>
               )}
-            </div>
-            <div className="actions-footer">
-              <button
-                type="button"
-                className="btn-export"
-                onClick={() => downloadPricesCsv(displayData)}
-                title="Export CSV"
-              >
-                Export CSV
-              </button>
             </div>
           </>
         )}
