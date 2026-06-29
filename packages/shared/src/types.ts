@@ -38,3 +38,20 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** One quote rendered in the scrolling ticker tape. */
+export interface TickerTapeQuote {
+  symbol: string;
+  /** Regular session last price when available */
+  price: number | null;
+  /** Regular session percent change vs previous close when available */
+  changePercent: number | null;
+}
+
+/**
+ * Batch quotes for the ticker tape (`/api/ticker-tape`).
+ * Partial upstream failures are tolerated: any successfully parsed symbols are returned.
+ */
+export interface TickerTapeResponse {
+  quotes: TickerTapeQuote[];
+}
