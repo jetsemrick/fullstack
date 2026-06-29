@@ -7,8 +7,6 @@
   --card: #ffffff;
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
-  --radius: 20px;
-  --radius-sm: 10px;
   --font: "Inter", system-ui, -apple-system, sans-serif;
 }
 

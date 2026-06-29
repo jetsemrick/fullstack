@@ -120,7 +120,7 @@
   display: flex;
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -149,7 +149,7 @@
   border: none;
   background: var(--accent);
   color: #fff;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -175,7 +175,7 @@
 .card {
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius);
+  border-radius: 0;
   box-shadow: var(--shadow);
 }
 
@@ -229,7 +229,7 @@
   color: var(--fg);
   background: var(--bg);
   padding: 0.35rem 0.85rem;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   font-variant-numeric: tabular-nums;
   border: 1px solid var(--card-border);
 }
@@ -256,7 +256,7 @@
   background: transparent;
   color: var(--fg-muted);
   padding: 0.4rem 1rem;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -287,7 +287,7 @@
   bottom: 1.5rem;
   padding: 0.45rem 0.75rem;
   border: 1px solid var(--card-border);
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--card);
   color: var(--fg-muted);
   box-shadow: var(--shadow);
@@ -306,14 +306,14 @@
 .skeleton-toolbar {
   height: 3rem;
   width: 100%;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--card-border);
   opacity: 0.5;
 }
 
 .skeleton-chart {
   flex: 1;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--card-border);
   opacity: 0.3;
 }
@@ -350,7 +350,7 @@
   background: transparent;
   border: 1px solid var(--card-border);
   color: var(--fg-muted);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0.22rem 0.55rem;
   font-size: 0.8125rem;
   font-weight: 500;
