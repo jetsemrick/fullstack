@@ -66,6 +66,31 @@ export function regularSessionDomainUtcMs(anchorUtcMs: number): [number, number]
   return [open, close];
 }
 
+/** Extended intraday layout: 4:00–20:00 ET with RTH and pre/post bands for chart shading. */
+export type IntradaySessionLayout = {
+  domain: [number, number];
+  preMarket: [number, number];
+  rth: [number, number];
+  afterHours: [number, number];
+};
+
+export function intradaySessionLayoutUtcMs(anchorUtcMs: number): IntradaySessionLayout | undefined {
+  const { y, mo, dy } = easternCalendarParts(anchorUtcMs);
+  const preStart = easternWallUtcMs(y, mo, dy, 4, 0);
+  const rthOpen = easternWallUtcMs(y, mo, dy, 9, 30);
+  const rthClose = easternWallUtcMs(y, mo, dy, 16, 0);
+  const postEnd = easternWallUtcMs(y, mo, dy, 20, 0);
+  if (preStart === undefined || rthOpen === undefined || rthClose === undefined || postEnd === undefined) {
+    return undefined;
+  }
+  return {
+    domain: [preStart, postEnd],
+    preMarket: [preStart, rthOpen],
+    rth: [rthOpen, rthClose],
+    afterHours: [rthClose, postEnd],
+  };
+}
+
 const RTH_HOURLY_SLOTS: readonly [number, number][] = [
   [10, 0],
   [11, 0],

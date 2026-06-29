@@ -1,15 +1,16 @@
 import {
+  Area,
   CartesianGrid,
-  Line,
-  LineChart,
+  ComposedChart,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
-import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
+import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
@@ -63,6 +64,7 @@ function formatPrice(n: number): string {
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+  const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -76,28 +78,60 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       ? (ms: number) => formatIntradayAxisTick(ms)
       : (ms: number) => formatDailyAxisTick(ms, spanDays);
 
-  const intradayDomain = useMemo(() => {
+  const sessionLayout = useMemo(() => {
     if (variant !== "intraday" || anchorMs <= 0) return undefined;
-    return regularSessionDomainUtcMs(anchorMs);
+    return intradaySessionLayoutUtcMs(anchorMs);
   }, [variant, anchorMs]);
 
   const intradayTicks = useMemo(() => {
-    if (!intradayDomain) return undefined;
-    return hourlySessionTicksUtcMs(intradayDomain[0], intradayDomain[1]);
-  }, [intradayDomain]);
+    if (!sessionLayout) return undefined;
+    return hourlySessionTicksUtcMs(sessionLayout.rth[0], sessionLayout.rth[1]);
+  }, [sessionLayout]);
 
   const xDomain = useMemo((): [number, number] | [string, string] => {
-    if (variant === "intraday" && intradayDomain) return intradayDomain;
+    if (variant === "intraday" && sessionLayout && rows.length > 0) {
+      const dataStart = rows[0].t;
+      const dataEnd = rows[rows.length - 1].t;
+      // Anchor left to first bar so pre-market domain padding does not leave empty chart space.
+      return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
+    }
+    if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
-  }, [variant, intradayDomain]);
+  }, [variant, sessionLayout, rows]);
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
     <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <LineChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+          {variant === "intraday" && sessionLayout ? (
+            <>
+              <ReferenceArea
+                x1={sessionLayout.preMarket[0]}
+                x2={sessionLayout.preMarket[1]}
+                fill="var(--fg-muted)"
+                fillOpacity={0.08}
+                strokeOpacity={0}
+                ifOverflow="hidden"
+              />
+              <ReferenceArea
+                x1={sessionLayout.afterHours[0]}
+                x2={sessionLayout.afterHours[1]}
+                fill="var(--fg-muted)"
+                fillOpacity={0.08}
+                strokeOpacity={0}
+                ifOverflow="hidden"
+              />
+            </>
+          ) : null}
           <XAxis
             dataKey="t"
             type="number"
@@ -139,16 +173,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             }}
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
-          <Line
+          <Area
             type="linear"
             dataKey="price"
             stroke="var(--accent)"
             strokeWidth={3}
+            fill={`url(#${fillGradientId})`}
+            baseValue="dataMin"
             dot={false}
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
