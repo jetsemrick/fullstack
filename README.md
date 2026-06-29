@@ -53,6 +53,8 @@ After data loads, use **Export CSV** to download the current series as one row p
 
 - `GET /api/health` – health check.
 - `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/market-context` – US session state plus S&P 500 / Dow / Nasdaq benchmark quotes (powers the header `MarketStrip`).
+- `GET /api/ticker-tape` – batch quotes (symbol, last price, session % change) for a curated set of large-cap S&P 500 names; powers the scrolling ticker tape. Partial upstream failures still return whatever symbols parsed.
 
 ## Test
 
