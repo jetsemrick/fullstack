@@ -8,6 +8,11 @@ export type PriceVolumeRow = {
   volumeBar: number;
 };
 
+export type ChartRow = {
+  t: number;
+  price: number;
+};
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
@@ -19,6 +24,39 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
     volume: p.volume,
     volumeBar: p.volume ?? 0,
   }));
+}
+
+export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
+  if (rows.length <= maxRows) return rows;
+
+  const result: ChartRow[] = [rows[0]!];
+  const bucketCount = maxRows - 2;
+  const bucketSize = (rows.length - 2) / bucketCount;
+
+  for (let bucket = 0; bucket < bucketCount; bucket++) {
+    const start = 1 + Math.floor(bucket * bucketSize);
+    const end = Math.min(rows.length - 1, 1 + Math.floor((bucket + 1) * bucketSize));
+    if (end <= start) continue;
+
+    let min = rows[start]!;
+    let max = rows[start]!;
+    for (let i = start + 1; i < end; i++) {
+      const row = rows[i]!;
+      if (row.price < min.price) min = row;
+      if (row.price > max.price) max = row;
+    }
+
+    if (min.t < max.t) {
+      result.push(min, max);
+    } else if (max.t < min.t) {
+      result.push(max, min);
+    } else {
+      result.push(min);
+    }
+  }
+
+  result.push(rows[rows.length - 1]!);
+  return result;
 }
 
 export function formatVolumeAxis(n: number): string {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState, useMemo, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { downloadPricesCsv } from "./exportCsv";
@@ -34,6 +34,13 @@ const HORIZONS = [
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
+const PRICE_CACHE_TTL_MS = 60_000;
+const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
+
+function priceCacheKey(ticker: string, range: string, interval: string): string {
+  return `${ticker}:${range}:${interval}`;
+}
+
 function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
@@ -55,23 +62,48 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal: AbortSignal) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval });
+    const cacheKey = priceCacheKey(ticker, horizon.range, horizon.interval);
+    const cached = priceCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {
+      setData(cached.data);
+      setLoading(false);
+      return;
+    }
+
+    let res: Awaited<ReturnType<typeof fetchPrices>>;
+    try {
+      res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval, signal });
+    } catch (e) {
+      if (signal.aborted) return;
+      if (requestId !== requestIdRef.current) return;
+      setLoading(false);
+      setError(e instanceof Error ? e.message : "Request failed");
+      return;
+    }
+    if (signal.aborted || requestId !== requestIdRef.current) return;
     setLoading(false);
     if (!res.ok) {
       setData(null);
       setError(res.error.error ?? "Request failed");
       return;
     }
+    priceCache.set(cacheKey, { data: res.data, fetchedAt: Date.now() });
     setData(res.data);
   }, [ticker, horizonIndex]);
 
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) void load(controller.signal);
+    });
+    return () => controller.abort();
   }, [load]);
 
   const slicedDaily = useMemo(() => {
@@ -86,6 +118,7 @@ export default function App() {
 
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
+  const hasChartData = Boolean(data && displayData);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -125,7 +158,7 @@ export default function App() {
       </header>
 
       <main className="main-content">
-        {loading && (
+        {loading && !hasChartData && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
              <div className="skeleton-toolbar" />
              <div className="skeleton-chart" />
@@ -138,9 +171,9 @@ export default function App() {
           </div>
         )}
 
-        {!loading && !error && data && displayData && (
+        {!error && data && displayData && (
           <>
-            <div className="card content-card">
+            <div className="card content-card chart-card--loading-context" aria-busy={loading}>
               <div className="content-toolbar">
                 <div className="metrics-block">
                   <div className="metrics-inline">
@@ -179,6 +212,11 @@ export default function App() {
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                 />
               </div>
+              {loading && (
+                <div className="chart-loading-overlay" role="status">
+                  Loading latest data...
+                </div>
+              )}
             </div>
             <div className="actions-footer">
               <button

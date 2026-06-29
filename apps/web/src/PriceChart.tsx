@@ -10,6 +10,9 @@ import {
 import { useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
+import { downsampleRows } from "./priceChartData";
+
+const MAX_DAILY_RENDER_POINTS = 1_200;
 
 const chartData = (data: GetPricesResponse) =>
   data.series.map((p) => ({
@@ -60,7 +63,11 @@ function formatPrice(n: number): string {
 export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+  const fullRows = useMemo(() => chartData(data), [data]);
+  const rows = useMemo(() => {
+    if (variant === "intraday") return fullRows;
+    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
+  }, [fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -56,5 +56,22 @@ describe("formatVolumeTooltip", () => {
   });
   test("includes digits for finite values", () => {
     expect(formatVolumeTooltip(1_234_567)).toMatch(/1.*234.*567/);
+  });
+});
+
+describe("downsampleRows", () => {
+  test("preserves endpoints and bucket extrema", () => {
+    const rows = Array.from({ length: 20 }, (_, i) => ({
+      t: i,
+      price: i === 5 ? 100 : i === 14 ? -10 : i,
+    }));
+
+    const sampled = downsampleRows(rows, 6);
+
+    expect(sampled[0]).toEqual(rows[0]);
+    expect(sampled[sampled.length - 1]).toEqual(rows[rows.length - 1]);
+    expect(sampled).toContainEqual(rows[5]);
+    expect(sampled).toContainEqual(rows[14]);
+    expect(sampled.length).toBeLessThan(rows.length);
   });
 });
