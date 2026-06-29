@@ -6,11 +6,12 @@ export async function fetchPrices(params: {
   range?: string;
   /** Yahoo chart interval, e.g. `1d`, `5m` */
   interval?: string;
+  signal?: AbortSignal;
 }): Promise<{ ok: true; data: GetPricesResponse } | { ok: false; error: ApiErrorBody; status: number }> {
   const q = new URLSearchParams({ ticker: params.ticker });
   if (params.range) q.set("range", params.range);
   if (params.interval) q.set("interval", params.interval);
-  const res = await fetch(`/api/prices?${q.toString()}`);
+  const res = await fetch(`/api/prices?${q.toString()}`, { signal: params.signal });
   const text = await res.text();
   let json: unknown;
   try {

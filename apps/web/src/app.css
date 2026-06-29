@@ -186,6 +186,10 @@
   flex: 1;
 }
 
+.chart-card--loading-context {
+  position: relative;
+}
+
 .content-toolbar {
   display: flex;
   justify-content: space-between;
@@ -275,6 +279,20 @@
   padding: 2rem;
   height: 450px;
   width: 100%;
+}
+
+.chart-loading-overlay {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg-muted);
+  box-shadow: var(--shadow);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .loading-card {
