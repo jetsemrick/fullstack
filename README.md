@@ -42,6 +42,19 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+### Multi-ticker comparison
+
+Compare up to **5** symbols on one chart:
+
+1. Search for a primary ticker (e.g. AAPL).
+2. Use **Compare** to add additional symbols (e.g. MSFT, NVDA).
+3. Each symbol gets a distinct line color and chip in the toolbar legend.
+4. Lines show **absolute close prices** on a shared Y-axis.
+5. If one symbol fails to load, a warning banner appears and successful symbols still render; failed chips can be removed.
+6. **Export CSV** downloads the **primary** ticker only.
+
+Horizon buttons (Today, 1 Year, 5 Year, All Time) apply to all compared symbols.
+
 ### Environment (optional)
 
 | Variable | Default | Description |
@@ -52,7 +65,12 @@ After data loads, use **Export CSV** to download the current series as one row p
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL&range=1y&interval=1d` – normalized price series. Query params:
+  - `ticker` – symbol (defaults to AAPL)
+  - `range` – Yahoo chart range (`1d`, `1y`, `5y`, `max`, etc.)
+  - `interval` – bar interval (`5m`, `1d`, etc.)
+
+The web app fetches one symbol per request; multi-ticker comparison uses parallel client calls to this endpoint.
 
 ## Test
 

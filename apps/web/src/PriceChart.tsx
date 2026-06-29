@@ -1,5 +1,6 @@
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -8,21 +9,20 @@ import {
   YAxis,
 } from "recharts";
 import { useMemo } from "react";
-import type { GetPricesResponse } from "@stock/shared";
+import type { ComparisonRow } from "./priceChartData";
 import { hourlySessionTicksUtcMs, regularSessionDomainUtcMs } from "./usMarket";
 
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
+export type ChartSeries = {
+  ticker: string;
+  color: string;
+  dataKey: string;
+};
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
-  return (rows[rows.length - 1].t - rows[0].t) / 86_400_000;
+  return (rows[rows.length - 1]!.t - rows[0]!.t) / 86_400_000;
 }
 
-/** X-axis labels for daily series: format depends on chart span so ticks read as calendar milestones. */
 function formatDailyAxisTick(ms: number, spanDays: number): string {
   const d = new Date(ms);
   if (spanDays > 365 * 5) {
@@ -59,8 +59,15 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const rows = chartData(data);
+export function PriceChart({
+  rows,
+  series,
+  variant = "daily",
+}: {
+  rows: ComparisonRow[];
+  series: ChartSeries[];
+  variant?: PriceChartVariant;
+}) {
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -84,7 +91,11 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, intradayDomain]);
 
-  if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  if (rows.length === 0) {
+    return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  }
+
+  const showLegend = series.length > 1;
 
   return (
     <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
@@ -105,7 +116,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
-            dataKey="price"
             domain={["auto", "auto"]}
             width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
@@ -130,17 +140,32 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: number | string, name: string) => {
+              if (typeof value !== "number" || !Number.isFinite(value)) return ["—", name];
+              return [formatPrice(value), name];
+            }}
           />
-          <Line
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
+          {showLegend && (
+            <Legend
+              verticalAlign="top"
+              align="right"
+              wrapperStyle={{ fontSize: "12px", paddingBottom: "8px" }}
+            />
+          )}
+          {series.map((s) => (
+            <Line
+              key={s.ticker}
+              type="linear"
+              dataKey={s.dataKey}
+              name={s.ticker}
+              stroke={s.color}
+              strokeWidth={series.length === 1 ? 3 : 2}
+              dot={false}
+              connectNulls={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: s.color }}
+              isAnimationActive={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>

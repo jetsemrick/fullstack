@@ -1,6 +1,84 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildComparisonRows,
+  buildPriceVolumeRows,
+  createCompareTickerList,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+  MAX_COMPARE_TICKERS,
+  seriesHasVolume,
+  summarizeComparisonResults,
+  type TickerFetchResult,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
+
+describe("createCompareTickerList", () => {
+  test("adds valid ticker", () => {
+    const result = createCompareTickerList(["AAPL"], "msft");
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.tickers).toEqual(["AAPL", "MSFT"]);
+  });
+
+  test("rejects duplicate", () => {
+    const result = createCompareTickerList(["AAPL", "MSFT"], "aapl");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("already");
+  });
+
+  test("rejects invalid format", () => {
+    const result = createCompareTickerList(["AAPL"], "!!!");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("Invalid");
+  });
+
+  test("rejects empty input", () => {
+    const result = createCompareTickerList(["AAPL"], "  ");
+    expect(result.ok).toBe(false);
+  });
+
+  test("rejects when at cap", () => {
+    const current = Array.from({ length: MAX_COMPARE_TICKERS }, (_, i) => `T${i}`);
+    const result = createCompareTickerList(current, "NEW");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain(String(MAX_COMPARE_TICKERS));
+  });
+});
+
+describe("buildComparisonRows", () => {
+  test("outer-joins timestamps with null for missing points", () => {
+    const rows = buildComparisonRows({
+      AAPL: [
+        { timestamp: 1000, close: 10 },
+        { timestamp: 2000, close: 11 },
+      ],
+      MSFT: [{ timestamp: 2000, close: 50 }],
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({ t: 1_000_000, AAPL: 10, MSFT: null });
+    expect(rows[1]).toEqual({ t: 2_000_000, AAPL: 11, MSFT: 50 });
+  });
+
+  test("returns empty for no series", () => {
+    expect(buildComparisonRows({})).toEqual([]);
+  });
+});
+
+describe("summarizeComparisonResults", () => {
+  test("splits successes and failures", () => {
+    const results: TickerFetchResult[] = [
+      {
+        ticker: "AAPL",
+        ok: true,
+        data: { ticker: "AAPL", currency: "USD", lastPrice: 1, series: [] },
+      },
+      { ticker: "BAD", ok: false, error: "Not found" },
+    ];
+    const summary = summarizeComparisonResults(results);
+    expect(summary.successful).toHaveLength(1);
+    expect(summary.successful[0]!.ticker).toBe("AAPL");
+    expect(summary.failures).toEqual([{ ticker: "BAD", error: "Not found" }]);
+  });
+});
 
 describe("seriesHasVolume", () => {
   test("false when empty", () => {
