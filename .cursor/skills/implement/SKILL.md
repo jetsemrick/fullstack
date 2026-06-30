@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 Drive a Linear issue from **claimed** → **in progress** → **PR linked** → **done**, keeping the board accurate throughout.
 
-Also load the `**mcp-linear`** skill for issue formatting and MCP conventions. Read each Linear MCP tool schema before calling.
+Also load **`mcp-linear`** and **`write-linear-ticket`** for issue formatting and MCP conventions. Read each Linear MCP tool schema before calling.
 
 ## Preconditions
 
