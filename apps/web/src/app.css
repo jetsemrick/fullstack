@@ -1,7 +1,95 @@
+.sp-ticker-tape {
+  width: 100%;
+  border-bottom: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--fg);
+  overflow: hidden;
+}
+
+.sp-ticker-tape__viewport {
+  min-height: 2.25rem;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sp-ticker-tape__track {
+  display: flex;
+  width: max-content;
+  min-width: 200%;
+  animation: sp-ticker-scroll 48s linear infinite;
+}
+
+.sp-ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0 1.25rem;
+  font-size: 0.8125rem;
+  line-height: 2.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-ticker-tape__symbol {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sp-ticker-tape__price {
+  color: var(--fg);
+}
+
+.sp-ticker-tape__pct {
+  font-weight: 600;
+}
+
+.sp-ticker-tape__pct--up {
+  color: #2b703e;
+}
+
+.sp-ticker-tape__pct--down {
+  color: #ba3b3b;
+}
+
+.sp-ticker-tape__pct--muted,
+.sp-ticker-tape__fallback {
+  color: var(--fg-muted);
+}
+
+.sp-ticker-tape__fallback {
+  padding: 0 1rem;
+  font-size: 0.8125rem;
+}
+
+@keyframes sp-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-ticker-tape__viewport {
+    overflow-x: auto;
+  }
+
+  .sp-ticker-tape__track {
+    animation: none;
+    min-width: 0;
+  }
+
+  .sp-ticker-tape__item--duplicate {
+    display: none;
+  }
+}
+
 .shell {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 3rem 2rem;
+  padding: 2.25rem 2rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;

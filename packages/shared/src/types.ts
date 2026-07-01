@@ -22,8 +22,8 @@ export interface ApiErrorBody {
   details?: string;
 }
 
-/** One major index quote returned from `/api/market-context`. */
-export interface MarketIndexQuote {
+/** One compact quote used by ambient market UI. */
+export interface StockQuote {
   symbol: string;
   shortName: string;
   /** Regular session last price when available */
@@ -32,9 +32,17 @@ export interface MarketIndexQuote {
   changePercent: number | null;
 }
 
+/** One major index quote returned from `/api/market-context`. */
+export interface MarketIndexQuote extends StockQuote {}
+
 /** US session context from Yahoo (major indexes + aggregated market session). */
 export interface MarketContextResponse {
   /** Raw Yahoo `marketState` from the benchmark quote (often `REGULAR`, `CLOSED`, etc.). */
   marketState: string | null;
   indexes: MarketIndexQuote[];
+}
+
+/** Curated large-cap quote tape returned from `/api/ticker-tape`. */
+export interface TickerTapeResponse {
+  quotes: StockQuote[];
 }
