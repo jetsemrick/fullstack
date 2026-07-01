@@ -27,7 +27,13 @@ export function SPTickerTape() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const res = await fetchTickerTape();
+      let res: Awaited<ReturnType<typeof fetchTickerTape>>;
+      try {
+        res = await fetchTickerTape();
+      } catch {
+        if (!cancelled) setStatus("error");
+        return;
+      }
       if (cancelled) return;
       if (res.ok && res.data.quotes.length > 0) {
         setQuotes(res.data.quotes);
