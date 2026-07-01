@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SP_TICKER_SYMBOLS, type StockQuote } from "@stock/shared";
 import { fetchBatchQuotes } from "./api";
 
@@ -45,15 +45,17 @@ function TickerItem({ quote }: { quote: StockQuote }) {
 export function TickerTape() {
   const [quotes, setQuotes] = useState<StockQuote[] | null>(null);
   const [errored, setErrored] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
     async function load() {
+      const requestId = ++requestIdRef.current;
       try {
         const res = await fetchBatchQuotes({ symbols: SP_TICKER_SYMBOLS, signal: controller.signal });
-        if (cancelled) return;
+        if (cancelled || requestId !== requestIdRef.current) return;
         if (res.ok && res.data.quotes.length > 0) {
           setQuotes(res.data.quotes);
           setErrored(false);
@@ -61,7 +63,9 @@ export function TickerTape() {
           setErrored(true);
         }
       } catch {
-        if (!cancelled && !controller.signal.aborted) setErrored(true);
+        if (!cancelled && !controller.signal.aborted && requestId === requestIdRef.current) {
+          setErrored(true);
+        }
       }
     }
 
