@@ -1,5 +1,6 @@
 import type { PricePoint } from "@stock/shared";
 import { DEFAULT_INTERVAL, DEFAULT_RANGE } from "@stock/shared";
+import { getSeedChartResult, isSeedDataEnabled } from "./seed-data";
 
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 
@@ -108,6 +109,9 @@ export type YahooChartOpts = {
 
 /** Fetches chart data; defaults match package constants (max / 1d). */
 export async function fetchYahooChart(ticker: string, opts?: YahooChartOpts): Promise<YahooParseResult> {
+  if (isSeedDataEnabled()) {
+    return getSeedChartResult(ticker);
+  }
   const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(ticker)}`);
   url.searchParams.set("range", opts?.range ?? DEFAULT_RANGE);
   url.searchParams.set("interval", opts?.interval ?? DEFAULT_INTERVAL);

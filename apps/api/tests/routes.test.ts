@@ -139,3 +139,54 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.indexes[0]?.price).toBe(100);
   });
 });
+
+describe("handleApiRequest with USE_SEED_DATA", () => {
+  const origFetch = globalThis.fetch;
+  const origSeedEnv = process.env.USE_SEED_DATA;
+
+  afterEach(() => {
+    globalThis.fetch = origFetch;
+    if (origSeedEnv === undefined) delete process.env.USE_SEED_DATA;
+    else process.env.USE_SEED_DATA = origSeedEnv;
+  });
+
+  test("returns stable seed prices for AAPL without calling Yahoo", async () => {
+    process.env.USE_SEED_DATA = "1";
+    globalThis.fetch = mock(() => {
+      throw new Error("network blocked");
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=AAPL"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ticker: string; series: { close: number }[]; lastPrice: number };
+    expect(body.ticker).toBe("AAPL");
+    expect(body.series.length).toBe(30);
+    expect(body.series[0].close).toBe(185.2);
+    expect(body.lastPrice).toBe(198.5);
+  });
+
+  test("returns 404 for unknown tickers in seed mode", async () => {
+    process.env.USE_SEED_DATA = "1";
+    globalThis.fetch = mock(() => {
+      throw new Error("network blocked");
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=MISSING"));
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("NOT_FOUND");
+  });
+
+  test("returns seeded market context without calling Yahoo", async () => {
+    process.env.USE_SEED_DATA = "1";
+    globalThis.fetch = mock(() => {
+      throw new Error("network blocked");
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/market-context"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { marketState: string | null; indexes: { symbol: string }[] };
+    expect(body.marketState).toBe("REGULAR");
+    expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
+  });
+});

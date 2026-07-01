@@ -1,5 +1,6 @@
 import type { MarketIndexQuote } from "@stock/shared";
 import { MAJOR_INDEX_SYMBOLS } from "@stock/shared";
+import { getSeedMarketContext, isSeedDataEnabled } from "./seed-data";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -220,6 +221,9 @@ async function fetchMajorIndexQuotesViaV7(): Promise<YahooQuoteAggregate> {
 
 /** v7 aggregate quote is often blocked; fall back to v8 chart meta per symbol (same pathway as `/api/prices`). */
 export async function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
+  if (isSeedDataEnabled()) {
+    return getSeedMarketContext();
+  }
   const v7 = await fetchMajorIndexQuotesViaV7();
   if (!v7.errorMessage && v7.indexes.length > 0) {
     return v7;

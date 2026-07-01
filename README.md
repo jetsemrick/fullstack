@@ -48,11 +48,39 @@ After data loads, use **Export CSV** to download the current series as one row p
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
 | `CORS_ORIGIN` | `http://localhost:5173` | `Access-Control-Allow-Origin` for the API |
+| `USE_SEED_DATA` | *(unset)* | When `1`, `true`, or `yes`, the API serves deterministic fixture data instead of calling Yahoo (offline demo mode) |
+
+### Offline demo (seed data)
+
+For repeatable demos without live Yahoo Finance, start the API with seed mode enabled:
+
+```bash
+USE_SEED_DATA=1 bun run dev
+```
+
+Or API only:
+
+```bash
+USE_SEED_DATA=1 bun run dev:api
+```
+
+**Behavior:** `/api/prices` and `/api/market-context` return stable JSON fixtures. Yahoo is not contacted. Supported price tickers: **AAPL**. Unknown tickers (e.g. `MISSING`) still return **404** `NOT_FOUND`.
+
+**Verify:**
+
+```bash
+USE_SEED_DATA=1 bun run dev:api
+curl -s "http://localhost:3001/api/prices?ticker=AAPL" | head
+curl -s "http://localhost:3001/api/prices?ticker=MISSING"
+```
+
+Do **not** enable `USE_SEED_DATA` in production unless you intend to serve fixtures.
 
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL&range=1y&interval=1d` – normalized price series. Query params `range` and `interval` are optional (defaults: `max` / `1d` from shared constants). Invalid values return **400**.
+- `GET /api/market-context` – major US index quotes (S&P 500, Dow, Nasdaq) for the market strip.
 
 ## Test
 
@@ -60,7 +88,7 @@ After data loads, use **Export CSV** to download the current series as one row p
 bun test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult`, seed-data fixtures, and HTTP handler validation including mocked upstream responses and offline seed mode.)
 
 ## Typecheck
 
