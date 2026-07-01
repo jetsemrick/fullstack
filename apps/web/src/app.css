@@ -19,7 +19,7 @@
     grid-template-columns: 1fr;
   }
 
-  .search-form {
+  .header-actions {
     justify-self: end;
   }
 }
@@ -52,7 +52,7 @@
 }
 
 .market-status--open {
-  color: #2b703e;
+  color: var(--success);
 }
 
 .market-status--closed {
@@ -93,12 +93,12 @@
 }
 
 .market-strip__pct--up {
-  color: #2b703e;
+  color: var(--success);
   font-weight: 500;
 }
 
 .market-strip__pct--down {
-  color: #ba3b3b;
+  color: var(--danger);
   font-weight: 500;
 }
 
@@ -109,6 +109,49 @@
 .market-strip__chip--pending {
   color: var(--fg-muted);
   font-size: 0.75rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--input-shadow);
+}
+
+.theme-toggle__button {
+  border: none;
+  border-right: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--fg-muted);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.theme-toggle__button:last-child {
+  border-right: none;
+}
+
+.theme-toggle__button:hover {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.theme-toggle__button.active {
+  background: var(--accent);
+  color: var(--button-fg);
 }
 
 .search-form {
@@ -122,13 +165,13 @@
   border: 1px solid var(--card-border);
   border-radius: 0;
   padding: 0.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--input-shadow);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search-input-wrapper:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(147, 175, 147, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-focus);
 }
 
 .search-input {
@@ -148,7 +191,7 @@
 .search-btn {
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--button-fg);
   border-radius: 0;
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
@@ -240,15 +283,15 @@
 }
 
 .metric-badge.positive {
-  color: #2b703e;
-  background: #edf5ee;
-  border-color: #d1e2d3;
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: var(--success-border);
 }
 
 .metric-badge.negative {
-  color: #ba3b3b;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
 }
 
 .chart-container {
@@ -296,9 +339,9 @@
 
 .error-banner {
   padding: 1.5rem;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
-  color: #ba3b3b;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
   font-size: 0.95rem;
   border-width: 1px;
   border-style: solid;
@@ -342,7 +385,7 @@
 }
 
 .horizon-btn.active {
-  background: #edf5ee;
-  color: #2b703e;
-  border-color: #d1e2d3;
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success-border);
 }

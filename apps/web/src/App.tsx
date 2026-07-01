@@ -35,6 +35,10 @@ const HORIZONS = [
 
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
+const THEME_STORAGE_KEY = "stock-visualizer-theme";
+const THEME_MODES = ["system", "light", "dark"] as const;
+
+type ThemeMode = (typeof THEME_MODES)[number];
 
 function priceCacheKey(ticker: string, range: string, interval: string): string {
   return `${ticker}:${range}:${interval}`;
@@ -52,11 +56,32 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   };
 }
 
+function isThemeMode(value: string | null): value is ThemeMode {
+  return THEME_MODES.some((mode) => mode === value);
+}
+
+function getStoredThemeMode(): ThemeMode {
+  if (typeof window === "undefined") return "system";
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return isThemeMode(stored) ? stored : "system";
+}
+
+function getSystemTheme(): "light" | "dark" {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(mode: ThemeMode) {
+  const theme = mode === "system" ? getSystemTheme() : mode;
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+}
+
 export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getStoredThemeMode());
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +130,17 @@ export default function App() {
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+    applyTheme(themeMode);
+
+    if (themeMode !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => applyTheme("system");
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [themeMode]);
+
   const slicedDaily = useMemo(() => {
     if (!data) return null;
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
@@ -129,31 +165,46 @@ export default function App() {
     <div className="shell">
       <header className="header">
         <MarketStrip />
-        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
-          <div className="search-input-wrapper">
-            <input
-              id={`${formId}-ticker`}
-              name="ticker"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
-            />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
-            >
-              Search
-            </button>
+        <div className="header-actions">
+          <div className="theme-toggle" role="group" aria-label="Theme">
+            {THEME_MODES.map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`theme-toggle__button ${themeMode === mode ? "active" : ""}`}
+                aria-pressed={themeMode === mode}
+                onClick={() => setThemeMode(mode)}
+              >
+                {mode}
+              </button>
+            ))}
           </div>
-        </form>
+          <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+            <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+            <div className="search-input-wrapper">
+              <input
+                id={`${formId}-ticker`}
+                name="ticker"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                className="search-input"
+                placeholder={`e.g. ${DEFAULT_TICKER}`}
+                maxLength={32}
+              />
+              <button
+                id={`${formId}-submit`}
+                type="submit"
+                className="search-btn"
+                disabled={loading}
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
       </header>
 
       <main className="main-content">
