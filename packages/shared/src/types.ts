@@ -38,3 +38,11 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** Data for a single ticker in compare mode. */
+export interface CompareTickerData {
+  ticker: string;
+  data: GetPricesResponse | null;
+  loading: boolean;
+  error: string | null;
+}
