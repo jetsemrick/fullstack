@@ -26,6 +26,13 @@ describe("handleApiRequest", () => {
     const j = (await res.json()) as { ok: boolean };
     expect(j.ok).toBe(true);
   });
+
+  test("rejects invalid quote symbols with 400", async () => {
+    const res = await handleApiRequest(new Request("http://localhost/api/quotes?symbols=@@@"));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("VALIDATION");
+  });
 });
 
 describe("handleApiRequest with mocked Yahoo fetch", () => {
@@ -137,5 +144,81 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.marketState).toBe("REGULAR");
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
     expect(body.indexes[0]?.price).toBe(100);
+  });
+
+  test("returns 200 and batch quotes when v7 quote JSON is valid", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const body = {
+          quoteResponse: {
+            result: [
+              { symbol: "AAPL", shortName: "Apple Inc.", regularMarketPrice: 200.5, regularMarketChangePercent: 1.23 },
+              { symbol: "MSFT", shortName: "Microsoft Corp.", regularMarketPrice: 410.1, regularMarketChangePercent: -0.4 },
+            ],
+            error: null,
+          },
+        };
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/quotes?symbols=AAPL,MSFT"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number | null; changePercent: number | null }[] };
+    expect(body.quotes.map((q) => q.symbol)).toEqual(["AAPL", "MSFT"]);
+    expect(body.quotes[0]?.price).toBe(200.5);
+    expect(body.quotes[0]?.changePercent).toBe(1.23);
+  });
+
+  test("returns 200 batch quotes via v8 chart when v7 is blocked", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const blocked = { finance: { result: null, error: { code: "Unauthorized", description: "blocked" } } };
+        return Promise.resolve(
+          new Response(JSON.stringify(blocked), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      if (u.includes("v8/finance/chart")) {
+        const m = /\/chart\/([^?]+)/.exec(u);
+        const decoded = m ? decodeURIComponent(m[1]) : "AAPL";
+        const body = {
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: decoded,
+                  shortName: decoded,
+                  regularMarketPrice: 50,
+                  chartPreviousClose: 49,
+                  marketState: "REGULAR",
+                },
+              },
+            ],
+            error: null,
+          },
+        };
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/quotes?symbols=AAPL,MSFT"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number | null }[] };
+    expect(body.quotes.map((q) => q.symbol)).toEqual(["AAPL", "MSFT"]);
+    expect(body.quotes[0]?.price).toBe(50);
   });
 });

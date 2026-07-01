@@ -1,4 +1,4 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
+import type { ApiErrorBody, BatchQuotesResponse, GetPricesResponse, MarketContextResponse } from "@stock/shared";
 
 export async function fetchPrices(params: {
   ticker: string;
@@ -50,4 +50,30 @@ export async function fetchMarketContext(): Promise<
     return { ok: false, status: res.status, error: err };
   }
   return { ok: true, data: json as MarketContextResponse };
+}
+
+export async function fetchBatchQuotes(params?: {
+  symbols?: readonly string[];
+  signal?: AbortSignal;
+}): Promise<{ ok: true; data: BatchQuotesResponse } | { ok: false; error: ApiErrorBody; status: number }> {
+  const q = new URLSearchParams();
+  if (params?.symbols && params.symbols.length > 0) q.set("symbols", params.symbols.join(","));
+  const suffix = q.toString() ? `?${q.toString()}` : "";
+  const res = await fetch(`/api/quotes${suffix}`, { signal: params?.signal });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return {
+      ok: false,
+      status: res.status,
+      error: { error: "Invalid response", code: "INTERNAL" },
+    };
+  }
+  if (!res.ok) {
+    const err = json as ApiErrorBody;
+    return { ok: false, status: res.status, error: err };
+  }
+  return { ok: true, data: json as BatchQuotesResponse };
 }

@@ -60,7 +60,10 @@ function parseQuoteItem(raw: unknown): MarketIndexQuote | null {
   };
 }
 
-export function parseQuoteResponse(body: unknown): YahooQuoteAggregate {
+export function parseQuoteResponse(
+  body: unknown,
+  order: readonly string[] = MAJOR_INDEX_SYMBOLS,
+): YahooQuoteAggregate {
   if (typeof body !== "object" || body === null) {
     return { errorMessage: "Invalid JSON", marketState: null, indexes: [] };
   }
@@ -99,7 +102,7 @@ export function parseQuoteResponse(body: unknown): YahooQuoteAggregate {
 
   const bySymbol = new Map(indexes.map((i) => [i.symbol, i] as const));
   const ordered: MarketIndexQuote[] = [];
-  for (const sym of MAJOR_INDEX_SYMBOLS) {
+  for (const sym of order) {
     const row = bySymbol.get(sym);
     if (row) ordered.push(row);
   }
@@ -154,9 +157,9 @@ function parseIndexFromChartBody(body: unknown): (MarketIndexQuote & { marketSta
   };
 }
 
-async function fetchMajorIndexQuotesViaChart(): Promise<YahooQuoteAggregate> {
+async function fetchQuotesViaChart(symbols: readonly string[]): Promise<YahooQuoteAggregate> {
   const headers = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
-  const tasks = [...MAJOR_INDEX_SYMBOLS].map(async (symbol) => {
+  const tasks = symbols.map(async (symbol) => {
     const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
     url.searchParams.set("range", "1d");
     url.searchParams.set("interval", "1d");
@@ -180,7 +183,7 @@ async function fetchMajorIndexQuotesViaChart(): Promise<YahooQuoteAggregate> {
   }
 
   const indexes: MarketIndexQuote[] = [];
-  for (const sym of MAJOR_INDEX_SYMBOLS) {
+  for (const sym of symbols) {
     const r = rows.find((x) => x?.symbol === sym);
     if (r) {
       indexes.push({ symbol: r.symbol, shortName: r.shortName, price: r.price, changePercent: r.changePercent });
@@ -198,9 +201,9 @@ async function fetchMajorIndexQuotesViaChart(): Promise<YahooQuoteAggregate> {
   return { errorMessage: null, marketState, indexes };
 }
 
-async function fetchMajorIndexQuotesViaV7(): Promise<YahooQuoteAggregate> {
+async function fetchQuotesViaV7(symbols: readonly string[]): Promise<YahooQuoteAggregate> {
   const url = new URL(YAHOO_QUOTE_URL);
-  url.searchParams.set("symbols", [...MAJOR_INDEX_SYMBOLS].join(","));
+  url.searchParams.set("symbols", [...symbols].join(","));
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
   });
@@ -211,26 +214,37 @@ async function fetchMajorIndexQuotesViaV7(): Promise<YahooQuoteAggregate> {
   } catch {
     return { errorMessage: `Invalid response (${res.status})`, marketState: null, indexes: [] };
   }
-  const parsed = parseQuoteResponse(json);
+  const parsed = parseQuoteResponse(json, symbols);
   if (!res.ok) {
     return { ...parsed, errorMessage: parsed.errorMessage ?? `HTTP ${res.status}` };
   }
   return parsed;
 }
 
-/** v7 aggregate quote is often blocked; fall back to v8 chart meta per symbol (same pathway as `/api/prices`). */
-export async function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
-  const v7 = await fetchMajorIndexQuotesViaV7();
+/**
+ * Fetch quotes for an arbitrary symbol set. v7 aggregate quote is often blocked,
+ * so fall back to v8 chart meta per symbol (same pathway as `/api/prices`).
+ * The `indexes` field carries the quotes in the requested order.
+ */
+export async function fetchQuotesForSymbols(symbols: readonly string[]): Promise<YahooQuoteAggregate> {
+  if (symbols.length === 0) {
+    return { errorMessage: "No symbols requested", marketState: null, indexes: [] };
+  }
+  const v7 = await fetchQuotesViaV7(symbols);
   if (!v7.errorMessage && v7.indexes.length > 0) {
     return v7;
   }
-  const viaChart = await fetchMajorIndexQuotesViaChart();
+  const viaChart = await fetchQuotesViaChart(symbols);
   if (viaChart.indexes.length > 0) {
     return { ...viaChart, errorMessage: null };
   }
   return {
-    errorMessage: v7.errorMessage ?? viaChart.errorMessage ?? "No benchmark quotes",
+    errorMessage: v7.errorMessage ?? viaChart.errorMessage ?? "No quotes",
     marketState: null,
     indexes: [],
   };
+}
+
+export function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
+  return fetchQuotesForSymbols(MAJOR_INDEX_SYMBOLS);
 }

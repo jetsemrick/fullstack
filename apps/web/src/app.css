@@ -346,3 +346,106 @@
   color: #2b703e;
   border-color: #d1e2d3;
 }
+
+/* Full-width scrolling ticker tape (above the header, distinct from MarketStrip). */
+.ticker-tape {
+  width: 100%;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.ticker-tape--pending {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 1.25rem;
+}
+
+.ticker-tape__notice {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.ticker-tape__viewport {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  overflow: hidden;
+}
+
+.ticker-tape__track {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker-scroll 60s linear infinite;
+}
+
+.ticker-tape__viewport:hover .ticker-tape__track {
+  animation-play-state: paused;
+}
+
+.ticker-tape__group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+}
+
+.ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  border-right: 1px solid var(--card-border);
+}
+
+.ticker-tape__symbol {
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+
+.ticker-tape__price {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker-tape__pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.ticker-tape__pct--up {
+  color: #2b703e;
+}
+
+.ticker-tape__pct--down {
+  color: #ba3b3b;
+}
+
+.ticker-tape__pct--muted {
+  color: var(--fg-muted);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Track holds two identical groups; shifting one group width loops seamlessly. */
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape__track {
+    animation: none;
+    transform: none;
+  }
+
+  /* Without motion, keep every price reachable via horizontal scroll. */
+  .ticker-tape__viewport {
+    overflow-x: auto;
+  }
+}

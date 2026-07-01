@@ -1,7 +1,7 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
-import { DEFAULT_TICKER } from "@stock/shared";
+import type { ApiErrorBody, BatchQuotesResponse, GetPricesResponse, MarketContextResponse, StockQuote } from "@stock/shared";
+import { DEFAULT_TICKER, MAX_QUOTE_SYMBOLS, SP_TICKER_SYMBOLS } from "@stock/shared";
 import { fetchYahooChart } from "./yahoo";
-import { fetchMajorIndexQuotes } from "./yahoo-quote";
+import { fetchMajorIndexQuotes, fetchQuotesForSymbols } from "./yahoo-quote";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 
@@ -110,6 +110,47 @@ export async function handleApiRequest(req: Request): Promise<Response> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       return jsonResponse(errBody("Failed to load prices", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
+    }
+  }
+  if (url.pathname === "/api/quotes" && req.method === "GET") {
+    const symbolsRaw = url.searchParams.get("symbols");
+    let symbols: string[];
+    if (symbolsRaw === null || symbolsRaw.trim() === "") {
+      symbols = [...SP_TICKER_SYMBOLS];
+    } else {
+      symbols = symbolsRaw
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length > 0);
+      if (symbols.length === 0 || symbols.length > MAX_QUOTE_SYMBOLS) {
+        return jsonResponse(
+          errBody(`Provide 1-${MAX_QUOTE_SYMBOLS} symbols`, "VALIDATION"),
+          { status: 400, headers: corsHeaders() },
+        );
+      }
+      if (!symbols.every((s) => TICKER_RE.test(s))) {
+        return jsonResponse(errBody("Invalid symbol format", "VALIDATION"), { status: 400, headers: corsHeaders() });
+      }
+    }
+    try {
+      const y = await fetchQuotesForSymbols(symbols);
+      if (y.errorMessage || y.indexes.length === 0) {
+        return jsonResponse(
+          errBody(y.errorMessage ?? "No quotes", "UPSTREAM"),
+          { status: 502, headers: corsHeaders() },
+        );
+      }
+      const quotes: StockQuote[] = y.indexes.map((q) => ({
+        symbol: q.symbol,
+        shortName: q.shortName,
+        price: q.price,
+        changePercent: q.changePercent,
+      }));
+      const body: BatchQuotesResponse = { quotes };
+      return jsonResponse(body, { status: 200, headers: corsHeaders() });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      return jsonResponse(errBody("Failed to load quotes", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
     }
   }
   if (url.pathname === "/api/market-context" && req.method === "GET") {
