@@ -49,13 +49,17 @@ export function TickerTape() {
     const controller = new AbortController();
 
     async function load() {
-      const res = await fetchTickerTape(controller.signal);
-      if (cancelled) return;
-      if (res.ok) {
-        setQuotes(res.data.quotes);
-        setFailed(false);
-      } else {
-        setFailed(true);
+      try {
+        const res = await fetchTickerTape(controller.signal);
+        if (cancelled) return;
+        if (res.ok) {
+          setQuotes(res.data.quotes);
+          setFailed(false);
+        } else {
+          setFailed(true);
+        }
+      } catch {
+        if (!cancelled) setFailed(true);
       }
     }
 
