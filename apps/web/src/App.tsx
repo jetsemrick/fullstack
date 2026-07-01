@@ -33,6 +33,26 @@ const HORIZONS = [
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
+const THEMES = [
+  { id: "sage", label: "Sage" },
+  { id: "black-white", label: "Black & white" },
+] as const;
+type ThemeId = (typeof THEMES)[number]["id"];
+const THEME_STORAGE_KEY = "stock-visualizer-theme";
+
+function isThemeId(value: string | null): value is ThemeId {
+  return THEMES.some((theme) => theme.id === value);
+}
+
+function getInitialTheme(): ThemeId {
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isThemeId(storedTheme) ? storedTheme : "sage";
+  } catch {
+    return "sage";
+  }
+}
+
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
 
@@ -57,6 +77,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [theme, setTheme] = useState<ThemeId>(getInitialTheme);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +126,15 @@ export default function App() {
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Theme persistence is a convenience; the selected theme still applies for this session.
+    }
+  }, [theme]);
+
   const slicedDaily = useMemo(() => {
     if (!data) return null;
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
@@ -129,31 +159,47 @@ export default function App() {
     <div className="shell">
       <header className="header">
         <MarketStrip />
-        <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
-          <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
-          <div className="search-input-wrapper">
-            <input
-              id={`${formId}-ticker`}
-              name="ticker"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-              className="search-input"
-              placeholder={`e.g. ${DEFAULT_TICKER}`}
-              maxLength={32}
-            />
-            <button
-              id={`${formId}-submit`}
-              type="submit"
-              className="search-btn"
-              disabled={loading}
+        <div className="header-actions">
+          <label className="theme-control">
+            Theme
+            <select
+              className="theme-select"
+              value={theme}
+              onChange={(e) => setTheme(e.target.value as ThemeId)}
             >
-              Search
-            </button>
-          </div>
-        </form>
+              {THEMES.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
+            <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
+            <div className="search-input-wrapper">
+              <input
+                id={`${formId}-ticker`}
+                name="ticker"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                className="search-input"
+                placeholder={`e.g. ${DEFAULT_TICKER}`}
+                maxLength={32}
+              />
+              <button
+                id={`${formId}-submit`}
+                type="submit"
+                className="search-btn"
+                disabled={loading}
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
       </header>
 
       <main className="main-content">
