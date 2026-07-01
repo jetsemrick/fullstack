@@ -207,6 +207,7 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${ticker}-${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                 />
