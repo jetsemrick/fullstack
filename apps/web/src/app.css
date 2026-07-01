@@ -131,10 +131,9 @@
   border-right: 1px solid var(--card-border);
   background: transparent;
   color: var(--fg);
-  opacity: 0.72;
   padding: 0.5rem 0.7rem;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.2;
   text-transform: capitalize;
   cursor: pointer;
@@ -148,13 +147,11 @@
 .theme-toggle__button:hover {
   background: var(--bg);
   color: var(--fg);
-  opacity: 1;
 }
 
 .theme-toggle__button.active {
   background: var(--accent);
   color: var(--button-fg);
-  opacity: 1;
 }
 
 .search-form {
