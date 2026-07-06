@@ -52,7 +52,7 @@
 }
 
 .market-status--open {
-  color: #2b703e;
+  color: var(--positive);
 }
 
 .market-status--closed {
@@ -93,12 +93,12 @@
 }
 
 .market-strip__pct--up {
-  color: #2b703e;
+  color: var(--positive);
   font-weight: 500;
 }
 
 .market-strip__pct--down {
-  color: #ba3b3b;
+  color: var(--negative);
   font-weight: 500;
 }
 
@@ -240,15 +240,15 @@
 }
 
 .metric-badge.positive {
-  color: #2b703e;
-  background: #edf5ee;
-  border-color: #d1e2d3;
+  color: var(--positive);
+  background: var(--positive-bg);
+  border-color: var(--positive-border);
 }
 
 .metric-badge.negative {
-  color: #ba3b3b;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
+  color: var(--negative);
+  background: var(--negative-bg);
+  border-color: var(--negative-border);
 }
 
 .chart-container {
@@ -296,9 +296,9 @@
 
 .error-banner {
   padding: 1.5rem;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
-  color: #ba3b3b;
+  background: var(--negative-bg);
+  border-color: var(--negative-border);
+  color: var(--negative);
   font-size: 0.95rem;
   border-width: 1px;
   border-style: solid;
@@ -342,7 +342,42 @@
 }
 
 .horizon-btn.active {
-  background: #edf5ee;
-  color: #2b703e;
-  border-color: #d1e2d3;
+  background: var(--positive-bg);
+  color: var(--positive);
+  border-color: var(--positive-border);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0;
+  background: var(--card);
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--fg-muted);
+  color: var(--fg);
+}
+
+.theme-toggle__icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.theme-toggle__label {
+  font-variant-numeric: tabular-nums;
 }
