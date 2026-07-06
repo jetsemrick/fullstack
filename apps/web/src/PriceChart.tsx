@@ -1,32 +1,23 @@
 import {
-  Area,
   CartesianGrid,
   ComposedChart,
+  Legend,
+  Line,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
-import type { GetPricesResponse } from "@stock/shared";
+import { useMemo } from "react";
+import type { ChartSeriesMeta, MultiChartRow } from "./priceChartData";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
 
-const MAX_DAILY_RENDER_POINTS = 1_200;
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
-
-function spanCalendarDays(rows: { t: number }[]): number {
+function spanCalendarDays(rows: MultiChartRow[]): number {
   if (rows.length < 2) return 0;
-  return (rows[rows.length - 1].t - rows[0].t) / 86_400_000;
+  return (rows[rows.length - 1]!.t - rows[0]!.t) / 86_400_000;
 }
 
-/** X-axis labels for daily series: format depends on chart span so ticks read as calendar milestones. */
 function formatDailyAxisTick(ms: number, spanDays: number): string {
   const d = new Date(ms);
   if (spanDays > 365 * 5) {
@@ -42,14 +33,15 @@ function formatIntradayAxisTick(ms: number): string {
   return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-function formatTooltipWhen(
-  ms: number,
-  variant: "daily" | "intraday",
-  spanDays: number,
-): string {
+function formatTooltipWhen(ms: number, variant: "daily" | "intraday", spanDays: number): string {
   const d = new Date(ms);
   if (variant === "intraday") {
-    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
   if (spanDays > 365 * 5) {
     return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -63,15 +55,69 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const fillGradientId = useId().replace(/:/g, "");
-  const fullRows = useMemo(() => chartData(data), [data]);
-  const rows = useMemo(() => {
-    if (variant === "intraday") return fullRows;
-    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
-  }, [fullRows, variant]);
-  const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+type TooltipEntry = {
+  dataKey?: string;
+  value?: number | null;
+  color?: string;
+  payload?: MultiChartRow;
+};
 
+type TooltipProps = {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: number;
+  series: ChartSeriesMeta[];
+  variant: PriceChartVariant;
+  spanDays: number;
+};
+
+function MultiSeriesTooltip({ active, payload, series, variant, spanDays }: TooltipProps) {
+  if (!active || !payload?.length) return null;
+  const t = payload[0]?.payload?.t;
+  if (typeof t !== "number") return null;
+
+  return (
+    <div
+      className="chart-tooltip"
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--card-border)",
+        borderRadius: "12px",
+        color: "var(--fg)",
+        boxShadow: "var(--shadow)",
+        padding: "12px",
+      }}
+    >
+      <div className="chart-tooltip__when">{formatTooltipWhen(t, variant, spanDays)}</div>
+      <ul className="chart-tooltip__list">
+        {series.map((s) => {
+          const entry = payload.find((p) => p.dataKey === s.ticker);
+          const value = entry?.value;
+          return (
+            <li key={s.ticker} className="chart-tooltip__row">
+              <span className="chart-tooltip__swatch" style={{ background: s.color }} aria-hidden />
+              <span className="chart-tooltip__label">{s.ticker}</span>
+              <span className="chart-tooltip__value">
+                {typeof value === "number" ? formatPrice(value) : "—"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+export function PriceChart({
+  rows,
+  series,
+  variant = "daily",
+}: {
+  rows: MultiChartRow[];
+  series: ChartSeriesMeta[];
+  variant?: PriceChartVariant;
+}) {
+  const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
     variant === "intraday"
@@ -90,27 +136,31 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const xDomain = useMemo((): [number, number] | [string, string] => {
     if (variant === "intraday" && sessionLayout && rows.length > 0) {
-      const dataStart = rows[0].t;
-      const dataEnd = rows[rows.length - 1].t;
-      // Anchor left to first bar so pre-market domain padding does not leave empty chart space.
+      const dataStart = rows[0]!.t;
+      const dataEnd = rows[rows.length - 1]!.t;
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
-  if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  const ariaLabel =
+    series.length > 0
+      ? `Absolute price comparison chart for ${series.map((s) => s.ticker).join(", ")}`
+      : "Price comparison chart";
+
+  if (rows.length === 0) {
+    return (
+      <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>
+        No data to chart.
+      </p>
+    );
+  }
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div role="img" aria-label={ariaLabel} style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           {variant === "intraday" && sessionLayout ? (
             <>
@@ -146,7 +196,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
-            dataKey="price"
             domain={["auto", "auto"]}
             width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
@@ -156,34 +205,39 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dx={-10}
           />
           <Tooltip
-            contentStyle={{
-              background: "var(--card)",
-              border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
-              color: "var(--fg)",
-              boxShadow: "var(--shadow)",
-              padding: "12px",
-            }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
-              }
-              return "";
-            }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            content={(props) => (
+              <MultiSeriesTooltip
+                active={props.active}
+                payload={props.payload as TooltipProps["payload"]}
+                label={props.label as number | undefined}
+                series={series}
+                variant={variant}
+                spanDays={spanDays}
+              />
+            )}
           />
-          <Area
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
+          <Legend
+            verticalAlign="top"
+            align="right"
+            wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+            formatter={(value: string) => (
+              <span style={{ color: "var(--fg)" }}>{value}</span>
+            )}
           />
+          {series.map((s) => (
+            <Line
+              key={s.ticker}
+              type="linear"
+              dataKey={s.ticker}
+              name={s.ticker}
+              stroke={s.color}
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2, fill: s.color }}
+              isAnimationActive={false}
+            />
+          ))}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

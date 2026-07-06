@@ -1,5 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  addTickerToList,
+  buildMultiSeriesChartPayload,
+  buildPriceVolumeRows,
+  downsampleMultiChartRows,
+  downsampleRows,
+  mergeSeriesByUnionTimestamps,
+  normalizeTickerInput,
+  removeTickerFromList,
+  responseToChartRows,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -73,5 +86,123 @@ describe("downsampleRows", () => {
     expect(sampled).toContainEqual(rows[5]);
     expect(sampled).toContainEqual(rows[14]);
     expect(sampled.length).toBeLessThan(rows.length);
+  });
+});
+
+describe("normalizeTickerInput", () => {
+  test("trims and uppercases", () => {
+    expect(normalizeTickerInput("  msft  ")).toBe("MSFT");
+  });
+});
+
+describe("addTickerToList", () => {
+  test("rejects duplicate", () => {
+    expect(addTickerToList(["AAPL"], "aapl")).toEqual({ tickers: ["AAPL"], rejected: "duplicate" });
+  });
+
+  test("rejects at cap", () => {
+    const full = ["A", "B", "C", "D", "E"];
+    expect(addTickerToList(full, "F")).toEqual({ tickers: full, rejected: "cap" });
+  });
+
+  test("appends new ticker", () => {
+    expect(addTickerToList(["AAPL"], "MSFT")).toEqual({ tickers: ["AAPL", "MSFT"] });
+  });
+});
+
+describe("removeTickerFromList", () => {
+  test("removes matching ticker", () => {
+    expect(removeTickerFromList(["AAPL", "MSFT"], "AAPL")).toEqual(["MSFT"]);
+  });
+});
+
+describe("mergeSeriesByUnionTimestamps", () => {
+  test("uses union timestamps and null gaps", () => {
+    const merged = mergeSeriesByUnionTimestamps([
+      {
+        ticker: "AAPL",
+        rows: [
+          { t: 1000, price: 10 },
+          { t: 2000, price: 11 },
+        ],
+      },
+      {
+        ticker: "MSFT",
+        rows: [
+          { t: 1500, price: 20 },
+          { t: 2000, price: 21 },
+        ],
+      },
+    ]);
+
+    expect(merged).toEqual([
+      { t: 1000, AAPL: 10, MSFT: null },
+      { t: 1500, AAPL: null, MSFT: 20 },
+      { t: 2000, AAPL: 11, MSFT: 21 },
+    ]);
+  });
+});
+
+describe("buildMultiSeriesChartPayload", () => {
+  test("returns merged rows and series metadata", () => {
+    const payload = buildMultiSeriesChartPayload([
+      {
+        ticker: "AAPL",
+        data: {
+          ticker: "AAPL",
+          currency: "USD",
+          lastPrice: 11,
+          series: [
+            { timestamp: 1, close: 10, volume: null },
+            { timestamp: 2, close: 11, volume: null },
+          ],
+        },
+      },
+      {
+        ticker: "MSFT",
+        data: {
+          ticker: "MSFT",
+          currency: "USD",
+          lastPrice: 21,
+          series: [{ timestamp: 2, close: 21, volume: null }],
+        },
+      },
+    ]);
+
+    expect(payload?.series.map((s) => s.ticker)).toEqual(["AAPL", "MSFT"]);
+    expect(payload?.rows).toEqual([
+      { t: 1000, AAPL: 10, MSFT: null },
+      { t: 2000, AAPL: 11, MSFT: 21 },
+    ]);
+  });
+});
+
+describe("downsampleMultiChartRows", () => {
+  test("preserves shared timestamps across tickers", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => ({
+      t: i * 1000,
+      AAPL: 100 + i,
+      MSFT: 200 + i,
+    }));
+    const sampled = downsampleMultiChartRows(rows, 4);
+    expect(sampled[0]).toEqual(rows[0]);
+    expect(sampled[sampled.length - 1]).toEqual(rows[rows.length - 1]);
+    for (const row of sampled) {
+      expect(row.AAPL).not.toBeNull();
+      expect(row.MSFT).not.toBeNull();
+    }
+  });
+});
+
+describe("responseToChartRows", () => {
+  test("converts unix seconds to ms", () => {
+    expect(
+      responseToChartRows({
+        ticker: "X",
+        currency: null,
+        lastPrice: null,
+        series: [{ timestamp: 5, close: 99, volume: null }],
+      }),
+    ).toEqual([{ t: 5000, price: 99 }]);
   });
 });
