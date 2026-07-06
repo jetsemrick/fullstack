@@ -8,16 +8,18 @@ export type YahooParseResult = {
   points: PricePoint[];
   currency: string | null;
   lastPrice: number | null;
+  /** First open price in the series; null if no valid open found */
+  openPrice: number | null;
   symbol: string | null;
 };
 
 export function parseResult(body: unknown): YahooParseResult {
   if (typeof body !== "object" || body === null) {
-    return { errorMessage: "Invalid JSON", points: [], currency: null, lastPrice: null, symbol: null };
+    return { errorMessage: "Invalid JSON", points: [], currency: null, lastPrice: null, openPrice: null, symbol: null };
   }
   const chart = (body as Record<string, unknown>).chart;
   if (typeof chart !== "object" || chart === null) {
-    return { errorMessage: "Missing chart", points: [], currency: null, lastPrice: null, symbol: null };
+    return { errorMessage: "Missing chart", points: [], currency: null, lastPrice: null, openPrice: null, symbol: null };
   }
   const err = (chart as Record<string, unknown>).error;
   if (typeof err === "object" && err !== null && "description" in err) {
@@ -27,12 +29,13 @@ export function parseResult(body: unknown): YahooParseResult {
       points: [],
       currency: null,
       lastPrice: null,
+      openPrice: null,
       symbol: null,
     };
   }
   const result = (chart as Record<string, unknown>).result;
   if (!Array.isArray(result) || result[0] === undefined) {
-    return { errorMessage: "No data for symbol", points: [], currency: null, lastPrice: null, symbol: null };
+    return { errorMessage: "No data for symbol", points: [], currency: null, lastPrice: null, openPrice: null, symbol: null };
   }
   const first = result[0] as Record<string, unknown>;
   const meta = first.meta;
@@ -57,14 +60,15 @@ export function parseResult(body: unknown): YahooParseResult {
       : null;
   const timestamps = first.timestamp;
   if (!Array.isArray(timestamps) || timestamps.length === 0) {
-    return { errorMessage: "No series data", points: [], currency, lastPrice, symbol };
+    return { errorMessage: "No series data", points: [], currency, lastPrice, openPrice: null, symbol };
   }
   const indicators = first.indicators;
   const quote = extractQuoteArrays(indicators);
   if (!quote || !Array.isArray(quote.close) || quote.close.length !== timestamps.length) {
-    return { errorMessage: "Malformed quote data", points: [], currency, lastPrice, symbol };
+    return { errorMessage: "Malformed quote data", points: [], currency, lastPrice, openPrice: null, symbol };
   }
   const points: PricePoint[] = [];
+  let openPrice: number | null = null;
   for (let i = 0; i < timestamps.length; i++) {
     const ts = timestamps[i];
     const close = quote.close[i];
@@ -78,12 +82,20 @@ export function parseResult(body: unknown): YahooParseResult {
       const v = vol[i];
       volume = typeof v === "number" ? v : v === null ? null : null;
     }
-    points.push({ timestamp: ts, close, volume });
+    let open: number | null = null;
+    if (quote.open && Array.isArray(quote.open) && i < quote.open.length) {
+      const o = quote.open[i];
+      open = typeof o === "number" ? o : null;
+    }
+    if (openPrice === null && open !== null) {
+      openPrice = open;
+    }
+    points.push({ timestamp: ts, close, open, volume });
   }
   if (points.length === 0) {
-    return { errorMessage: "No price points", points: [], currency, lastPrice, symbol };
+    return { errorMessage: "No price points", points: [], currency, lastPrice, openPrice: null, symbol };
   }
-  return { errorMessage: null, points, currency, lastPrice, symbol };
+  return { errorMessage: null, points, currency, lastPrice, openPrice, symbol };
 }
 
 function pickNumber(v: unknown): number | null {
@@ -91,14 +103,19 @@ function pickNumber(v: unknown): number | null {
   return null;
 }
 
-function extractQuoteArrays(indicators: unknown): { close: (number | null)[]; volume: (number | null)[] | null } | null {
+function extractQuoteArrays(indicators: unknown): {
+  close: (number | null)[];
+  open: (number | null)[] | null;
+  volume: (number | null)[] | null;
+} | null {
   if (typeof indicators !== "object" || indicators === null) return null;
   const quoteArr = (indicators as { quote?: unknown[] }).quote;
   if (!Array.isArray(quoteArr) || !quoteArr[0]) return null;
-  const q0 = quoteArr[0] as { close?: unknown; volume?: unknown };
+  const q0 = quoteArr[0] as { close?: unknown; open?: unknown; volume?: unknown };
   if (!Array.isArray(q0.close)) return null;
+  const open = Array.isArray(q0.open) ? (q0.open as (number | null)[]) : null;
   const volume = Array.isArray(q0.volume) ? (q0.volume as (number | null)[]) : null;
-  return { close: q0.close as (number | null)[], volume };
+  return { close: q0.close as (number | null)[], open, volume };
 }
 
 export type YahooChartOpts = {
@@ -124,6 +141,7 @@ export async function fetchYahooChart(ticker: string, opts?: YahooChartOpts): Pr
       points: [] as PricePoint[],
       currency: null,
       lastPrice: null,
+      openPrice: null,
       symbol: null,
     };
   }

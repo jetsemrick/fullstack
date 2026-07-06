@@ -104,6 +104,7 @@ export async function handleApiRequest(req: Request): Promise<Response> {
         ticker: yahoo.symbol ?? ticker,
         currency: yahoo.currency,
         lastPrice: yahoo.lastPrice,
+        openPrice: yahoo.openPrice,
         series: yahoo.points,
       };
       return jsonResponse(body, { status: 200, headers: corsHeaders() });
