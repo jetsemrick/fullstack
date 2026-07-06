@@ -346,3 +346,97 @@
   color: #2b703e;
   border-color: #d1e2d3;
 }
+
+/* --- S&P ticker tape (full-width marquee above the header) --- */
+.ticker-tape {
+  width: 100%;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.ticker-tape--message {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.ticker-tape__viewport {
+  overflow: hidden;
+}
+
+.ticker-tape__track {
+  display: flex;
+  width: max-content;
+  animation: ticker-tape-scroll 60s linear infinite;
+}
+
+.ticker-tape:hover .ticker-tape__track {
+  animation-play-state: paused;
+}
+
+.ticker-tape__group {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  border-right: 1px solid var(--card-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker-tape__symbol {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.ticker-tape__price {
+  color: var(--fg);
+}
+
+.ticker-tape__pct {
+  font-weight: 500;
+}
+
+.ticker-tape__pct--up {
+  color: #2b703e;
+}
+
+.ticker-tape__pct--down {
+  color: #ba3b3b;
+}
+
+.ticker-tape__pct--muted {
+  color: var(--fg-muted);
+}
+
+/* Track holds two identical groups; shifting one full group width loops seamlessly. */
+@keyframes ticker-tape-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape__track {
+    animation: none;
+  }
+
+  /* No motion: expose a single group and let users scroll to reach every value. */
+  .ticker-tape__viewport {
+    overflow-x: auto;
+  }
+
+  .ticker-tape__group + .ticker-tape__group {
+    display: none;
+  }
+}

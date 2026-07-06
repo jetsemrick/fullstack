@@ -38,3 +38,8 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** Batch of curated large-cap quotes powering the scrolling S&P ticker tape. */
+export interface TickerTapeResponse {
+  quotes: MarketIndexQuote[];
+}
