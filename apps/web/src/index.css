@@ -8,6 +8,11 @@
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
   --font: "Inter", system-ui, -apple-system, sans-serif;
+  --series-1: #2b703e;
+  --series-2: #2563eb;
+  --series-3: #7c3aed;
+  --series-4: #0891b2;
+  --series-5: #ca8a04;
 }
 
 *,
