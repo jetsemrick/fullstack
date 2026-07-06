@@ -3,6 +3,7 @@ import {
   CartesianGrid,
   ComposedChart,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,6 +13,7 @@ import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import { getOpenPrice, getOverallTrend } from "./openPriceColoring";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -20,6 +22,9 @@ const chartData = (data: GetPricesResponse) =>
     t: p.timestamp * 1000,
     price: p.close,
   }));
+
+const CHART_GREEN = "#10B981";
+const CHART_RED = "#EF4444";
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -65,12 +70,22 @@ export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
   const fillGradientId = useId().replace(/:/g, "");
+  const greenGradientId = `${fillGradientId}-green`;
+  const redGradientId = `${fillGradientId}-red`;
+
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
   }, [fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+
+  const openPrice = useMemo(() => {
+    if (variant === "intraday") return null;
+    return getOpenPrice(data);
+  }, [data, variant]);
+
+  const useOpenColoring = variant === "daily" && openPrice !== null;
 
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
@@ -92,7 +107,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     if (variant === "intraday" && sessionLayout && rows.length > 0) {
       const dataStart = rows[0].t;
       const dataEnd = rows[rows.length - 1].t;
-      // Anchor left to first bar so pre-market domain padding does not leave empty chart space.
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
@@ -110,6 +124,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
               <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
             </linearGradient>
+            {useOpenColoring && (
+              <>
+                <linearGradient id={greenGradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={CHART_GREEN} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={CHART_GREEN} stopOpacity={0.05} />
+                </linearGradient>
+                <linearGradient id={redGradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={CHART_RED} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={CHART_RED} stopOpacity={0.05} />
+                </linearGradient>
+              </>
+            )}
           </defs>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           {variant === "intraday" && sessionLayout ? (
@@ -132,6 +158,20 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               />
             </>
           ) : null}
+          {useOpenColoring && (
+            <ReferenceLine
+              y={openPrice}
+              stroke="var(--fg-muted)"
+              strokeDasharray="4 4"
+              strokeWidth={1}
+              label={{
+                value: `Open: ${formatPrice(openPrice)}`,
+                position: "insideTopRight",
+                fill: "var(--fg-muted)",
+                fontSize: 11,
+              }}
+            />
+          )}
           <XAxis
             dataKey="t"
             type="number"
@@ -171,19 +211,36 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: number | string) => {
+              if (typeof value !== "number") return [value, "Close"];
+              return [formatPrice(value), "Close"];
+            }}
           />
-          <Area
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
+          {useOpenColoring ? (
+            <Area
+              type="linear"
+              dataKey="price"
+              stroke={getOverallTrend(rows, openPrice!) === "negative" ? CHART_RED : CHART_GREEN}
+              strokeWidth={2}
+              fill={`url(#${getOverallTrend(rows, openPrice!) === "negative" ? redGradientId : greenGradientId})`}
+              baseValue="dataMin"
+              dot={false}
+              activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2, fill: getOverallTrend(rows, openPrice!) === "negative" ? CHART_RED : CHART_GREEN }}
+              isAnimationActive={false}
+            />
+          ) : (
+            <Area
+              type="linear"
+              dataKey="price"
+              stroke="var(--accent)"
+              strokeWidth={3}
+              fill={`url(#${fillGradientId})`}
+              baseValue="dataMin"
+              dot={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+              isAnimationActive={false}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

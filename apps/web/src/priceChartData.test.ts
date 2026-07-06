@@ -8,15 +8,15 @@ describe("seriesHasVolume", () => {
   });
   test("false when all null", () => {
     const s: PricePoint[] = [
-      { timestamp: 1, close: 1, volume: null },
-      { timestamp: 2, close: 2, volume: null },
+      { timestamp: 1, close: 1, open: null, volume: null },
+      { timestamp: 2, close: 2, open: null, volume: null },
     ];
     expect(seriesHasVolume(s)).toBe(false);
   });
   test("true when any non-null", () => {
     const s: PricePoint[] = [
-      { timestamp: 1, close: 1, volume: null },
-      { timestamp: 2, close: 2, volume: 1_000_000 },
+      { timestamp: 1, close: 1, open: null, volume: null },
+      { timestamp: 2, close: 2, open: null, volume: 1_000_000 },
     ];
     expect(seriesHasVolume(s)).toBe(true);
   });
@@ -28,9 +28,10 @@ describe("buildPriceVolumeRows", () => {
       ticker: "X",
       currency: "USD",
       lastPrice: 10,
+      openPrice: 1.5,
       series: [
-        { timestamp: 1000, close: 1.5, volume: 100 },
-        { timestamp: 2000, close: 2, volume: null },
+        { timestamp: 1000, close: 1.5, open: 1.5, volume: 100 },
+        { timestamp: 2000, close: 2, open: null, volume: null },
       ],
     };
     const rows = buildPriceVolumeRows(data);
