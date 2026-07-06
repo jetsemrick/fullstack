@@ -13,6 +13,16 @@ export type ChartRow = {
   price: number;
 };
 
+export type RangeNetChange = {
+  startMs: number;
+  endMs: number;
+  startPrice: number;
+  endPrice: number;
+  pointCount: number;
+  absolute: number;
+  percent: number | null;
+};
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
@@ -57,6 +67,32 @@ export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
 
   result.push(rows[rows.length - 1]!);
   return result;
+}
+
+export function computeRangeNetChange(
+  rows: ChartRow[],
+  startMs: number,
+  endMs: number,
+): RangeNetChange | null {
+  const minMs = Math.min(startMs, endMs);
+  const maxMs = Math.max(startMs, endMs);
+  const selectedRows = rows.filter((row) => row.t >= minMs && row.t <= maxMs);
+
+  if (selectedRows.length < 2) return null;
+
+  const first = selectedRows[0]!;
+  const last = selectedRows[selectedRows.length - 1]!;
+  const absolute = last.price - first.price;
+
+  return {
+    startMs: first.t,
+    endMs: last.t,
+    startPrice: first.price,
+    endPrice: last.price,
+    pointCount: selectedRows.length,
+    absolute,
+    percent: first.price === 0 ? null : (absolute / first.price) * 100,
+  };
 }
 
 export function formatVolumeAxis(n: number): string {

@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  computeRangeNetChange,
+  downsampleRows,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -73,5 +80,45 @@ describe("downsampleRows", () => {
     expect(sampled).toContainEqual(rows[5]);
     expect(sampled).toContainEqual(rows[14]);
     expect(sampled.length).toBeLessThan(rows.length);
+  });
+});
+
+describe("computeRangeNetChange", () => {
+  const rows = [
+    { t: 1_000, price: 100 },
+    { t: 2_000, price: 110 },
+    { t: 3_000, price: 105 },
+    { t: 4_000, price: 115 },
+  ];
+
+  test("uses first and last close inside inclusive range", () => {
+    expect(computeRangeNetChange(rows, 2_000, 4_000)).toEqual({
+      startMs: 2_000,
+      endMs: 4_000,
+      startPrice: 110,
+      endPrice: 115,
+      pointCount: 3,
+      absolute: 5,
+      percent: 5 / 110 * 100,
+    });
+  });
+
+  test("normalizes reverse drag ranges", () => {
+    expect(computeRangeNetChange(rows, 4_000, 2_000)?.absolute).toBe(5);
+  });
+
+  test("returns null for selections shorter than two points", () => {
+    expect(computeRangeNetChange(rows, 2_000, 2_000)).toBeNull();
+    expect(computeRangeNetChange(rows, 1_500, 2_500)).toBeNull();
+  });
+
+  test("returns null percent when the start price is zero", () => {
+    const result = computeRangeNetChange([
+      { t: 1_000, price: 0 },
+      { t: 2_000, price: 10 },
+    ], 1_000, 2_000);
+
+    expect(result?.absolute).toBe(10);
+    expect(result?.percent).toBeNull();
   });
 });
