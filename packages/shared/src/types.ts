@@ -4,6 +4,8 @@ export interface PricePoint {
   timestamp: number;
   /** Adjusted or regular close, depending on source */
   close: number;
+  /** Opening price for this bar; null if unavailable */
+  open: number | null;
   /** Optional per-bar volume */
   volume: number | null;
 }
@@ -13,6 +15,8 @@ export interface GetPricesResponse {
   currency: string | null;
   /** Most recent last price from metadata when available */
   lastPrice: number | null;
+  /** Session open price; first open in series or null if unavailable */
+  openPrice: number | null;
   series: PricePoint[];
 }
 
