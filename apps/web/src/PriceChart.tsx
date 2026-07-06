@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { computeRangeNetChange, downsampleRows, type ChartRow, type RangeNetChange } from "./priceChartData";
@@ -98,6 +98,10 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   const fillGradientId = useId().replace(/:/g, "");
   const instructionsId = useId().replace(/:/g, "");
   const [draftRange, setDraftRange] = useState<{ startMs: number; currentMs: number } | null>(null);
+  const draftRangeRef = useRef<{ startMs: number; currentMs: number } | null>(null);
+  const rowsRef = useRef<ChartRow[]>([]);
+  const onRangeChangeRef = useRef(onRangeChange);
+  const removeWindowMouseUpRef = useRef<(() => void) | null>(null);
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -122,19 +126,37 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   }, [sessionLayout]);
 
   useEffect(() => {
-    setDraftRange(null);
-  }, [data, variant]);
+    rowsRef.current = rows;
+    onRangeChangeRef.current = onRangeChange;
+  }, [rows, onRangeChange]);
 
-  useEffect(() => {
-    if (!draftRange) return;
+  useEffect(() => () => {
+    removeWindowMouseUpRef.current?.();
+  }, []);
+
+  const finalizeDraftRange = useCallback((endMs: number | null) => {
+    const current = draftRangeRef.current;
+    const finalEndMs = endMs ?? current?.currentMs;
+
+    if (current && finalEndMs != null) {
+      onRangeChangeRef.current(computeRangeNetChange(rowsRef.current, current.startMs, finalEndMs));
+    }
+
+    draftRangeRef.current = null;
+    setDraftRange(null);
+  }, []);
+
+  function bindWindowMouseUp() {
+    removeWindowMouseUpRef.current?.();
 
     function handleWindowMouseUp() {
-      setDraftRange(null);
+      removeWindowMouseUpRef.current = null;
+      finalizeDraftRange(null);
     }
 
     window.addEventListener("mouseup", handleWindowMouseUp);
-    return () => window.removeEventListener("mouseup", handleWindowMouseUp);
-  }, [draftRange]);
+    removeWindowMouseUpRef.current = () => window.removeEventListener("mouseup", handleWindowMouseUp);
+  }
 
   const xDomain = useMemo((): [number, number] | [string, string] => {
     if (variant === "intraday" && sessionLayout && rows.length > 0) {
@@ -154,21 +176,28 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   function handleMouseDown(state: unknown) {
     const ms = chartEventMs(state);
     if (ms == null) return;
-    setDraftRange({ startMs: ms, currentMs: ms });
+    const nextRange = { startMs: ms, currentMs: ms };
+    draftRangeRef.current = nextRange;
+    setDraftRange(nextRange);
+    bindWindowMouseUp();
   }
 
   function handleMouseMove(state: unknown) {
     const ms = chartEventMs(state);
     if (ms == null) return;
-    setDraftRange((current) => current ? { ...current, currentMs: ms } : current);
+    setDraftRange((current) => {
+      if (!current) return current;
+      const nextRange = { ...current, currentMs: ms };
+      draftRangeRef.current = nextRange;
+      return nextRange;
+    });
   }
 
   function handleMouseUp(state: unknown) {
-    const ms = chartEventMs(state);
-    if (draftRange && ms != null) {
-      onRangeChange(computeRangeNetChange(rows, draftRange.startMs, ms));
-    }
-    setDraftRange(null);
+    const endMs = chartEventMs(state) ?? draftRange?.currentMs ?? null;
+    removeWindowMouseUpRef.current?.();
+    removeWindowMouseUpRef.current = null;
+    finalizeDraftRange(endMs);
   }
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;

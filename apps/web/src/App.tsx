@@ -135,10 +135,6 @@ export default function App() {
   }, [load]);
 
   useEffect(() => {
-    setSelectedRange(null);
-  }, [ticker, horizonIndex]);
-
-  useEffect(() => {
     if (!selectedRange) return;
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -184,6 +180,7 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setSelectedRange(null);
     setTicker(t);
   }
 
@@ -264,7 +261,10 @@ export default function App() {
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setSelectedRange(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
