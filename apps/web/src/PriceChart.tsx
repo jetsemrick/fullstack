@@ -99,7 +99,6 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   const instructionsId = useId().replace(/:/g, "");
   const [draftRange, setDraftRange] = useState<{ startMs: number; currentMs: number } | null>(null);
   const draftRangeRef = useRef<{ startMs: number; currentMs: number } | null>(null);
-  const fullRowsRef = useRef<ChartRow[]>([]);
   const onRangeChangeRef = useRef(onRangeChange);
   const removeWindowMouseUpRef = useRef<(() => void) | null>(null);
   const removeWindowKeyDownRef = useRef<(() => void) | null>(null);
@@ -127,9 +126,8 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   }, [sessionLayout]);
 
   useEffect(() => {
-    fullRowsRef.current = fullRows;
     onRangeChangeRef.current = onRangeChange;
-  }, [fullRows, onRangeChange]);
+  }, [onRangeChange]);
 
   useEffect(() => () => {
     removeWindowMouseUpRef.current?.();
@@ -151,12 +149,12 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
     const finalEndMs = endMs ?? current?.currentMs;
 
     if (current && finalEndMs != null) {
-      const nextRange = computeRangeNetChange(fullRowsRef.current, current.startMs, finalEndMs);
+      const nextRange = computeRangeNetChange(fullRows, current.startMs, finalEndMs);
       if (nextRange) onRangeChangeRef.current(nextRange);
     }
 
     clearDraftRange(false);
-  }, [clearDraftRange]);
+  }, [clearDraftRange, fullRows]);
 
   const cancelSelection = useCallback(() => {
     clearDraftRange(true);
