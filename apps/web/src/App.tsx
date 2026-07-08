@@ -3,6 +3,7 @@ import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { ThemeToggle } from "./ThemeToggle";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -129,6 +130,7 @@ export default function App() {
     <div className="shell">
       <header className="header">
         <MarketStrip />
+        <ThemeToggle />
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
           <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
           <div className="search-input-wrapper">
