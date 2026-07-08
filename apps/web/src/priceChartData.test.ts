@@ -14,6 +14,7 @@ import {
   formatVolumeTooltip,
   indexedValueFromStart,
   removeTickerFromList,
+  resolveCompareColor,
   seriesHasVolume,
 } from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
@@ -213,6 +214,13 @@ describe("buildCompareSeries", () => {
     };
     const series = buildCompareSeries([{ ticker: "A", data }], { A: "#ff00ff" });
     expect(series[0]!.color).toBe("#ff00ff");
+  });
+});
+
+describe("resolveCompareColor", () => {
+  test("prefers colorsByTicker over index fallback", () => {
+    expect(resolveCompareColor("MSFT", 0, { MSFT: "#123456" })).toBe("#123456");
+    expect(resolveCompareColor("AAPL", 1, {})).toBe(colorForCompareIndex(1));
   });
 });
 

@@ -12,7 +12,6 @@ import {
   filterSeriesByHorizon,
   normalizeTickerInput,
   removeTickerFromList,
-  resolveCompareColor,
 } from "./priceChartData";
 import "./app.css";
 
@@ -92,6 +91,7 @@ export default function App() {
     }
 
     if (Object.keys(cachedEntries).length > 0) {
+      if (signal.aborted || requestId !== requestIdRef.current) return;
       setSeriesByTicker((prev) => ({ ...prev, ...cachedEntries }));
     }
 
@@ -172,6 +172,10 @@ export default function App() {
 
   const compareSeries = useMemo(() => buildCompareSeries(compareInputs), [compareInputs]);
   const compareRows = useMemo(() => buildCompareChartRows(compareInputs), [compareInputs]);
+  const colorByTicker = useMemo(
+    () => Object.fromEntries(compareSeries.map((s) => [s.ticker, s.color])),
+    [compareSeries],
+  );
 
   const primaryTicker = selectedTickers[0] ?? DEFAULT_TICKER;
   const primaryData = slicedByTicker[primaryTicker] ?? null;
@@ -296,13 +300,13 @@ export default function App() {
             </p>
           )}
           <ul className="compare-chips" aria-label="Tickers on chart">
-            {selectedTickers.map((t, i) => (
+            {selectedTickers.map((t) => (
               <li key={t}>
                 <span
                   className="compare-chip"
                   style={
-                    isCompareMode
-                      ? { borderLeftColor: resolveCompareColor(t, i) }
+                    isCompareMode && colorByTicker[t]
+                      ? { borderLeftColor: colorByTicker[t] }
                       : undefined
                   }
                 >

@@ -20,7 +20,7 @@ import {
   formatCompareAxisValue,
   formatCompareTooltipValue,
 } from "./priceChartData";
-import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs, regularSessionDomainUtcMs } from "./usMarket";
+import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -145,20 +145,25 @@ function ComparePriceChart({
 
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
-  const intradayDomain = useMemo(() => {
+  const sessionLayout = useMemo(() => {
     if (variant !== "intraday" || anchorMs <= 0) return undefined;
-    return regularSessionDomainUtcMs(anchorMs);
+    return intradaySessionLayoutUtcMs(anchorMs);
   }, [variant, anchorMs]);
 
   const intradayTicks = useMemo(() => {
-    if (!intradayDomain) return undefined;
-    return hourlySessionTicksUtcMs(intradayDomain[0], intradayDomain[1]);
-  }, [intradayDomain]);
+    if (!sessionLayout) return undefined;
+    return hourlySessionTicksUtcMs(sessionLayout.rth[0], sessionLayout.rth[1]);
+  }, [sessionLayout]);
 
   const xDomain = useMemo((): [number, number] | [string, string] => {
-    if (variant === "intraday" && intradayDomain) return intradayDomain;
+    if (variant === "intraday" && sessionLayout && rows.length > 0) {
+      const dataStart = rows[0]!.t;
+      const dataEnd = rows[rows.length - 1]!.t;
+      return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
+    }
+    if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
-  }, [variant, intradayDomain]);
+  }, [variant, sessionLayout, rows]);
 
   if (rows.length === 0) {
     return (
