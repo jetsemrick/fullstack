@@ -1,12 +1,20 @@
 :root {
-  --bg: #f4f5f3;
-  --fg: #2b302b;
-  --fg-muted: #6b726b;
-  --accent: #93af93;
-  --accent-hover: #7b997b;
-  --card: #ffffff;
-  --card-border: #e2e4e0;
-  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
+  --bg: #fff3c4;
+  --fg: #073b4c;
+  --fg-muted: #43758a;
+  --accent: #0077b6;
+  --accent-hover: #005f90;
+  --accent-ring: rgba(0, 119, 182, 0.24);
+  --button-fg: #ffffff;
+  --card: #fffdf2;
+  --card-border: #89d8f7;
+  --positive: #00875a;
+  --positive-bg: #d9fff0;
+  --positive-border: #7ee7be;
+  --negative: #c2412d;
+  --negative-bg: #ffe1d8;
+  --negative-border: #ffb29f;
+  --shadow: 0 8px 24px rgba(0, 119, 182, 0.14), 0 2px 6px rgba(7, 59, 76, 0.08);
   --font: "Inter", system-ui, -apple-system, sans-serif;
 }
 
@@ -25,7 +33,7 @@ body,
 
 body {
   font-family: var(--font);
-  background: var(--bg);
+  background: linear-gradient(180deg, #8fe7ff 0%, var(--bg) 42%, #ffd166 100%);
   color: var(--fg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
