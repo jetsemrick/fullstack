@@ -99,9 +99,10 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   const instructionsId = useId().replace(/:/g, "");
   const [draftRange, setDraftRange] = useState<{ startMs: number; currentMs: number } | null>(null);
   const draftRangeRef = useRef<{ startMs: number; currentMs: number } | null>(null);
-  const rowsRef = useRef<ChartRow[]>([]);
+  const fullRowsRef = useRef<ChartRow[]>([]);
   const onRangeChangeRef = useRef(onRangeChange);
   const removeWindowMouseUpRef = useRef<(() => void) | null>(null);
+  const removeWindowKeyDownRef = useRef<(() => void) | null>(null);
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -126,12 +127,23 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   }, [sessionLayout]);
 
   useEffect(() => {
-    rowsRef.current = rows;
+    fullRowsRef.current = fullRows;
     onRangeChangeRef.current = onRangeChange;
-  }, [rows, onRangeChange]);
+  }, [fullRows, onRangeChange]);
 
   useEffect(() => () => {
     removeWindowMouseUpRef.current?.();
+    removeWindowKeyDownRef.current?.();
+  }, []);
+
+  const clearDraftRange = useCallback((clearSelection: boolean) => {
+    removeWindowMouseUpRef.current?.();
+    removeWindowKeyDownRef.current?.();
+    removeWindowMouseUpRef.current = null;
+    removeWindowKeyDownRef.current = null;
+    draftRangeRef.current = null;
+    setDraftRange(null);
+    if (clearSelection) onRangeChangeRef.current(null);
   }, []);
 
   const finalizeDraftRange = useCallback((endMs: number | null) => {
@@ -139,12 +151,30 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
     const finalEndMs = endMs ?? current?.currentMs;
 
     if (current && finalEndMs != null) {
-      onRangeChangeRef.current(computeRangeNetChange(rowsRef.current, current.startMs, finalEndMs));
+      const nextRange = computeRangeNetChange(fullRowsRef.current, current.startMs, finalEndMs);
+      if (nextRange) onRangeChangeRef.current(nextRange);
     }
 
-    draftRangeRef.current = null;
-    setDraftRange(null);
-  }, []);
+    clearDraftRange(false);
+  }, [clearDraftRange]);
+
+  const cancelSelection = useCallback(() => {
+    clearDraftRange(true);
+  }, [clearDraftRange]);
+
+  function bindWindowKeyDown() {
+    removeWindowKeyDownRef.current?.();
+
+    function handleWindowKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cancelSelection();
+      }
+    }
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+    removeWindowKeyDownRef.current = () => window.removeEventListener("keydown", handleWindowKeyDown);
+  }
 
   function bindWindowMouseUp() {
     removeWindowMouseUpRef.current?.();
@@ -180,6 +210,7 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
     draftRangeRef.current = nextRange;
     setDraftRange(nextRange);
     bindWindowMouseUp();
+    bindWindowKeyDown();
   }
 
   function handleMouseMove(state: unknown) {
@@ -195,8 +226,6 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
 
   function handleMouseUp(state: unknown) {
     const endMs = chartEventMs(state) ?? draftRange?.currentMs ?? null;
-    removeWindowMouseUpRef.current?.();
-    removeWindowMouseUpRef.current = null;
     finalizeDraftRange(endMs);
   }
 
@@ -210,7 +239,7 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
       tabIndex={0}
       className="chart-interaction-surface"
       onKeyDown={(event) => {
-        if (event.key === "Escape") onRangeChange(null);
+        if (event.key === "Escape") cancelSelection();
       }}
     >
       <span id={instructionsId} className="sr-only">
