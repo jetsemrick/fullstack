@@ -150,7 +150,9 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
 
     if (current && finalEndMs != null) {
       const nextRange = computeRangeNetChange(fullRows, current.startMs, finalEndMs);
-      if (nextRange) onRangeChangeRef.current(nextRange);
+      if (nextRange) {
+        onRangeChangeRef.current(nextRange);
+      }
     }
 
     clearDraftRange(false);
@@ -223,7 +225,8 @@ export function PriceChart({ data, variant = "daily", selectedRange, onRangeChan
   }
 
   function handleMouseUp(state: unknown) {
-    const endMs = chartEventMs(state) ?? draftRange?.currentMs ?? null;
+    const eventMs = chartEventMs(state);
+    const endMs = eventMs ?? draftRange?.currentMs ?? null;
     finalizeDraftRange(endMs);
   }
 

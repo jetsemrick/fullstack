@@ -138,7 +138,9 @@ export default function App() {
     if (!selectedRange) return;
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedRange(null);
+      if (event.key === "Escape") {
+        setSelectedRange(null);
+      }
     }
 
     function handlePointerDown(event: PointerEvent) {
@@ -183,6 +185,10 @@ export default function App() {
     setSelectedRange(null);
     setTicker(t);
   }
+
+  const handleRangeChange = useCallback((range: RangeNetChange | null) => {
+    setSelectedRange(range);
+  }, []);
 
   return (
     <div className="shell">
@@ -281,7 +287,7 @@ export default function App() {
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                   selectedRange={selectedRange}
-                  onRangeChange={setSelectedRange}
+                  onRangeChange={handleRangeChange}
                 />
               </div>
               <p className="range-selection-help">
