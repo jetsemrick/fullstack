@@ -1,0 +1,9 @@
+{
+  "target": {
+    "cloudId": "https://3p-agents.atlassian.net",
+    "projectKey": "FD",
+    "project": "Fullstack Demo",
+    "boardId": 87,
+    "assigneeAccountId": "712020:3aa5e427-f329-4e52-91da-edf151d64070"
+  }
+}
