@@ -3,6 +3,7 @@ import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import type { RangeNetChange } from "./priceChartData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -24,6 +25,32 @@ function formatPercentChange(data: GetPricesResponse | null) {
     isPositive: pct > 0,
     isNegative: pct < 0
   };
+}
+
+function formatSignedCurrencyChange(value: number, currency: string | null): string {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const absoluteValue = Math.abs(value);
+
+  if (currency) {
+    try {
+      return `${sign}${absoluteValue.toLocaleString(undefined, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+    } catch {
+      return `${sign}${absoluteValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+    }
+  }
+
+  return `${sign}${absoluteValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatSignedPercent(value: number | null): string {
+  if (value == null) return "N/A";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
 const HORIZONS = [
@@ -61,7 +88,9 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRange, setSelectedRange] = useState<RangeNetChange | null>(null);
   const requestIdRef = useRef(0);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -105,6 +134,28 @@ export default function App() {
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    if (!selectedRange) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedRange(null);
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Node && !chartContainerRef.current?.contains(target)) {
+        setSelectedRange(null);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [selectedRange]);
+
   const slicedDaily = useMemo(() => {
     if (!data) return null;
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
@@ -118,10 +169,18 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
+  const selectedRangeStatusClass = selectedRange
+    ? selectedRange.absolute > 0
+      ? "positive"
+      : selectedRange.absolute < 0
+        ? "negative"
+        : "muted"
+    : "muted";
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setSelectedRange(null);
     setTicker(t);
   }
 
@@ -188,13 +247,24 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {selectedRange ? (
+                      <span
+                        className={`metric-badge range-metric ${selectedRangeStatusClass}`}
+                        title={`${formatLast(selectedRange.startPrice, currencyDisplay)} to ${formatLast(selectedRange.endPrice, currencyDisplay)} across ${selectedRange.pointCount} points`}
+                      >
+                        Range {formatSignedCurrencyChange(selectedRange.absolute, currencyDisplay)} ({formatSignedPercent(selectedRange.percent)})
+                      </span>
+                    ) : null}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setSelectedRange(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -203,14 +273,20 @@ export default function App() {
                 </div>
               </div>
               <div
+                ref={chartContainerRef}
                 className="chart-container"
                 aria-label="Price chart"
               >
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  selectedRange={selectedRange}
+                  onRangeChange={setSelectedRange}
                 />
               </div>
+              <p className="range-selection-help">
+                Drag across the chart to select a range. Press Escape or click outside the chart to clear it.
+              </p>
               {loading && (
                 <div className="chart-loading-overlay" role="status">
                   Loading latest data...
