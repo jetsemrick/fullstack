@@ -197,7 +197,7 @@ export default function App() {
                     })()}
                   </div>
                   <div className="toolbar-controls">
-                    <div className="segmented-buttons" aria-label="Time horizon">
+                    <div className="segmented-buttons" role="group" aria-label="Time horizon">
                       {HORIZONS.map((h, i) => (
                         <button
                           key={h.label}
@@ -210,7 +210,7 @@ export default function App() {
                         </button>
                       ))}
                     </div>
-                    <div className="segmented-buttons" aria-label="Chart type">
+                    <div className="segmented-buttons" role="group" aria-label="Chart type">
                       {CHART_TYPES.map((option) => (
                         <button
                           key={option.value}
