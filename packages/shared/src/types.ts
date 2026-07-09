@@ -38,3 +38,17 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** How overlaid compare series are scaled on the Y axis. */
+export type CompareNormalization = "indexed" | "absolute";
+
+/** One ticker input for aligning multiple price series on a shared time index. */
+export interface CompareSeriesInput {
+  ticker: string;
+  series: PricePoint[];
+}
+
+/** Chart row after aligning multiple tickers on common timestamps (`t` in ms). */
+export type AlignedCompareRow = {
+  t: number;
+} & Record<string, number | undefined>;
