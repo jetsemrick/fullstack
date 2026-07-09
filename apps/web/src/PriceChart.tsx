@@ -1,6 +1,8 @@
 import {
   Area,
+  Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   ReferenceArea,
   ResponsiveContainer,
@@ -11,15 +13,11 @@ import {
 import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import { buildOhlcChartRows, downsampleOhlcRows, downsampleRows, formatVolumeTooltip, type OhlcChartRow } from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
+const CANDLE_UP_COLOR = "#2b703e";
+const CANDLE_DOWN_COLOR = "#ba3b3b";
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -62,14 +60,24 @@ function formatPrice(n: number): string {
 }
 
 export type PriceChartVariant = "daily" | "intraday";
+export type PriceChartType = "line" | "candlestick";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export function PriceChart({
+  data,
+  variant = "daily",
+  chartType = "line",
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  chartType?: PriceChartType;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
-  const fullRows = useMemo(() => chartData(data), [data]);
+  const fullRows = useMemo(() => buildOhlcChartRows(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
+    if (chartType === "candlestick") return downsampleOhlcRows(fullRows, MAX_DAILY_RENDER_POINTS);
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
-  }, [fullRows, variant]);
+  }, [chartType, fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -99,10 +107,25 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
+  const yDomain = useMemo((): [number, number] | ["auto", "auto"] => {
+    if (chartType === "line") return ["auto", "auto"];
+    if (rows.length === 0) return ["auto", "auto"];
+    const low = Math.min(...rows.map((row) => row.low));
+    const high = Math.max(...rows.map((row) => row.high));
+    const padding = Math.max((high - low) * 0.04, high * 0.002, 0.01);
+    return [low - padding, high + padding];
+  }, [chartType, rows]);
+
+  const candleBodyWidth = useMemo(() => Math.max(2, Math.min(10, 760 / rows.length)), [rows.length]);
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      role="img"
+      aria-label={chartType === "candlestick" ? "Price over time candlestick chart" : "Price over time line chart"}
+      style={{ width: "100%", height: "100%" }}
+    >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -147,7 +170,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           />
           <YAxis
             dataKey="price"
-            domain={["auto", "auto"]}
+            domain={yDomain}
             width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
@@ -171,21 +194,81 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
+            content={chartType === "candlestick" ? (props) => <CandlestickTooltip {...props} variant={variant} spanDays={spanDays} /> : undefined}
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
-          <Area
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
+          {chartType === "candlestick" ? (
+            <>
+              <Bar dataKey="wickRange" barSize={1} isAnimationActive={false}>
+                {rows.map((row) => (
+                  <Cell key={`wick-${row.t}`} fill={row.isUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR} />
+                ))}
+              </Bar>
+              <Bar dataKey="bodyRange" barSize={candleBodyWidth} minPointSize={2} isAnimationActive={false}>
+                {rows.map((row) => (
+                  <Cell key={`body-${row.t}`} fill={row.isUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR} />
+                ))}
+              </Bar>
+            </>
+          ) : (
+            <Area
+              type="linear"
+              dataKey="price"
+              stroke="var(--accent)"
+              strokeWidth={3}
+              fill={`url(#${fillGradientId})`}
+              baseValue="dataMin"
+              dot={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+              isAnimationActive={false}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+function CandlestickTooltip({
+  active,
+  payload,
+  variant,
+  spanDays,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: OhlcChartRow }>;
+  variant: PriceChartVariant;
+  spanDays: number;
+}) {
+  const row = payload?.find((item) => item.payload)?.payload;
+  if (!active || !row) return null;
+
+  return (
+    <div
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--card-border)",
+        borderRadius: "12px",
+        color: "var(--fg)",
+        boxShadow: "var(--shadow)",
+        padding: "12px",
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{formatTooltipWhen(row.t, variant, spanDays)}</div>
+      <TooltipRow label="Open" value={formatPrice(row.open)} />
+      <TooltipRow label="High" value={formatPrice(row.high)} />
+      <TooltipRow label="Low" value={formatPrice(row.low)} />
+      <TooltipRow label="Close" value={formatPrice(row.close)} />
+      <TooltipRow label="Volume" value={formatVolumeTooltip(row.volume)} />
+    </div>
+  );
+}
+
+function TooltipRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "1.5rem", fontSize: "0.85rem" }}>
+      <span style={{ color: "var(--fg-muted)" }}>{label}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{value}</span>
     </div>
   );
 }

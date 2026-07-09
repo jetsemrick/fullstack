@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { PriceChart } from "./PriceChart";
+import { PriceChart, type PriceChartType } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import "./app.css";
 
@@ -33,6 +33,11 @@ const HORIZONS = [
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
+const CHART_TYPES: Array<{ label: string; value: PriceChartType }> = [
+  { label: "Line", value: "line" },
+  { label: "Candlestick", value: "candlestick" },
+];
+
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
 
@@ -57,6 +62,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [chartType, setChartType] = useState<PriceChartType>("line");
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,16 +196,33 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
+                  <div className="toolbar-controls">
+                    <div className="segmented-buttons" aria-label="Time horizon">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          type="button"
+                          className={`segmented-btn ${i === horizonIndex ? "active" : ""}`}
+                          aria-pressed={i === horizonIndex}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="segmented-buttons" aria-label="Chart type">
+                      {CHART_TYPES.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`segmented-btn ${option.value === chartType ? "active" : ""}`}
+                          aria-pressed={option.value === chartType}
+                          onClick={() => setChartType(option.value)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -210,6 +233,7 @@ export default function App() {
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  chartType={chartType}
                 />
               </div>
               {loading && (

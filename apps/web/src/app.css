@@ -315,14 +315,21 @@
   border: 0;
 }
 
-.horizon-buttons {
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.segmented-buttons {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
 }
 
-.horizon-btn {
+.segmented-btn {
   background: transparent;
   border: 1px solid var(--card-border);
   color: var(--fg-muted);
@@ -335,13 +342,13 @@
   transition: all 0.2s ease;
 }
 
-.horizon-btn:hover {
+.segmented-btn:hover {
   background: var(--bg);
   color: var(--fg);
   border-color: var(--fg-muted);
 }
 
-.horizon-btn.active {
+.segmented-btn.active {
   background: #edf5ee;
   color: #2b703e;
   border-color: #d1e2d3;

@@ -1,7 +1,13 @@
-/** Single point on the price series (close-based line). */
+/** Single point on the price series. */
 export interface PricePoint {
   /** Unix seconds */
   timestamp: number;
+  /** Regular open for the bar */
+  open: number;
+  /** Regular high for the bar */
+  high: number;
+  /** Regular low for the bar */
+  low: number;
   /** Adjusted or regular close, depending on source */
   close: number;
   /** Optional per-bar volume */

@@ -61,24 +61,26 @@ export function parseResult(body: unknown): YahooParseResult {
   }
   const indicators = first.indicators;
   const quote = extractQuoteArrays(indicators);
-  if (!quote || !Array.isArray(quote.close) || quote.close.length !== timestamps.length) {
+  if (!quote) {
     return { errorMessage: "Malformed quote data", points: [], currency, lastPrice, symbol };
   }
   const points: PricePoint[] = [];
   for (let i = 0; i < timestamps.length; i++) {
     const ts = timestamps[i];
-    const close = quote.close[i];
-    if (typeof ts !== "number" || (close !== null && typeof close !== "number")) {
+    const open = pickNumber(quote.open[i]);
+    const high = pickNumber(quote.high[i]);
+    const low = pickNumber(quote.low[i]);
+    const close = pickNumber(quote.close[i]);
+    if (typeof ts !== "number" || !Number.isFinite(ts) || open === null || high === null || low === null || close === null) {
       continue;
     }
-    if (close === null) continue;
     const vol = quote.volume;
     let volume: number | null = null;
     if (vol && Array.isArray(vol) && i < vol.length) {
       const v = vol[i];
-      volume = typeof v === "number" ? v : v === null ? null : null;
+      volume = typeof v === "number" && Number.isFinite(v) ? v : null;
     }
-    points.push({ timestamp: ts, close, volume });
+    points.push({ timestamp: ts, open, high, low, close, volume });
   }
   if (points.length === 0) {
     return { errorMessage: "No price points", points: [], currency, lastPrice, symbol };
@@ -91,14 +93,22 @@ function pickNumber(v: unknown): number | null {
   return null;
 }
 
-function extractQuoteArrays(indicators: unknown): { close: (number | null)[]; volume: (number | null)[] | null } | null {
+function extractQuoteArrays(indicators: unknown): {
+  open: unknown[];
+  high: unknown[];
+  low: unknown[];
+  close: unknown[];
+  volume: unknown[] | null;
+} | null {
   if (typeof indicators !== "object" || indicators === null) return null;
   const quoteArr = (indicators as { quote?: unknown[] }).quote;
   if (!Array.isArray(quoteArr) || !quoteArr[0]) return null;
-  const q0 = quoteArr[0] as { close?: unknown; volume?: unknown };
-  if (!Array.isArray(q0.close)) return null;
-  const volume = Array.isArray(q0.volume) ? (q0.volume as (number | null)[]) : null;
-  return { close: q0.close as (number | null)[], volume };
+  const q0 = quoteArr[0] as { open?: unknown; high?: unknown; low?: unknown; close?: unknown; volume?: unknown };
+  if (!Array.isArray(q0.open) || !Array.isArray(q0.high) || !Array.isArray(q0.low) || !Array.isArray(q0.close)) {
+    return null;
+  }
+  const volume = Array.isArray(q0.volume) ? q0.volume : null;
+  return { open: q0.open, high: q0.high, low: q0.low, close: q0.close, volume };
 }
 
 export type YahooChartOpts = {
