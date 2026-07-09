@@ -44,7 +44,7 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
   if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60;
+  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
   const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
   return {
     ...data,
@@ -68,7 +68,8 @@ export default function App() {
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const cacheKey = priceCacheKey(ticker, horizon.range, horizon.interval);
+    const fetchRange = horizon.days > 1 ? "max" : horizon.range;
+    const cacheKey = priceCacheKey(ticker, fetchRange, horizon.interval);
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {
       setData(cached.data);
@@ -78,7 +79,7 @@ export default function App() {
 
     let res: Awaited<ReturnType<typeof fetchPrices>>;
     try {
-      res = await fetchPrices({ ticker, range: horizon.range, interval: horizon.interval, signal });
+      res = await fetchPrices({ ticker, range: fetchRange, interval: horizon.interval, signal });
     } catch (e) {
       if (signal.aborted) return;
       if (requestId !== requestIdRef.current) return;
