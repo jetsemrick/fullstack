@@ -49,7 +49,7 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
   if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
+  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60;
   const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
   return {
     ...data,

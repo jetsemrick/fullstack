@@ -197,20 +197,18 @@ export function PriceChart({
             content={chartType === "candlestick" ? (props) => <CandlestickTooltip {...props} variant={variant} spanDays={spanDays} /> : undefined}
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
-          {chartType === "candlestick" ? (
-            <>
-              <Bar dataKey="wickRange" barSize={1} isAnimationActive={false}>
-                {rows.map((row) => (
-                  <Cell key={`wick-${row.t}`} fill={row.isUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR} />
-                ))}
-              </Bar>
-              <Bar dataKey="bodyRange" barSize={candleBodyWidth} minPointSize={2} isAnimationActive={false}>
-                {rows.map((row) => (
-                  <Cell key={`body-${row.t}`} fill={row.isUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR} />
-                ))}
-              </Bar>
-            </>
-          ) : (
+          {chartType === "candlestick" ? [
+            <Bar key="wick" dataKey="wickRange" barSize={1} isAnimationActive={false}>
+              {rows.map((row) => (
+                <Cell key={`wick-${row.t}`} fill={row.isUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR} />
+              ))}
+            </Bar>,
+            <Bar key="body" dataKey="bodyRange" barSize={candleBodyWidth} minPointSize={2} isAnimationActive={false}>
+              {rows.map((row) => (
+                <Cell key={`body-${row.t}`} fill={row.isUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR} />
+              ))}
+            </Bar>,
+          ] : (
             <Area
               type="linear"
               dataKey="price"
