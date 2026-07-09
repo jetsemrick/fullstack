@@ -138,4 +138,42 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
     expect(body.indexes[0]?.price).toBe(100);
   });
+
+  test("returns 200 and tape quotes when Yahoo quote JSON is valid", async () => {
+    const quotePath = join(import.meta.dir, "fixtures", "minimal-tape-quote.json");
+    const quoteFixture = await readFile(quotePath, "utf-8");
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        return Promise.resolve(
+          new Response(quoteFixture, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/tape-quotes"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number }[] };
+    expect(body.quotes.length).toBeGreaterThanOrEqual(10);
+    expect(body.quotes[0]?.symbol).toBe("AAPL");
+    expect(body.quotes[0]?.price).toBe(198.45);
+  });
+
+  test("returns 502 when tape quote upstream fails", async () => {
+    globalThis.fetch = mock(() =>
+      Promise.resolve(new Response("upstream down", { status: 503 })),
+    ) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/tape-quotes"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
+  });
 });

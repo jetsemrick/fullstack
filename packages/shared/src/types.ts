@@ -38,3 +38,8 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** Batch quote payload for the S&P ticker tape (`/api/tape-quotes`). */
+export interface TapeQuotesResponse {
+  quotes: MarketIndexQuote[];
+}

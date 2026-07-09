@@ -1,0 +1,97 @@
+{
+  "quoteResponse": {
+    "result": [
+      {
+        "symbol": "AAPL",
+        "shortName": "Apple Inc.",
+        "regularMarketPrice": 198.45,
+        "regularMarketChangePercent": 0.85
+      },
+      {
+        "symbol": "MSFT",
+        "shortName": "Microsoft Corporation",
+        "regularMarketPrice": 425.12,
+        "regularMarketChangePercent": -0.32
+      },
+      {
+        "symbol": "GOOGL",
+        "shortName": "Alphabet Inc.",
+        "regularMarketPrice": 178.2,
+        "regularMarketChangePercent": 1.1
+      },
+      {
+        "symbol": "AMZN",
+        "shortName": "Amazon.com, Inc.",
+        "regularMarketPrice": 192.3,
+        "regularMarketChangePercent": 0.44
+      },
+      {
+        "symbol": "NVDA",
+        "shortName": "NVIDIA Corporation",
+        "regularMarketPrice": 128.9,
+        "regularMarketChangePercent": 2.15
+      },
+      {
+        "symbol": "META",
+        "shortName": "Meta Platforms, Inc.",
+        "regularMarketPrice": 512.4,
+        "regularMarketChangePercent": -0.18
+      },
+      {
+        "symbol": "TSLA",
+        "shortName": "Tesla, Inc.",
+        "regularMarketPrice": 245.6,
+        "regularMarketChangePercent": 0.92
+      },
+      {
+        "symbol": "BRK-B",
+        "shortName": "Berkshire Hathaway Inc.",
+        "regularMarketPrice": 455.1,
+        "regularMarketChangePercent": 0.05
+      },
+      {
+        "symbol": "JPM",
+        "shortName": "JPMorgan Chase & Co.",
+        "regularMarketPrice": 210.75,
+        "regularMarketChangePercent": -0.41
+      },
+      {
+        "symbol": "V",
+        "shortName": "Visa Inc.",
+        "regularMarketPrice": 285.3,
+        "regularMarketChangePercent": 0.27
+      },
+      {
+        "symbol": "UNH",
+        "shortName": "UnitedHealth Group Incorporated",
+        "regularMarketPrice": 520.8,
+        "regularMarketChangePercent": -0.63
+      },
+      {
+        "symbol": "JNJ",
+        "shortName": "Johnson & Johnson",
+        "regularMarketPrice": 158.4,
+        "regularMarketChangePercent": 0.12
+      },
+      {
+        "symbol": "XOM",
+        "shortName": "Exxon Mobil Corporation",
+        "regularMarketPrice": 112.9,
+        "regularMarketChangePercent": -0.88
+      },
+      {
+        "symbol": "PG",
+        "shortName": "The Procter & Gamble Company",
+        "regularMarketPrice": 168.2,
+        "regularMarketChangePercent": 0.09
+      },
+      {
+        "symbol": "HD",
+        "shortName": "The Home Depot, Inc.",
+        "regularMarketPrice": 385.5,
+        "regularMarketChangePercent": 0.34
+      }
+    ],
+    "error": null
+  }
+}

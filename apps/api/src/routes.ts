@@ -1,7 +1,7 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
+import type { ApiErrorBody, GetPricesResponse, MarketContextResponse, TapeQuotesResponse } from "@stock/shared";
 import { DEFAULT_TICKER } from "@stock/shared";
 import { fetchYahooChart } from "./yahoo";
-import { fetchMajorIndexQuotes } from "./yahoo-quote";
+import { fetchMajorIndexQuotes, fetchTapeQuotes } from "./yahoo-quote";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 
@@ -126,6 +126,22 @@ export async function handleApiRequest(req: Request): Promise<Response> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       return jsonResponse(errBody("Failed to load market context", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
+    }
+  }
+  if (url.pathname === "/api/tape-quotes" && req.method === "GET") {
+    try {
+      const y = await fetchTapeQuotes();
+      if (y.errorMessage || y.quotes.length === 0) {
+        return jsonResponse(
+          errBody(y.errorMessage ?? "No tape quotes", "UPSTREAM"),
+          { status: 502, headers: corsHeaders() },
+        );
+      }
+      const body: TapeQuotesResponse = { quotes: y.quotes };
+      return jsonResponse(body, { status: 200, headers: corsHeaders() });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      return jsonResponse(errBody("Failed to load tape quotes", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
     }
   }
   return new Response("Not found", { status: 404, headers: corsHeaders() });
