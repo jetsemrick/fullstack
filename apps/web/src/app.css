@@ -514,3 +514,34 @@
   word-break: break-word;
   color: var(--fg);
 }
+
+/* Selection stats styles */
+.selection-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--card-border);
+}
+
+.selection-label {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-weight: 500;
+}
+
+.selection-badge {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.6rem;
+}
+
+@media (max-width: 640px) {
+  .selection-stats {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+}
