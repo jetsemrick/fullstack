@@ -163,7 +163,7 @@ export default function App() {
     return activeTickers
       .map((ticker) => tickerState[ticker])
       .filter((entry): entry is TickerEntry & { data: GetPricesResponse } =>
-        entry?.status === "success" && entry.data != null,
+        entry?.data != null && (entry.status === "success" || entry.status === "loading"),
       )
       .map((entry) => filterSeriesByHorizon(entry.data, horizonDays));
   }, [activeTickers, tickerState, horizonDays]);
@@ -178,6 +178,13 @@ export default function App() {
 
   const comparison = useMemo(() => buildComparisonRows(comparisonInputs), [comparisonInputs]);
   const mixedCurrencies = useMemo(() => hasMixedCurrencies(comparison.meta), [comparison.meta]);
+  const tickerColorIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of comparison.meta) {
+      map.set(m.ticker, m.colorIndex);
+    }
+    return map;
+  }, [comparison.meta]);
 
   const anyLoading = activeTickers.some((ticker) => tickerState[ticker]?.status === "loading");
   const hasChartData = comparison.rows.length > 0 && comparison.meta.length >= 1;
@@ -266,7 +273,7 @@ export default function App() {
           </div>
         ) : null}
 
-        {(hasChartData || activeTickers.length > 0) && !allFailed ? (
+        {hasChartData || activeTickers.length > 0 ? (
           <div className="card content-card chart-card--loading-context" aria-busy={anyLoading}>
             <div className="content-toolbar">
               <div className="metrics-block">
@@ -282,13 +289,17 @@ export default function App() {
                           ? "ticker-chip--error"
                           : "ticker-chip--success";
 
+                    const colorIdx = tickerColorIndex.get(ticker);
+
                     return (
                       <div key={ticker} className={`ticker-chip ${statusClass}`} role="listitem">
-                        <span
-                          className="ticker-chip__swatch"
-                          style={{ background: `var(--series-${(activeTickers.indexOf(ticker) % 5) + 1})` }}
-                          aria-hidden="true"
-                        />
+                        {colorIdx != null ? (
+                          <span
+                            className="ticker-chip__swatch"
+                            style={{ background: `var(--series-${(colorIdx % 5) + 1})` }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
                         <div className="ticker-chip__body">
                           <span className="ticker-chip__symbol">{ticker}</span>
                           {entry.status === "loading" ? (
