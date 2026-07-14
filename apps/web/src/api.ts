@@ -1,4 +1,4 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
+import type { ApiErrorBody, GetPricesResponse, MarketContextResponse, ReportBugRequest, ReportBugResponse } from "@stock/shared";
 
 export async function fetchPrices(params: {
   ticker: string;
@@ -50,4 +50,47 @@ export async function fetchMarketContext(): Promise<
     return { ok: false, status: res.status, error: err };
   }
   return { ok: true, data: json as MarketContextResponse };
+}
+
+export async function reportBug(
+  body: ReportBugRequest,
+  signal?: AbortSignal,
+): Promise<{ ok: true; data: ReportBugResponse } | { ok: false; error: ApiErrorBody; status: number }> {
+  const res = await fetch(`/api/report-bug`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return {
+      ok: false,
+      status: res.status,
+      error: { error: "Invalid response", code: "INTERNAL" },
+    };
+  }
+  if (!res.ok) {
+    // Agent run failures may return ReportBugResponse with status error (502).
+    if (
+      json &&
+      typeof json === "object" &&
+      "runId" in json &&
+      "status" in json &&
+      (json as ReportBugResponse).status === "error"
+    ) {
+      const data = json as ReportBugResponse;
+      return {
+        ok: false,
+        status: res.status,
+        error: { error: data.error ?? "Agent run failed", code: "UPSTREAM", details: data.runId },
+      };
+    }
+    const err = json as ApiErrorBody;
+    return { ok: false, status: res.status, error: err };
+  }
+  return { ok: true, data: json as ReportBugResponse };
 }

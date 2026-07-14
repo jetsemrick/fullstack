@@ -7,7 +7,7 @@ Full stack app to visualize stock prices: **React** + **TypeScript** on the clie
 | Path | Description |
 |------|-------------|
 | `apps/web` | Vite + React + Recharts |
-| `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`) |
+| `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`, `/api/report-bug`) |
 | `packages/shared` | Shared types and constants |
 
 ## Prerequisites
@@ -48,12 +48,19 @@ After data loads, use **Export CSV** to download the current series as one row p
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
 | `CORS_ORIGIN` | `http://localhost:5173` | `Access-Control-Allow-Origin` for the API |
+| `CURSOR_API_KEY` | _(none)_ | Cursor user or service-account API key for in-app **Report bug** (local SDK agent). Required for `POST /api/report-bug`. Set in the repo-root `.env` (gitignored). |
+| `CURSOR_MODEL` | `composer-2.5` | Model id passed to `@cursor/sdk` for report-bug runs |
+
+Create a key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard/integrations). Put `CURSOR_API_KEY=…` in the monorepo-root `.env` (loaded by the API on startup). Never expose it to the browser.
 
 ## API
 
 - `GET /api/health` – health check.
 - `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/market-context` – US market session state plus major index quotes.
+- `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars). Runs a local Cursor agent (`@cursor/sdk`) against the monorepo to apply the requested edit. Requires `CURSOR_API_KEY`.
 
+The web UI includes a **Report bug** control (bottom-right) that posts to `/api/report-bug`.
 ## Test
 
 ```bash

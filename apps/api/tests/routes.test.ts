@@ -26,6 +26,39 @@ describe("handleApiRequest", () => {
     const j = (await res.json()) as { ok: boolean };
     expect(j.ok).toBe(true);
   });
+
+  test("report-bug rejects empty message with 400", async () => {
+    const res = await handleApiRequest(
+      new Request("http://localhost/api/report-bug", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: "   " }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("VALIDATION");
+  });
+
+  test("report-bug returns 503 when CURSOR_API_KEY is missing", async () => {
+    const prev = process.env.CURSOR_API_KEY;
+    delete process.env.CURSOR_API_KEY;
+    try {
+      const res = await handleApiRequest(
+        new Request("http://localhost/api/report-bug", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ message: "Fix the chart legend" }),
+        }),
+      );
+      expect(res.status).toBe(503);
+      const body = (await res.json()) as { code: string };
+      expect(body.code).toBe("CONFIG");
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_API_KEY;
+      else process.env.CURSOR_API_KEY = prev;
+    }
+  });
 });
 
 describe("handleApiRequest with mocked Yahoo fetch", () => {

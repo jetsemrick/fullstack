@@ -1,9 +1,17 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse } from "@stock/shared";
+import type {
+  ApiErrorBody,
+  GetPricesResponse,
+  MarketContextResponse,
+  ReportBugRequest,
+  ReportBugResponse,
+} from "@stock/shared";
 import { DEFAULT_TICKER } from "@stock/shared";
+import { runReportBugAgent } from "./cursor-agent";
 import { fetchYahooChart } from "./yahoo";
 import { fetchMajorIndexQuotes } from "./yahoo-quote";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
+const REPORT_BUG_MAX_LEN = 4000;
 
 /** Yahoo chart query allowlists — reject unexpected values instead of forwarding. */
 const ALLOWED_RANGE = new Set([
@@ -48,7 +56,7 @@ function jsonResponse(body: unknown, init: { status: number; headers?: Record<st
 function corsHeaders(): Record<string, string> {
   return {
     "access-control-allow-origin": CORS_ORIGIN,
-    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type",
   };
 }
@@ -126,6 +134,51 @@ export async function handleApiRequest(req: Request): Promise<Response> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       return jsonResponse(errBody("Failed to load market context", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
+    }
+  }
+  if (url.pathname === "/api/report-bug" && req.method === "POST") {
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return jsonResponse(errBody("Invalid JSON body", "VALIDATION"), { status: 400, headers: corsHeaders() });
+    }
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return jsonResponse(errBody("Body must be an object", "VALIDATION"), { status: 400, headers: corsHeaders() });
+    }
+    const messageRaw = (raw as ReportBugRequest).message;
+    if (typeof messageRaw !== "string") {
+      return jsonResponse(errBody("message must be a string", "VALIDATION"), { status: 400, headers: corsHeaders() });
+    }
+    const message = messageRaw.trim();
+    if (!message) {
+      return jsonResponse(errBody("message is required", "VALIDATION"), { status: 400, headers: corsHeaders() });
+    }
+    if (message.length > REPORT_BUG_MAX_LEN) {
+      return jsonResponse(errBody(`message must be at most ${REPORT_BUG_MAX_LEN} characters`, "VALIDATION"), {
+        status: 400,
+        headers: corsHeaders(),
+      });
+    }
+    try {
+      const body: ReportBugResponse = await runReportBugAgent(message);
+      if (body.status === "error") {
+        return jsonResponse(body, { status: 502, headers: corsHeaders() });
+      }
+      return jsonResponse(body, { status: 200, headers: corsHeaders() });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      const code =
+        e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "CONFIG"
+          ? "CONFIG"
+          : e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "UPSTREAM"
+            ? "UPSTREAM"
+            : "INTERNAL";
+      const status = code === "CONFIG" ? 503 : code === "UPSTREAM" ? 502 : 500;
+      return jsonResponse(
+        errBody(code === "CONFIG" ? "Cursor API key not configured" : "Failed to run edit agent", code, msg),
+        { status, headers: corsHeaders() },
+      );
     }
   }
   return new Response("Not found", { status: 404, headers: corsHeaders() });

@@ -3,6 +3,7 @@ import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { ReportBug } from "./ReportBug";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -221,6 +222,7 @@ export default function App() {
           </>
         )}
       </main>
+      <ReportBug />
     </div>
   );
 }

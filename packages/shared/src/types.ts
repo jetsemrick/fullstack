@@ -18,8 +18,24 @@ export interface GetPricesResponse {
 
 export interface ApiErrorBody {
   error: string;
-  code: "VALIDATION" | "UPSTREAM" | "NOT_FOUND" | "INTERNAL";
+  code: "VALIDATION" | "UPSTREAM" | "NOT_FOUND" | "INTERNAL" | "CONFIG";
   details?: string;
+}
+
+/** Body for `POST /api/report-bug` — user prompt to edit the local repo via Cursor SDK. */
+export interface ReportBugRequest {
+  /** Free-text bug report or edit request (1–4000 chars after trim). */
+  message: string;
+}
+
+/** Success body for `POST /api/report-bug`. */
+export interface ReportBugResponse {
+  runId: string;
+  status: "finished" | "error" | "cancelled";
+  /** Final assistant summary when the run finished. */
+  result?: string;
+  /** Terminal failure message when status is error. */
+  error?: string;
 }
 
 /** One major index quote returned from `/api/market-context`. */

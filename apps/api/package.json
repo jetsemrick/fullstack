@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@cursor/sdk": "^1.0.23",
     "@stock/shared": "workspace:*"
   },
   "devDependencies": {
