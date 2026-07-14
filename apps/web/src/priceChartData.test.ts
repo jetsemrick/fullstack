@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  downsampleRows,
+  filterSeriesByHorizon,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
+
+const DAY_SECONDS = 24 * 60 * 60;
 
 describe("seriesHasVolume", () => {
   test("false when empty", () => {
@@ -38,6 +47,51 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  const buildDailyResponse = (days: number): GetPricesResponse => ({
+    ticker: "X",
+    currency: "USD",
+    lastPrice: days,
+    series: Array.from({ length: days + 1 }, (_, i) => ({
+      timestamp: 1_600_000_000 + i * DAY_SECONDS,
+      close: i,
+      volume: null,
+    })),
+  });
+
+  test("slices Unix-second series into distinct 1 year, 5 year, and all-time windows", () => {
+    const data = buildDailyResponse(365 * 6);
+
+    const oneYear = filterSeriesByHorizon(data, 365);
+    const fiveYear = filterSeriesByHorizon(data, 365 * 5);
+    const allTime = filterSeriesByHorizon(data, Infinity);
+    const latestTimestamp = data.series[data.series.length - 1]!.timestamp;
+
+    expect(oneYear.series).toHaveLength(366);
+    expect(fiveYear.series).toHaveLength(1_826);
+    expect(allTime.series).toHaveLength(data.series.length);
+    expect(oneYear.series[0]?.timestamp).toBe(latestTimestamp - 365 * DAY_SECONDS);
+    expect(fiveYear.series[0]?.timestamp).toBe(latestTimestamp - 365 * 5 * DAY_SECONDS);
+    expect(allTime.series[0]?.timestamp).toBe(data.series[0]!.timestamp);
+  });
+
+  test("keeps the latest point when only it falls inside the requested window", () => {
+    const data: GetPricesResponse = {
+      ticker: "X",
+      currency: "USD",
+      lastPrice: 2,
+      series: [
+        { timestamp: 1_600_000_000, close: 1, volume: null },
+        { timestamp: 1_600_000_000 + 10 * DAY_SECONDS, close: 2, volume: null },
+      ],
+    };
+
+    const filtered = filterSeriesByHorizon(data, 1);
+
+    expect(filtered.series).toEqual([data.series[1]]);
   });
 });
 

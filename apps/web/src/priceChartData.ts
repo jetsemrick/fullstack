@@ -1,5 +1,7 @@
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
+const SECONDS_PER_DAY = 24 * 60 * 60;
+
 export type PriceVolumeRow = {
   t: number;
   price: number;
@@ -24,6 +26,18 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
     volume: p.volume,
     volumeBar: p.volume ?? 0,
   }));
+}
+
+export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (horizonDays === Infinity) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (!latestTimestamp) return data;
+  const cutoff = latestTimestamp - horizonDays * SECONDS_PER_DAY;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
 }
 
 export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
