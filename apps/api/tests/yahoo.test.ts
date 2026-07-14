@@ -1,6 +1,12 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { join } from "node:path";
-import { parseResult } from "../src/yahoo";
+import { fetchYahooChart, parseResult } from "../src/yahoo";
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 describe("parseResult", () => {
   test("parses minimal Yahoo chart payload", async () => {
@@ -37,5 +43,25 @@ describe("parseResult", () => {
     });
     expect(out.errorMessage).toBe("Invalid symbol");
     expect(out.points).toHaveLength(0);
+  });
+});
+
+describe("fetchYahooChart", () => {
+  test("requests explicit daily periods for max-range daily history", async () => {
+    const path = join(import.meta.dir, "fixtures", "minimal-chart.json");
+    const body = await Bun.file(path).text();
+    let requestedUrl: URL | null = null;
+    globalThis.fetch = mock((input) => {
+      requestedUrl = new URL(input.toString());
+      return Promise.resolve(new Response(body, { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const result = await fetchYahooChart("AAPL", { range: "max", interval: "1d" });
+
+    expect(result.errorMessage).toBeNull();
+    expect(requestedUrl?.searchParams.get("range")).toBeNull();
+    expect(requestedUrl?.searchParams.get("period1")).toBe("0");
+    expect(Number(requestedUrl?.searchParams.get("period2"))).toBeGreaterThan(0);
+    expect(requestedUrl?.searchParams.get("interval")).toBe("1d");
   });
 });

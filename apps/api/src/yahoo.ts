@@ -109,8 +109,15 @@ export type YahooChartOpts = {
 /** Fetches chart data; defaults match package constants (max / 1d). */
 export async function fetchYahooChart(ticker: string, opts?: YahooChartOpts): Promise<YahooParseResult> {
   const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(ticker)}`);
-  url.searchParams.set("range", opts?.range ?? DEFAULT_RANGE);
-  url.searchParams.set("interval", opts?.interval ?? DEFAULT_INTERVAL);
+  const range = opts?.range ?? DEFAULT_RANGE;
+  const interval = opts?.interval ?? DEFAULT_INTERVAL;
+  if (range === "max" && interval === "1d") {
+    url.searchParams.set("period1", "0");
+    url.searchParams.set("period2", Math.floor(Date.now() / 1000).toString());
+  } else {
+    url.searchParams.set("range", range);
+  }
+  url.searchParams.set("interval", interval);
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
   });
