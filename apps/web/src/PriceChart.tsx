@@ -99,11 +99,15 @@ export function PriceChart({
   }, [fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
-  // Drag selection state (reset automatically when component remounts via key prop)
+  // Drag selection state (reset automatically when component remounts via key prop).
+  // Refs mirror the in-progress drag so pointer handlers read current values
+  // synchronously, independent of React render/commit timing.
   const [isDragging, setIsDragging] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [confirmedSelection, setConfirmedSelection] = useState<{ start: number; end: number } | null>(null);
+  const dragStartRef = useRef<number | null>(null);
+  const dragEndRef = useRef<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   // Calculate selection stats using full (non-downsampled) data for accuracy
@@ -130,50 +134,58 @@ export function PriceChart({
     [fullRows]
   );
 
-  // Handle mouse events for drag selection
+  // Handle mouse events for drag selection. Handlers read/update refs so they are
+  // robust to render timing (recharts can fire mousemove before mousedown state commits).
+  const toNumber = (label: string | number): number =>
+    typeof label === "string" ? parseFloat(label) : label;
+
   const handleMouseDown = useCallback(
     (e: { activeLabel?: string | number }) => {
-      if (e.activeLabel !== undefined) {
-        const x = typeof e.activeLabel === "string" ? parseFloat(e.activeLabel) : e.activeLabel;
-        setSelectionStart(x);
-        setSelectionEnd(x);
-        setIsDragging(true);
-        setConfirmedSelection(null);
-        onSelectionChange?.(null);
-      }
+      if (e.activeLabel === undefined) return;
+      const x = toNumber(e.activeLabel);
+      dragStartRef.current = x;
+      dragEndRef.current = x;
+      setSelectionStart(x);
+      setSelectionEnd(x);
+      setIsDragging(true);
+      setConfirmedSelection(null);
+      onSelectionChange?.(null);
     },
     [onSelectionChange]
   );
 
-  const handleMouseMove = useCallback(
-    (e: { activeLabel?: string | number }) => {
-      if (isDragging && e.activeLabel !== undefined && selectionStart !== null) {
-        const x = typeof e.activeLabel === "string" ? parseFloat(e.activeLabel) : e.activeLabel;
-        setSelectionEnd(x);
-      }
-    },
-    [isDragging, selectionStart]
-  );
+  const handleMouseMove = useCallback((e: { activeLabel?: string | number }) => {
+    if (dragStartRef.current === null || e.activeLabel === undefined) return;
+    const x = toNumber(e.activeLabel);
+    dragEndRef.current = x;
+    setSelectionEnd(x);
+  }, []);
 
   const handleMouseUp = useCallback(() => {
-    if (isDragging && selectionStart !== null && selectionEnd !== null) {
-      const stats = calculateStats(selectionStart, selectionEnd);
-      if (stats) {
-        setConfirmedSelection({ start: selectionStart, end: selectionEnd });
-        onSelectionChange?.(stats);
-      } else {
-        setSelectionStart(null);
-        setSelectionEnd(null);
-        onSelectionChange?.(null);
-      }
-    }
+    const start = dragStartRef.current;
+    const end = dragEndRef.current;
+    dragStartRef.current = null;
+    dragEndRef.current = null;
     setIsDragging(false);
-  }, [isDragging, selectionStart, selectionEnd, calculateStats, onSelectionChange]);
+    if (start === null || end === null) return;
+    const stats = calculateStats(start, end);
+    if (stats) {
+      setConfirmedSelection({ start, end });
+      onSelectionChange?.(stats);
+    } else {
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      setConfirmedSelection(null);
+      onSelectionChange?.(null);
+    }
+  }, [calculateStats, onSelectionChange]);
 
   // Handle Escape key to clear selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && (confirmedSelection || isDragging)) {
+        dragStartRef.current = null;
+        dragEndRef.current = null;
         setSelectionStart(null);
         setSelectionEnd(null);
         setConfirmedSelection(null);
@@ -189,6 +201,8 @@ export function PriceChart({
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (chartRef.current && !chartRef.current.contains(e.target as Node) && confirmedSelection) {
+        dragStartRef.current = null;
+        dragEndRef.current = null;
         setSelectionStart(null);
         setSelectionEnd(null);
         setConfirmedSelection(null);
