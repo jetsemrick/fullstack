@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { PriceChart } from "./PriceChart";
+import { PriceChart, type SelectionStats } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -24,6 +24,20 @@ function formatPercentChange(data: GetPricesResponse | null) {
     text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
     isPositive: pct > 0,
     isNegative: pct < 0
+  };
+}
+
+function formatSelectionStats(stats: SelectionStats | null) {
+  if (!stats) return null;
+  const { dollarChange, percentChange } = stats;
+  const dollarSign = dollarChange >= 0 ? "+" : "";
+  const pctSign = percentChange >= 0 ? "+" : "";
+  return {
+    dollarText: `${dollarSign}${dollarChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    percentText: `${pctSign}${percentChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+    isPositive: dollarChange > 0,
+    isNegative: dollarChange < 0,
+    isFlat: dollarChange === 0,
   };
 }
 
@@ -63,6 +77,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+
+  // Selection state for drag-to-select feature
+  const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(null);
+
+  // Key that resets chart selection when ticker or horizon changes
+  const chartKey = `${ticker}-${horizonIndex}`;
+
+  // Callback to handle selection changes, also clears stats when chart reports null
+  const handleSelectionChange = useCallback((stats: SelectionStats | null) => {
+    setSelectionStats(stats);
+  }, []);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -190,6 +215,22 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {(() => {
+                      const selStats = formatSelectionStats(selectionStats);
+                      if (!selStats) return null;
+                      const statusClass = selStats.isPositive ? "positive" : selStats.isNegative ? "negative" : "muted";
+                      return (
+                        <span className="selection-stats" aria-live="polite">
+                          <span className="selection-label">Selection:</span>
+                          <span className={`metric-badge selection-badge ${statusClass}`}>
+                            {selStats.dollarText}
+                          </span>
+                          <span className={`metric-badge selection-badge ${statusClass}`}>
+                            {selStats.percentText}
+                          </span>
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
@@ -209,8 +250,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={chartKey}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onSelectionChange={handleSelectionChange}
                 />
               </div>
               {loading && (
