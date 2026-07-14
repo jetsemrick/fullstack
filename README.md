@@ -42,7 +42,7 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
-Use **Buy-at-date backtest** to enter a ticker, positive share volume, and past trade date. The app uses the first daily close on or after that date and shows the resulting cost basis, market value, and unrealized profit or loss through the latest close.
+Open `/backtest` or use the **Backtest** navigation link to enter a ticker, positive share volume, and past trade date. The app uses the first daily close on or after that date and shows the resulting cost basis, market value, and unrealized profit or loss through the latest close.
 
 ### Environment (optional)
 
