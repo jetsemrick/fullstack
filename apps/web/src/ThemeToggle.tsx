@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getStoredTheme,
   resolveTheme,
+  subscribeToStorageChanges,
   subscribeToSystemTheme,
   toggleTheme,
   type ResolvedTheme,
@@ -37,7 +38,14 @@ function ThemeIcon({ theme }: { theme: ResolvedTheme }) {
 export function ThemeToggle() {
   const [theme, setTheme] = useState<ResolvedTheme>(() => resolveTheme(getStoredTheme()));
 
-  useEffect(() => subscribeToSystemTheme(setTheme), []);
+  useEffect(() => {
+    const unsubSystem = subscribeToSystemTheme(setTheme);
+    const unsubStorage = subscribeToStorageChanges(setTheme);
+    return () => {
+      unsubSystem();
+      unsubStorage();
+    };
+  }, []);
 
   return (
     <button

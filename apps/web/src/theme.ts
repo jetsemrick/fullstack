@@ -49,6 +49,18 @@ export function subscribeToSystemTheme(onChange: (resolved: ResolvedTheme) => vo
   return () => media.removeEventListener("change", handler);
 }
 
+export function subscribeToStorageChanges(onChange: (resolved: ResolvedTheme) => void): () => void {
+  const handler = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) {
+      const resolved = resolveTheme(getStoredTheme());
+      applyTheme(resolved);
+      onChange(resolved);
+    }
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
 export function toggleTheme(): ResolvedTheme {
   const current = resolveTheme(getStoredTheme());
   return setThemePreference(current === "dark" ? "light" : "dark");
