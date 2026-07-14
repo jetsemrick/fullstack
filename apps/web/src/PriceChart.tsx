@@ -106,12 +106,12 @@ export function PriceChart({
   const [confirmedSelection, setConfirmedSelection] = useState<{ start: number; end: number } | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Calculate selection stats
+  // Calculate selection stats using full (non-downsampled) data for accuracy
   const calculateStats = useCallback(
     (startX: number, endX: number): SelectionStats | null => {
       const minX = Math.min(startX, endX);
       const maxX = Math.max(startX, endX);
-      const selectedPoints = rows.filter((r) => r.t >= minX && r.t <= maxX);
+      const selectedPoints = fullRows.filter((r) => r.t >= minX && r.t <= maxX);
       if (selectedPoints.length < MIN_SELECTION_POINTS) return null;
 
       const startPrice = selectedPoints[0].price;
@@ -127,7 +127,7 @@ export function PriceChart({
         pointCount: selectedPoints.length,
       };
     },
-    [rows]
+    [fullRows]
   );
 
   // Handle mouse events for drag selection
