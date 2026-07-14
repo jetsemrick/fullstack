@@ -7,6 +7,103 @@
   gap: 2rem;
 }
 
+/* Full-width scrolling S&P ticker tape (CURSOR-34), distinct from MarketStrip. */
+.ticker-tape {
+  width: 100%;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.ticker-tape__viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.ticker-tape__track {
+  display: flex;
+  width: max-content;
+  animation: ticker-tape-scroll 60s linear infinite;
+}
+
+.ticker-tape:hover .ticker-tape__track {
+  animation-play-state: paused;
+}
+
+.ticker-tape__group {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  border-right: 1px solid var(--card-border);
+}
+
+.ticker-tape__symbol {
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+
+.ticker-tape__price {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker-tape__pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.ticker-tape__pct--up {
+  color: #2b703e;
+}
+
+.ticker-tape__pct--down {
+  color: #ba3b3b;
+}
+
+.ticker-tape__pct--muted {
+  color: var(--fg-muted);
+}
+
+.ticker-tape--fallback {
+  padding: 0.55rem 1.15rem;
+}
+
+.ticker-tape__fallback-text {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+@keyframes ticker-tape-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Two identical groups; shifting by half the track returns to the start seamlessly. */
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape__track {
+    animation: none;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  /* Without motion the duplicated group is redundant; hide it to avoid a doubled static list. */
+  .ticker-tape__group[aria-hidden="true"] {
+    display: none;
+  }
+}
+
 .header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

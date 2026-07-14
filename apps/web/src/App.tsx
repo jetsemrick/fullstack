@@ -3,6 +3,7 @@ import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
+import { TickerTape } from "./TickerTape";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
 
@@ -128,7 +129,9 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
+    <>
+      <TickerTape />
+      <div className="shell">
       <header className="header">
         <MarketStrip />
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
@@ -223,6 +226,7 @@ export default function App() {
         )}
       </main>
       <ReportBug />
-    </div>
+      </div>
+    </>
   );
 }

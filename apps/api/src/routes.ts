@@ -4,11 +4,12 @@ import type {
   MarketContextResponse,
   ReportBugRequest,
   ReportBugResponse,
+  TickerTapeResponse,
 } from "@stock/shared";
 import { DEFAULT_TICKER } from "@stock/shared";
 import { runReportBugAgent } from "./cursor-agent";
 import { fetchYahooChart } from "./yahoo";
-import { fetchMajorIndexQuotes } from "./yahoo-quote";
+import { fetchMajorIndexQuotes, fetchTickerTapeQuotes } from "./yahoo-quote";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 const REPORT_BUG_MAX_LEN = 4000;
@@ -134,6 +135,22 @@ export async function handleApiRequest(req: Request): Promise<Response> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       return jsonResponse(errBody("Failed to load market context", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
+    }
+  }
+  if (url.pathname === "/api/ticker-tape" && req.method === "GET") {
+    try {
+      const y = await fetchTickerTapeQuotes();
+      if (y.errorMessage || y.quotes.length === 0) {
+        return jsonResponse(
+          errBody(y.errorMessage ?? "No ticker quotes", "UPSTREAM"),
+          { status: 502, headers: corsHeaders() },
+        );
+      }
+      const body: TickerTapeResponse = { quotes: y.quotes };
+      return jsonResponse(body, { status: 200, headers: corsHeaders() });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      return jsonResponse(errBody("Failed to load ticker tape", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
     }
   }
   if (url.pathname === "/api/report-bug" && req.method === "POST") {
