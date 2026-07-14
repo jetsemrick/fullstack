@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
-import { filterSeriesByHorizon } from "./priceChartData";
+import { filterSeriesByHorizon, type HorizonWindow } from "./priceChartData";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -28,11 +28,18 @@ function formatPercentChange(data: GetPricesResponse | null) {
   };
 }
 
-const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
+type Horizon = {
+  label: string;
+  window: HorizonWindow;
+  range: string;
+  interval: string;
+};
+
+const HORIZONS: Horizon[] = [
+  { label: "Today", window: { kind: "days", value: 1 }, range: "1d", interval: "5m" },
+  { label: "1 Year", window: { kind: "months", value: 12 }, range: "1y", interval: "1d" },
+  { label: "5 Year", window: { kind: "months", value: 60 }, range: "5y", interval: "1d" },
+  { label: "All Time", window: { kind: "all" }, range: "max", interval: "1d" }
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
@@ -58,7 +65,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const fetchRange = horizon.days > 1 ? "max" : horizon.range;
+    const fetchRange = horizon.window.kind === "days" ? horizon.range : "max";
     const cacheKey = priceCacheKey(ticker, fetchRange, horizon.interval);
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {
@@ -98,7 +105,7 @@ export default function App() {
 
   const slicedDaily = useMemo(() => {
     if (!data) return null;
-    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
+    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].window);
   }, [data, horizonIndex]);
 
   const displayData = useMemo(() => {

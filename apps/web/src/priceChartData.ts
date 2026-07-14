@@ -2,6 +2,11 @@ import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 
+export type HorizonWindow =
+  | { kind: "days"; value: number }
+  | { kind: "months"; value: number }
+  | { kind: "all" };
+
 export type PriceVolumeRow = {
   t: number;
   price: number;
@@ -28,11 +33,30 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
   }));
 }
 
-export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
+function subtractUtcMonths(timestamp: number, months: number): number {
+  const date = new Date(timestamp * 1000);
+  const dayOfMonth = date.getUTCDate();
+
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - months);
+
+  const lastDayOfTargetMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(dayOfMonth, lastDayOfTargetMonth));
+
+  return Math.floor(date.getTime() / 1000);
+}
+
+function horizonCutoff(timestamp: number, window: HorizonWindow): number | null {
+  if (window.kind === "all") return null;
+  if (window.kind === "days") return timestamp - window.value * SECONDS_PER_DAY;
+  return subtractUtcMonths(timestamp, window.value);
+}
+
+export function filterSeriesByHorizon(data: GetPricesResponse, window: HorizonWindow): GetPricesResponse {
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * SECONDS_PER_DAY;
+  if (latestTimestamp == null) return data;
+  const cutoff = horizonCutoff(latestTimestamp, window);
+  if (cutoff === null) return data;
   const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
   return {
     ...data,

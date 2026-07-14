@@ -10,6 +10,7 @@ import {
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 const DAY_SECONDS = 24 * 60 * 60;
+const toSeconds = (date: string) => Date.parse(`${date}T00:00:00.000Z`) / 1000;
 
 describe("seriesHasVolume", () => {
   test("false when empty", () => {
@@ -51,31 +52,53 @@ describe("buildPriceVolumeRows", () => {
 });
 
 describe("filterSeriesByHorizon", () => {
-  const buildDailyResponse = (days: number): GetPricesResponse => ({
-    ticker: "X",
-    currency: "USD",
-    lastPrice: days,
-    series: Array.from({ length: days + 1 }, (_, i) => ({
-      timestamp: 1_600_000_000 + i * DAY_SECONDS,
-      close: i,
-      volume: null,
-    })),
+  const buildDailyResponse = (startDate: string, endDate: string): GetPricesResponse => {
+    const start = toSeconds(startDate);
+    const end = toSeconds(endDate);
+    const series: PricePoint[] = [];
+
+    for (let timestamp = start; timestamp <= end; timestamp += DAY_SECONDS) {
+      series.push({ timestamp, close: series.length, volume: null });
+    }
+
+    return {
+      ticker: "X",
+      currency: "USD",
+      lastPrice: series.length - 1,
+      series,
+    };
+  };
+
+  test("slices Unix-second series into distinct calendar-month and all-time windows", () => {
+    const data = buildDailyResponse("2020-07-14", "2026-07-14");
+
+    const oneYear = filterSeriesByHorizon(data, { kind: "months", value: 12 });
+    const fiveYear = filterSeriesByHorizon(data, { kind: "months", value: 60 });
+    const allTime = filterSeriesByHorizon(data, { kind: "all" });
+
+    expect(oneYear.series[0]?.timestamp).toBe(toSeconds("2025-07-14"));
+    expect(fiveYear.series[0]?.timestamp).toBe(toSeconds("2021-07-14"));
+    expect(allTime.series[0]?.timestamp).toBe(toSeconds("2020-07-14"));
+    expect(oneYear.series.length).toBeLessThan(fiveYear.series.length);
+    expect(fiveYear.series.length).toBeLessThan(allTime.series.length);
+    expect(allTime.series).toHaveLength(data.series.length);
   });
 
-  test("slices Unix-second series into distinct 1 year, 5 year, and all-time windows", () => {
-    const data = buildDailyResponse(365 * 6);
+  test("clamps calendar-month cutoffs to the target month length", () => {
+    const data: GetPricesResponse = {
+      ticker: "X",
+      currency: "USD",
+      lastPrice: 3,
+      series: [
+        { timestamp: toSeconds("2024-01-31"), close: 1, volume: null },
+        { timestamp: toSeconds("2024-02-29"), close: 2, volume: null },
+        { timestamp: toSeconds("2024-03-31"), close: 3, volume: null },
+      ],
+    };
 
-    const oneYear = filterSeriesByHorizon(data, 365);
-    const fiveYear = filterSeriesByHorizon(data, 365 * 5);
-    const allTime = filterSeriesByHorizon(data, Infinity);
-    const latestTimestamp = data.series[data.series.length - 1]!.timestamp;
+    const filtered = filterSeriesByHorizon(data, { kind: "months", value: 1 });
 
-    expect(oneYear.series).toHaveLength(366);
-    expect(fiveYear.series).toHaveLength(1_826);
-    expect(allTime.series).toHaveLength(data.series.length);
-    expect(oneYear.series[0]?.timestamp).toBe(latestTimestamp - 365 * DAY_SECONDS);
-    expect(fiveYear.series[0]?.timestamp).toBe(latestTimestamp - 365 * 5 * DAY_SECONDS);
-    expect(allTime.series[0]?.timestamp).toBe(data.series[0]!.timestamp);
+    expect(filtered.series).toEqual(data.series.slice(1));
   });
 
   test("keeps the latest point when only it falls inside the requested window", () => {
@@ -89,7 +112,7 @@ describe("filterSeriesByHorizon", () => {
       ],
     };
 
-    const filtered = filterSeriesByHorizon(data, 1);
+    const filtered = filterSeriesByHorizon(data, { kind: "days", value: 1 });
 
     expect(filtered.series).toEqual([data.series[1]]);
   });
