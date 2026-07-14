@@ -81,15 +81,9 @@ export default function App() {
   // Selection state for drag-to-select feature
   const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(null);
 
-  // Key that resets chart selection when ticker or horizon changes
+  // Key that remounts the chart (resetting its internal selection) on ticker/horizon change.
   const chartKey = `${ticker}-${horizonIndex}`;
 
-  // Clear selection stats when chartKey changes (ticker or horizon change remounts chart)
-  useEffect(() => {
-    setSelectionStats(null);
-  }, [chartKey]);
-
-  // Callback to handle selection changes, also clears stats when chart reports null
   const handleSelectionChange = useCallback((stats: SelectionStats | null) => {
     setSelectionStats(stats);
   }, []);
@@ -154,7 +148,13 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setSelectionStats(null);
     setTicker(t);
+  }
+
+  function onHorizonSelect(i: number) {
+    setSelectionStats(null);
+    setHorizonIndex(i);
   }
 
   return (
@@ -242,7 +242,7 @@ export default function App() {
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => onHorizonSelect(i)}
                       >
                         {h.label}
                       </button>
