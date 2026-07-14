@@ -73,7 +73,16 @@
   }
 
   .search-form {
-    justify-self: end;
+    width: 100%;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: 0;
   }
 }
 
