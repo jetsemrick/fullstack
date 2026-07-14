@@ -166,6 +166,15 @@
   cursor: not-allowed;
 }
 
+.form-message {
+  margin: -1rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
@@ -345,6 +354,112 @@
   background: #edf5ee;
   color: #2b703e;
   border-color: #d1e2d3;
+}
+
+.ticker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.ticker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem 0.45rem 0.65rem;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  min-width: 0;
+}
+
+.ticker-chip--loading {
+  border-style: dashed;
+}
+
+.ticker-chip--error {
+  border-color: #f5c2c2;
+  background: #fdf5f5;
+}
+
+.ticker-chip__swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ticker-chip__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ticker-chip__symbol {
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: -0.02em;
+}
+
+.ticker-chip__meta {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker-chip__meta--error {
+  color: #ba3b3b;
+}
+
+.ticker-chip__change {
+  margin-left: 0.35rem;
+}
+
+.ticker-chip__change.positive {
+  color: #2b703e;
+}
+
+.ticker-chip__change.negative {
+  color: #ba3b3b;
+}
+
+.ticker-chip__change.muted {
+  color: var(--fg-muted);
+}
+
+.ticker-chip__remove {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+}
+
+.ticker-chip__remove:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.ticker-chip__remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.currency-warning {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #f0d9a8;
+  background: #fff9ed;
+  color: #7a5b1e;
+  font-size: 0.8125rem;
+}
+
+.chart-container--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .report-bug {

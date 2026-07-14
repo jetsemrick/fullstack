@@ -1,5 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildComparisonRows,
+  buildPriceVolumeRows,
+  downsampleRows,
+  downsampleWideRows,
+  hasMixedCurrencies,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -72,6 +81,85 @@ describe("downsampleRows", () => {
     expect(sampled[sampled.length - 1]).toEqual(rows[rows.length - 1]);
     expect(sampled).toContainEqual(rows[5]);
     expect(sampled).toContainEqual(rows[14]);
+    expect(sampled.length).toBeLessThan(rows.length);
+  });
+});
+
+describe("buildComparisonRows", () => {
+  test("unions timestamps and fills null gaps", () => {
+    const { rows, meta } = buildComparisonRows([
+      {
+        ticker: "AAA",
+        currency: "USD",
+        series: [
+          { timestamp: 1, close: 10, volume: null },
+          { timestamp: 2, close: 11, volume: null },
+        ],
+      },
+      {
+        ticker: "BBB",
+        currency: "USD",
+        series: [
+          { timestamp: 2, close: 20, volume: null },
+          { timestamp: 3, close: 21, volume: null },
+        ],
+      },
+    ]);
+
+    expect(meta.map((entry) => entry.ticker)).toEqual(["AAA", "BBB"]);
+    expect(rows).toEqual([
+      { t: 1000, AAA: 10, BBB: null },
+      { t: 2000, AAA: 11, BBB: 20 },
+      { t: 3000, AAA: null, BBB: 21 },
+    ]);
+  });
+
+  test("returns empty rows for empty input", () => {
+    expect(buildComparisonRows([])).toEqual({ rows: [], meta: [] });
+  });
+
+  test("preserves ticker order in metadata", () => {
+    const { meta } = buildComparisonRows([
+      { ticker: "MSFT", currency: "USD", series: [{ timestamp: 1, close: 1, volume: null }] },
+      { ticker: "AAPL", currency: "USD", series: [{ timestamp: 1, close: 2, volume: null }] },
+    ]);
+    expect(meta.map((entry) => entry.ticker)).toEqual(["MSFT", "AAPL"]);
+    expect(meta[1]?.colorIndex).toBe(1);
+  });
+});
+
+describe("hasMixedCurrencies", () => {
+  test("false for single or matching currencies", () => {
+    expect(
+      hasMixedCurrencies([
+        { ticker: "A", currency: "USD", colorIndex: 0 },
+        { ticker: "B", currency: "USD", colorIndex: 1 },
+      ]),
+    ).toBe(false);
+  });
+
+  test("true when multiple currencies present", () => {
+    expect(
+      hasMixedCurrencies([
+        { ticker: "A", currency: "USD", colorIndex: 0 },
+        { ticker: "B", currency: "EUR", colorIndex: 1 },
+      ]),
+    ).toBe(true);
+  });
+});
+
+describe("downsampleWideRows", () => {
+  test("preserves endpoints and reduces row count", () => {
+    const rows = Array.from({ length: 20 }, (_, index) => ({
+      t: index,
+      AAA: index,
+      BBB: index * 2,
+    }));
+
+    const sampled = downsampleWideRows(rows, ["AAA", "BBB"], 6);
+
+    expect(sampled[0]).toEqual(rows[0]);
+    expect(sampled[sampled.length - 1]).toEqual(rows[rows.length - 1]);
     expect(sampled.length).toBeLessThan(rows.length);
   });
 });

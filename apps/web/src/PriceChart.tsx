@@ -1,32 +1,29 @@
 import {
-  Area,
   CartesianGrid,
   ComposedChart,
+  Legend,
+  Line,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
-import type { GetPricesResponse } from "@stock/shared";
+import { useMemo } from "react";
+import {
+  downsampleWideRows,
+  type ComparisonSeriesMeta,
+  type ComparisonWideRow,
+} from "./priceChartData";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
   return (rows[rows.length - 1].t - rows[0].t) / 86_400_000;
 }
 
-/** X-axis labels for daily series: format depends on chart span so ticks read as calendar milestones. */
 function formatDailyAxisTick(ms: number, spanDays: number): string {
   const d = new Date(ms);
   if (spanDays > 365 * 5) {
@@ -61,18 +58,32 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function seriesColor(index: number): string {
+  return `var(--series-${(index % 5) + 1})`;
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
-  const fillGradientId = useId().replace(/:/g, "");
-  const fullRows = useMemo(() => chartData(data), [data]);
-  const rows = useMemo(() => {
-    if (variant === "intraday") return fullRows;
-    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
-  }, [fullRows, variant]);
-  const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+export type ComparisonChartProps = {
+  series: ComparisonSeriesMeta[];
+  rows: ComparisonWideRow[];
+  variant?: PriceChartVariant;
+};
 
-  const spanDays = spanCalendarDays(rows);
+export function PriceChart({ series, rows, variant = "daily" }: ComparisonChartProps) {
+  const tickers = useMemo(() => series.map((entry) => entry.ticker), [series]);
+  const currencyByTicker = useMemo(
+    () => new Map(series.map((entry) => [entry.ticker, entry.currency])),
+    [series],
+  );
+
+  const renderedRows = useMemo(() => {
+    if (variant === "intraday") return rows;
+    return downsampleWideRows(rows, tickers, MAX_DAILY_RENDER_POINTS);
+  }, [rows, tickers, variant]);
+
+  const anchorMs = renderedRows.length > 0 ? renderedRows[renderedRows.length - 1]!.t : 0;
+  const spanDays = spanCalendarDays(renderedRows);
   const tickFormatter =
     variant === "intraday"
       ? (ms: number) => formatIntradayAxisTick(ms)
@@ -89,28 +100,28 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   }, [sessionLayout]);
 
   const xDomain = useMemo((): [number, number] | [string, string] => {
-    if (variant === "intraday" && sessionLayout && rows.length > 0) {
-      const dataStart = rows[0].t;
-      const dataEnd = rows[rows.length - 1].t;
-      // Anchor left to first bar so pre-market domain padding does not leave empty chart space.
+    if (variant === "intraday" && sessionLayout && renderedRows.length > 0) {
+      const dataStart = renderedRows[0]!.t;
+      const dataEnd = renderedRows[renderedRows.length - 1]!.t;
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
-  }, [variant, sessionLayout, rows]);
+  }, [variant, sessionLayout, renderedRows]);
 
-  if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  if (renderedRows.length === 0) {
+    return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  }
+
+  const ariaLabel =
+    series.length === 1
+      ? `${series[0]!.ticker} price over time line chart`
+      : `Price comparison chart for ${series.map((entry) => entry.ticker).join(", ")}`;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div role="img" aria-label={ariaLabel} style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
+        <ComposedChart data={renderedRows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
           {variant === "intraday" && sessionLayout ? (
             <>
@@ -146,19 +157,27 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
-            dataKey="price"
             domain={["auto", "auto"]}
             width={60}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
+            tickFormatter={(value: number) => formatPrice(value)}
             dx={-10}
+          />
+          <Legend
+            verticalAlign="top"
+            align="right"
+            wrapperStyle={{ paddingBottom: "0.75rem", fontSize: "0.8125rem" }}
+            formatter={(value: string) => {
+              const currency = currencyByTicker.get(value);
+              return currency ? `${value} (${currency})` : value;
+            }}
           />
           <Tooltip
             contentStyle={{
               background: "var(--card)",
-              border: `1px solid var(--card-border)`,
+              border: "1px solid var(--card-border)",
               borderRadius: "12px",
               color: "var(--fg)",
               boxShadow: "var(--shadow)",
@@ -171,19 +190,27 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: number | string, name: string) => {
+              if (typeof value !== "number") return ["—", name];
+              const currency = currencyByTicker.get(name);
+              const suffix = currency ? ` ${currency}` : "";
+              return [`${formatPrice(value)}${suffix}`, name];
+            }}
           />
-          <Area
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
+          {series.map((entry) => (
+            <Line
+              key={entry.ticker}
+              type="linear"
+              dataKey={entry.ticker}
+              name={entry.ticker}
+              stroke={seriesColor(entry.colorIndex)}
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls={false}
+              activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2, fill: seriesColor(entry.colorIndex) }}
+              isAnimationActive={false}
+            />
+          ))}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

@@ -40,6 +40,8 @@ bun run dev:web
 
 The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
 
+Use the **Add** control in the header to compare up to **five** tickers on one chart. Each symbol loads in parallel via the existing single-ticker API; successful series overlay as absolute prices on a shared time axis. Missing dates stay disconnected (no gap filling). If compared tickers use different currencies, the UI shows a warning and does not convert values.
+
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
 ### Environment (optional)
@@ -56,7 +58,7 @@ Create a key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL&range=max&interval=1d` – normalized price series for one ticker. Optional `range` and `interval` query params are validated and forwarded to Yahoo chart endpoints (defaults: `max` / `1d`). The web client chooses range/interval per horizon and may fetch `max` once then slice locally for longer windows.
 - `GET /api/market-context` – US market session state plus major index quotes.
 - `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars). Runs a local Cursor agent (`@cursor/sdk`) against the monorepo to apply the requested edit. Requires `CURSOR_API_KEY`.
 
@@ -67,7 +69,7 @@ The web UI includes a **Report bug** control (bottom-right) that posts to `/api/
 bun test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Root `bun test` runs API route/Yahoo tests and web chart transform tests in `apps/web/src/priceChartData.test.ts`.)
 
 ## Typecheck
 
