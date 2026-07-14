@@ -84,6 +84,11 @@ export default function App() {
   // Key that resets chart selection when ticker or horizon changes
   const chartKey = `${ticker}-${horizonIndex}`;
 
+  // Clear selection stats when chartKey changes (ticker or horizon change remounts chart)
+  useEffect(() => {
+    setSelectionStats(null);
+  }, [chartKey]);
+
   // Callback to handle selection changes, also clears stats when chart reports null
   const handleSelectionChange = useCallback((stats: SelectionStats | null) => {
     setSelectionStats(stats);
