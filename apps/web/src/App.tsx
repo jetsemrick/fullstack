@@ -342,7 +342,7 @@ export default function App() {
             </p>
           </div>
 
-          <form className="backtest-form" onSubmit={onBacktestSubmit}>
+          <form className="backtest-form" onSubmit={onBacktestSubmit} noValidate>
             <label className="backtest-field" htmlFor={`${backtestFormId}-ticker`}>
               <span>Ticker</span>
               <input
