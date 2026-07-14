@@ -28,23 +28,34 @@ export function parseTradeDate(value: string): number | null {
   return parsedDate.toISOString().slice(0, 10) === value ? timestamp : null;
 }
 
-export function getSessionDate(timestamp: number, exchangeTimezoneName: string | null): string {
-  const date = new Date(timestamp * 1000);
+function createSessionDateFormatter(exchangeTimezoneName: string | null) {
+  let formatter: Intl.DateTimeFormat | null = null;
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
+    formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: exchangeTimezoneName ?? "UTC",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    }).formatToParts(date);
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    if (values.year && values.month && values.day) {
-      return `${values.year}-${values.month}-${values.day}`;
-    }
+    });
   } catch {
     // Fall back to UTC if upstream supplies an invalid IANA timezone.
   }
-  return date.toISOString().slice(0, 10);
+
+  return (timestamp: number): string => {
+    const date = new Date(timestamp * 1000);
+    if (formatter) {
+      const parts = formatter.formatToParts(date);
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      if (values.year && values.month && values.day) {
+        return `${values.year}-${values.month}-${values.day}`;
+      }
+    }
+    return date.toISOString().slice(0, 10);
+  };
+}
+
+export function getSessionDate(timestamp: number, exchangeTimezoneName: string | null): string {
+  return createSessionDateFormatter(exchangeTimezoneName)(timestamp);
 }
 
 export function calculateBacktest(
@@ -69,9 +80,8 @@ export function calculateBacktest(
     return { ok: false, error: "No daily price history is available for this ticker." };
   }
 
-  const entry = usableSeries.find(
-    (point) => getSessionDate(point.timestamp, exchangeTimezoneName) >= tradeDate,
-  );
+  const formatSessionDate = createSessionDateFormatter(exchangeTimezoneName);
+  const entry = usableSeries.find((point) => formatSessionDate(point.timestamp) >= tradeDate);
   if (!entry) {
     return { ok: false, error: "No trading session is available on or after this date." };
   }
