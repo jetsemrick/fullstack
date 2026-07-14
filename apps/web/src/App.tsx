@@ -101,7 +101,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
-  const [backtestTicker, setBacktestTicker] = useState(DEFAULT_TICKER);
+  const [backtestTicker, setBacktestTicker] = useState<string>(DEFAULT_TICKER);
   const [backtestVolume, setBacktestVolume] = useState("10");
   const [backtestDate, setBacktestDate] = useState("");
   const [backtestLoading, setBacktestLoading] = useState(false);
