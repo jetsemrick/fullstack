@@ -4,12 +4,41 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { calculateBacktest, parseTradeDate, type BacktestResult } from "./backtest";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
   if (v == null) return "—";
   const cur = currency ? ` ${currency}` : "";
   return `${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
+}
+
+function formatMoney(value: number, currency: string | null) {
+  if (currency) {
+    try {
+      return value.toLocaleString(undefined, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } catch {
+      // Fall through when an upstream currency code is not supported.
+    }
+  }
+  return `${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}${currency ? ` ${currency}` : ""}`;
+}
+
+function formatSessionDate(timestamp: number) {
+  return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatPercentChange(data: GetPricesResponse | null) {
@@ -55,6 +84,7 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
 
 export default function App() {
   const formId = useId();
+  const backtestFormId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
@@ -63,6 +93,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  const [backtestTicker, setBacktestTicker] = useState(DEFAULT_TICKER);
+  const [backtestVolume, setBacktestVolume] = useState("10");
+  const [backtestDate, setBacktestDate] = useState("");
+  const [backtestLoading, setBacktestLoading] = useState(false);
+  const [backtestError, setBacktestError] = useState<string | null>(null);
+  const [backtestResult, setBacktestResult] = useState<{
+    ticker: string;
+    currency: string | null;
+    values: BacktestResult;
+  } | null>(null);
+  const backtestRequestIdRef = useRef(0);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -125,6 +166,67 @@ export default function App() {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
     setTicker(t);
+  }
+
+  async function onBacktestSubmit(e: FormEvent) {
+    e.preventDefault();
+    const requestedTicker = backtestTicker.trim().toUpperCase();
+    const volume = Number(backtestVolume);
+    const tradeDateMs = parseTradeDate(backtestDate);
+
+    setBacktestResult(null);
+    if (!requestedTicker) {
+      setBacktestError("Enter a ticker symbol.");
+      return;
+    }
+    if (!Number.isFinite(volume) || volume <= 0) {
+      setBacktestError("Share volume must be greater than zero.");
+      return;
+    }
+    if (tradeDateMs == null) {
+      setBacktestError("Enter a valid trade date.");
+      return;
+    }
+    const todayUtc = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+    if (tradeDateMs > todayUtc) {
+      setBacktestError("Trade date cannot be in the future.");
+      return;
+    }
+
+    const requestId = ++backtestRequestIdRef.current;
+    setBacktestError(null);
+    setBacktestLoading(true);
+
+    try {
+      const response = await fetchPrices({
+        ticker: requestedTicker,
+        range: "max",
+        interval: "1d",
+      });
+      if (requestId !== backtestRequestIdRef.current) return;
+      if (!response.ok) {
+        setBacktestError(response.error.error || "Could not load price history.");
+        return;
+      }
+
+      const calculation = calculateBacktest(response.data.series, volume, backtestDate);
+      if (!calculation.ok) {
+        setBacktestError(calculation.error);
+        return;
+      }
+      setBacktestResult({
+        ticker: response.data.ticker,
+        currency: response.data.currency,
+        values: calculation.result,
+      });
+    } catch (backtestRequestError) {
+      if (requestId !== backtestRequestIdRef.current) return;
+      setBacktestError(
+        backtestRequestError instanceof Error ? backtestRequestError.message : "Could not load price history.",
+      );
+    } finally {
+      if (requestId === backtestRequestIdRef.current) setBacktestLoading(false);
+    }
   }
 
   return (
@@ -221,6 +323,107 @@ export default function App() {
             </div>
           </>
         )}
+
+        <section className="card backtest-card" aria-labelledby={`${backtestFormId}-title`}>
+          <div className="backtest-heading">
+            <div>
+              <p className="backtest-eyebrow">Hypothetical trade</p>
+              <h2 id={`${backtestFormId}-title`} className="backtest-title">Buy-at-date backtest</h2>
+            </div>
+            <p className="backtest-description">
+              Calculate unrealized profit or loss from the first market close on or after your trade date.
+            </p>
+          </div>
+
+          <form className="backtest-form" onSubmit={onBacktestSubmit}>
+            <label className="backtest-field" htmlFor={`${backtestFormId}-ticker`}>
+              <span>Ticker</span>
+              <input
+                id={`${backtestFormId}-ticker`}
+                name="backtestTicker"
+                value={backtestTicker}
+                onChange={(event) => setBacktestTicker(event.target.value.toUpperCase())}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={32}
+                placeholder="AAPL"
+              />
+            </label>
+            <label className="backtest-field" htmlFor={`${backtestFormId}-volume`}>
+              <span>Shares</span>
+              <input
+                id={`${backtestFormId}-volume`}
+                name="volume"
+                type="number"
+                min="0"
+                step="any"
+                value={backtestVolume}
+                onChange={(event) => setBacktestVolume(event.target.value)}
+                placeholder="10"
+              />
+            </label>
+            <label className="backtest-field" htmlFor={`${backtestFormId}-date`}>
+              <span>Trade date</span>
+              <input
+                id={`${backtestFormId}-date`}
+                name="tradeDate"
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                value={backtestDate}
+                onChange={(event) => setBacktestDate(event.target.value)}
+              />
+            </label>
+            <button className="backtest-submit" type="submit" disabled={backtestLoading}>
+              {backtestLoading ? "Calculating..." : "Run backtest"}
+            </button>
+          </form>
+
+          {backtestError && (
+            <p className="backtest-error" role="alert">{backtestError}</p>
+          )}
+
+          {backtestResult && (
+            <div className="backtest-results" aria-live="polite">
+              <div className="backtest-summary">
+                <div>
+                  <span className="backtest-result-label">Entry used</span>
+                  <strong>{formatSessionDate(backtestResult.values.entryTimestamp)}</strong>
+                </div>
+                <div>
+                  <span className="backtest-result-label">Entry close</span>
+                  <strong>{formatMoney(backtestResult.values.entryClose, backtestResult.currency)}</strong>
+                </div>
+                <div>
+                  <span className="backtest-result-label">Latest close</span>
+                  <strong>{formatMoney(backtestResult.values.latestClose, backtestResult.currency)}</strong>
+                  <small>{formatSessionDate(backtestResult.values.latestTimestamp)}</small>
+                </div>
+              </div>
+              <div className="backtest-metrics">
+                <div className="backtest-metric">
+                  <span>Cost basis</span>
+                  <strong>{formatMoney(backtestResult.values.costBasis, backtestResult.currency)}</strong>
+                </div>
+                <div className="backtest-metric">
+                  <span>Market value</span>
+                  <strong>{formatMoney(backtestResult.values.marketValue, backtestResult.currency)}</strong>
+                </div>
+                <div className={`backtest-metric ${backtestResult.values.profitLoss > 0 ? "positive" : backtestResult.values.profitLoss < 0 ? "negative" : ""}`}>
+                  <span>Unrealized P&amp;L</span>
+                  <strong>
+                    {formatMoney(backtestResult.values.profitLoss, backtestResult.currency)}
+                    {" "}
+                    ({backtestResult.values.profitLossPercent > 0 ? "+" : ""}
+                    {backtestResult.values.profitLossPercent.toFixed(2)}%)
+                  </strong>
+                </div>
+              </div>
+              <p className="backtest-footnote">
+                {backtestResult.values.volume.toLocaleString()} {backtestResult.ticker} shares using unadjusted daily closes.
+              </p>
+            </div>
+          )}
+        </section>
       </main>
       <ReportBug />
     </div>

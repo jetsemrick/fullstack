@@ -169,6 +169,7 @@
 .main-content {
   display: flex;
   flex-direction: column;
+  gap: 2rem;
   min-height: 500px;
 }
 
@@ -345,6 +346,195 @@
   background: #edf5ee;
   color: #2b703e;
   border-color: #d1e2d3;
+}
+
+.backtest-card {
+  padding: 2rem;
+}
+
+.backtest-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.backtest-eyebrow {
+  margin: 0 0 0.2rem;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.backtest-title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 1.35rem;
+  letter-spacing: -0.025em;
+}
+
+.backtest-description {
+  max-width: 31rem;
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+.backtest-form {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(11rem, 1.2fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.backtest-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.backtest-field input {
+  width: 100%;
+  min-height: 2.6rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.55rem 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.backtest-field input:focus {
+  border-color: var(--accent);
+}
+
+.backtest-submit {
+  min-height: 2.6rem;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.55rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.backtest-submit:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.backtest-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.backtest-error {
+  margin: 1rem 0 0;
+  border: 1px solid #f5c2c2;
+  background: #fdf5f5;
+  color: #ba3b3b;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.875rem;
+}
+
+.backtest-results {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--card-border);
+  padding-top: 1.5rem;
+}
+
+.backtest-summary,
+.backtest-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.backtest-summary {
+  margin-bottom: 0.75rem;
+}
+
+.backtest-summary > div,
+.backtest-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  padding: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.backtest-result-label,
+.backtest-metric span {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+}
+
+.backtest-summary strong,
+.backtest-metric strong {
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+.backtest-summary small {
+  color: var(--fg-muted);
+}
+
+.backtest-metric.positive {
+  border-color: #d1e2d3;
+  background: #edf5ee;
+}
+
+.backtest-metric.positive strong {
+  color: #2b703e;
+}
+
+.backtest-metric.negative {
+  border-color: #f5c2c2;
+  background: #fdf5f5;
+}
+
+.backtest-metric.negative strong {
+  color: #ba3b3b;
+}
+
+.backtest-footnote {
+  margin: 0.75rem 0 0;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .backtest-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .backtest-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .backtest-summary,
+  .backtest-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .backtest-card {
+    padding: 1.25rem;
+  }
+
+  .backtest-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .report-bug {
