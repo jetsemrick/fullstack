@@ -41,6 +41,14 @@ function formatSessionDate(timestamp: number) {
   });
 }
 
+function getLocalDateString(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function formatPercentChange(data: GetPricesResponse | null) {
   if (!data || !data.series || data.series.length < 2) return null;
   const first = data.series[0].close;
@@ -187,8 +195,7 @@ export default function App() {
       setBacktestError("Enter a valid trade date.");
       return;
     }
-    const todayUtc = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
-    if (tradeDateMs > todayUtc) {
+    if (backtestDate > getLocalDateString()) {
       setBacktestError("Trade date cannot be in the future.");
       return;
     }
@@ -368,7 +375,7 @@ export default function App() {
                 id={`${backtestFormId}-date`}
                 name="tradeDate"
                 type="date"
-                max={new Date().toISOString().slice(0, 10)}
+                max={getLocalDateString()}
                 value={backtestDate}
                 onChange={(event) => setBacktestDate(event.target.value)}
               />
