@@ -7,17 +7,35 @@ export type YahooParseResult = {
   errorMessage: string | null;
   points: PricePoint[];
   currency: string | null;
+  exchangeTimezoneName: string | null;
   lastPrice: number | null;
   symbol: string | null;
+  upstreamStatus: number | null;
 };
 
 export function parseResult(body: unknown): YahooParseResult {
   if (typeof body !== "object" || body === null) {
-    return { errorMessage: "Invalid JSON", points: [], currency: null, lastPrice: null, symbol: null };
+    return {
+      errorMessage: "Invalid JSON",
+      points: [],
+      currency: null,
+      exchangeTimezoneName: null,
+      lastPrice: null,
+      symbol: null,
+      upstreamStatus: null,
+    };
   }
   const chart = (body as Record<string, unknown>).chart;
   if (typeof chart !== "object" || chart === null) {
-    return { errorMessage: "Missing chart", points: [], currency: null, lastPrice: null, symbol: null };
+    return {
+      errorMessage: "Missing chart",
+      points: [],
+      currency: null,
+      exchangeTimezoneName: null,
+      lastPrice: null,
+      symbol: null,
+      upstreamStatus: null,
+    };
   }
   const err = (chart as Record<string, unknown>).error;
   if (typeof err === "object" && err !== null && "description" in err) {
@@ -26,19 +44,35 @@ export function parseResult(body: unknown): YahooParseResult {
       errorMessage: typeof d === "string" ? d : "Chart error",
       points: [],
       currency: null,
+      exchangeTimezoneName: null,
       lastPrice: null,
       symbol: null,
+      upstreamStatus: null,
     };
   }
   const result = (chart as Record<string, unknown>).result;
   if (!Array.isArray(result) || result[0] === undefined) {
-    return { errorMessage: "No data for symbol", points: [], currency: null, lastPrice: null, symbol: null };
+    return {
+      errorMessage: "No data for symbol",
+      points: [],
+      currency: null,
+      exchangeTimezoneName: null,
+      lastPrice: null,
+      symbol: null,
+      upstreamStatus: null,
+    };
   }
   const first = result[0] as Record<string, unknown>;
   const meta = first.meta;
   const currency =
     typeof meta === "object" && meta !== null && typeof (meta as { currency?: unknown }).currency === "string"
       ? (meta as { currency: string }).currency
+      : null;
+  const exchangeTimezoneName =
+    typeof meta === "object" &&
+    meta !== null &&
+    typeof (meta as { exchangeTimezoneName?: unknown }).exchangeTimezoneName === "string"
+      ? (meta as { exchangeTimezoneName: string }).exchangeTimezoneName
       : null;
   const lastPrice =
     typeof meta === "object" && meta !== null
@@ -57,12 +91,28 @@ export function parseResult(body: unknown): YahooParseResult {
       : null;
   const timestamps = first.timestamp;
   if (!Array.isArray(timestamps) || timestamps.length === 0) {
-    return { errorMessage: "No series data", points: [], currency, lastPrice, symbol };
+    return {
+      errorMessage: "No series data",
+      points: [],
+      currency,
+      exchangeTimezoneName,
+      lastPrice,
+      symbol,
+      upstreamStatus: null,
+    };
   }
   const indicators = first.indicators;
   const quote = extractQuoteArrays(indicators);
   if (!quote || !Array.isArray(quote.close) || quote.close.length !== timestamps.length) {
-    return { errorMessage: "Malformed quote data", points: [], currency, lastPrice, symbol };
+    return {
+      errorMessage: "Malformed quote data",
+      points: [],
+      currency,
+      exchangeTimezoneName,
+      lastPrice,
+      symbol,
+      upstreamStatus: null,
+    };
   }
   const points: PricePoint[] = [];
   for (let i = 0; i < timestamps.length; i++) {
@@ -81,9 +131,25 @@ export function parseResult(body: unknown): YahooParseResult {
     points.push({ timestamp: ts, close, volume });
   }
   if (points.length === 0) {
-    return { errorMessage: "No price points", points: [], currency, lastPrice, symbol };
+    return {
+      errorMessage: "No price points",
+      points: [],
+      currency,
+      exchangeTimezoneName,
+      lastPrice,
+      symbol,
+      upstreamStatus: null,
+    };
   }
-  return { errorMessage: null, points, currency, lastPrice, symbol };
+  return {
+    errorMessage: null,
+    points,
+    currency,
+    exchangeTimezoneName,
+    lastPrice,
+    symbol,
+    upstreamStatus: null,
+  };
 }
 
 function pickNumber(v: unknown): number | null {
@@ -130,13 +196,19 @@ export async function fetchYahooChart(ticker: string, opts?: YahooChartOpts): Pr
       errorMessage: `Invalid response (${res.status})`,
       points: [] as PricePoint[],
       currency: null,
+      exchangeTimezoneName: null,
       lastPrice: null,
       symbol: null,
+      upstreamStatus: res.status,
     };
   }
   const parsed = parseResult(json);
   if (!res.ok) {
-    return { ...parsed, errorMessage: parsed.errorMessage ?? `HTTP ${res.status}` };
+    return {
+      ...parsed,
+      errorMessage: parsed.errorMessage ?? `HTTP ${res.status}`,
+      upstreamStatus: res.status,
+    };
   }
   return parsed;
 }

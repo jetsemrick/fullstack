@@ -11,6 +11,8 @@ export interface PricePoint {
 export interface GetPricesResponse {
   ticker: string;
   currency: string | null;
+  /** IANA timezone for the exchange session calendar */
+  exchangeTimezoneName: string | null;
   /** Most recent last price from metadata when available */
   lastPrice: number | null;
   series: PricePoint[];

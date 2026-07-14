@@ -27,6 +27,7 @@ describe("buildPriceVolumeRows", () => {
     const data: GetPricesResponse = {
       ticker: "X",
       currency: "USD",
+      exchangeTimezoneName: "America/New_York",
       lastPrice: 10,
       series: [
         { timestamp: 1000, close: 1.5, volume: 100 },

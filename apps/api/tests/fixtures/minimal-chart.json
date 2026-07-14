@@ -5,6 +5,7 @@
         "meta": {
           "currency": "USD",
           "symbol": "AAPL",
+          "exchangeTimezoneName": "America/New_York",
           "regularMarketPrice": 198.5
         },
         "timestamp": [1700000000, 1700086400],

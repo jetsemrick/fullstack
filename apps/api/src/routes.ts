@@ -66,6 +66,7 @@ function errBody(message: string, code: ApiErrorBody["code"], details?: string):
 }
 
 const TICKER_RE = /^[A-Za-z0-9._^=-]{1,32}$/;
+const NO_DATA_MESSAGES = new Set(["No data for symbol", "No series data", "No price points"]);
 
 function normalizeTicker(raw: string | null): string {
   if (!raw || !raw.trim()) return DEFAULT_TICKER;
@@ -102,15 +103,20 @@ export async function handleApiRequest(req: Request): Promise<Response> {
       }
       const yahoo = await fetchYahooChart(ticker, { range, interval });
       if (yahoo.errorMessage) {
-        const isNoData = yahoo.points.length === 0;
+        const isNoData =
+          yahoo.points.length === 0 &&
+          (yahoo.upstreamStatus === 404 ||
+            (yahoo.upstreamStatus === null && NO_DATA_MESSAGES.has(yahoo.errorMessage)));
+        const upstreamStatus = yahoo.upstreamStatus === 429 ? 429 : 502;
         return jsonResponse(
           errBody(yahoo.errorMessage, isNoData ? "NOT_FOUND" : "UPSTREAM"),
-          { status: isNoData ? 404 : 502, headers: corsHeaders() },
+          { status: isNoData ? 404 : upstreamStatus, headers: corsHeaders() },
         );
       }
       const body: GetPricesResponse = {
         ticker: yahoo.symbol ?? ticker,
         currency: yahoo.currency,
+        exchangeTimezoneName: yahoo.exchangeTimezoneName,
         lastPrice: yahoo.lastPrice,
         series: yahoo.points,
       };

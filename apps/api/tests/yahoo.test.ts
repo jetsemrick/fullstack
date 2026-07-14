@@ -16,6 +16,7 @@ describe("parseResult", () => {
     const out = parseResult(body);
     expect(out.errorMessage).toBeNull();
     expect(out.currency).toBe("USD");
+    expect(out.exchangeTimezoneName).toBe("America/New_York");
     expect(out.symbol).toBe("AAPL");
     expect(out.lastPrice).toBe(198.5);
     expect(out.points).toHaveLength(2);

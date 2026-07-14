@@ -88,11 +88,28 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
 
     const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=AAPL"));
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ticker: string; series: { close: number }[]; range?: string };
+    const body = (await res.json()) as {
+      ticker: string;
+      exchangeTimezoneName: string | null;
+      series: { close: number }[];
+      range?: string;
+    };
     expect(body.ticker).toBe("AAPL");
+    expect(body.exchangeTimezoneName).toBe("America/New_York");
     expect(body.range).toBeUndefined();
     expect(body.series.length).toBe(2);
     expect(body.series[0].close).toBe(198.1);
+  });
+
+  test("maps Yahoo rate limiting to 429 UPSTREAM", async () => {
+    globalThis.fetch = mock(() =>
+      Promise.resolve(new Response("Too Many Requests", { status: 429 })),
+    ) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=AAPL"));
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
   });
 
   test("returns 200 and market context when Yahoo quote JSON is valid", async () => {

@@ -32,13 +32,22 @@ function formatMoney(value: number, currency: string | null) {
   })}${currency ? ` ${currency}` : ""}`;
 }
 
-function formatSessionDate(timestamp: number) {
-  return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-    timeZone: "UTC",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function formatSessionDate(timestamp: number, exchangeTimezoneName: string | null) {
+  try {
+    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+      timeZone: exchangeTimezoneName ?? "UTC",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
 }
 
 function getLocalDateString(): string {
@@ -109,6 +118,7 @@ export default function App() {
   const [backtestResult, setBacktestResult] = useState<{
     ticker: string;
     currency: string | null;
+    exchangeTimezoneName: string | null;
     values: BacktestResult;
   } | null>(null);
   const backtestRequestIdRef = useRef(0);
@@ -216,7 +226,12 @@ export default function App() {
         return;
       }
 
-      const calculation = calculateBacktest(response.data.series, volume, backtestDate);
+      const calculation = calculateBacktest(
+        response.data.series,
+        volume,
+        backtestDate,
+        response.data.exchangeTimezoneName,
+      );
       if (!calculation.ok) {
         setBacktestError(calculation.error);
         return;
@@ -224,6 +239,7 @@ export default function App() {
       setBacktestResult({
         ticker: response.data.ticker,
         currency: response.data.currency,
+        exchangeTimezoneName: response.data.exchangeTimezoneName,
         values: calculation.result,
       });
     } catch (backtestRequestError) {
@@ -394,7 +410,12 @@ export default function App() {
               <div className="backtest-summary">
                 <div>
                   <span className="backtest-result-label">Entry used</span>
-                  <strong>{formatSessionDate(backtestResult.values.entryTimestamp)}</strong>
+                  <strong>
+                    {formatSessionDate(
+                      backtestResult.values.entryTimestamp,
+                      backtestResult.exchangeTimezoneName,
+                    )}
+                  </strong>
                 </div>
                 <div>
                   <span className="backtest-result-label">Entry close</span>
@@ -403,7 +424,12 @@ export default function App() {
                 <div>
                   <span className="backtest-result-label">Latest close</span>
                   <strong>{formatMoney(backtestResult.values.latestClose, backtestResult.currency)}</strong>
-                  <small>{formatSessionDate(backtestResult.values.latestTimestamp)}</small>
+                  <small>
+                    {formatSessionDate(
+                      backtestResult.values.latestTimestamp,
+                      backtestResult.exchangeTimezoneName,
+                    )}
+                  </small>
                 </div>
               </div>
               <div className="backtest-metrics">

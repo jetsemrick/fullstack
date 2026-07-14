@@ -45,6 +45,25 @@ describe("calculateBacktest", () => {
     expect(result.result.marketValue).toBe(36);
   });
 
+  test("selects a session by exchange-local date when its UTC timestamp is on the previous day", () => {
+    const aucklandSession = Date.parse("2024-01-02T21:00:00Z") / 1000;
+    const nextSession = Date.parse("2024-01-03T21:00:00Z") / 1000;
+    const result = calculateBacktest(
+      [
+        { timestamp: aucklandSession, close: 10, volume: null },
+        { timestamp: nextSession, close: 15, volume: null },
+      ],
+      2,
+      "2024-01-03",
+      "Pacific/Auckland",
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.result.entryTimestamp).toBe(aucklandSession);
+    expect(result.result.entryClose).toBe(10);
+  });
+
   test("sorts unsorted price history before selecting entry and latest bars", () => {
     const result = calculateBacktest(
       [point("2024-01-12", 30), point("2024-01-10", 10), point("2024-01-11", 20)],
@@ -77,6 +96,13 @@ describe("calculateBacktest", () => {
     expect(calculateBacktest(series, -1, "2024-01-02")).toEqual({
       ok: false,
       error: "Share volume must be greater than zero.",
+    });
+  });
+
+  test("rejects huge finite volume when calculated values overflow", () => {
+    expect(calculateBacktest([point("2024-01-02", 2)], Number.MAX_VALUE, "2024-01-02")).toEqual({
+      ok: false,
+      error: "Share volume is too large.",
     });
   });
 
