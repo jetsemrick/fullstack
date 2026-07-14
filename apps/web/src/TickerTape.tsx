@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TickerTapeQuote } from "@stock/shared";
 import { fetchTickerTape } from "./api";
 
@@ -44,13 +44,23 @@ function TickerItem({ quote, listItem }: { quote: TickerTapeQuote; listItem?: bo
 export function TickerTape() {
   const [quotes, setQuotes] = useState<TickerTapeQuote[]>([]);
   const [errored, setErrored] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
     async function load() {
-      const res = await fetchTickerTape(controller.signal);
-      if (cancelled) return;
+      const requestId = ++requestIdRef.current;
+      let res: Awaited<ReturnType<typeof fetchTickerTape>>;
+      try {
+        res = await fetchTickerTape(controller.signal);
+      } catch {
+        if (cancelled || controller.signal.aborted) return;
+        if (requestId !== requestIdRef.current) return;
+        setErrored(true);
+        return;
+      }
+      if (cancelled || requestId !== requestIdRef.current) return;
       if (res.ok) {
         setQuotes(res.data.quotes);
         setErrored(false);

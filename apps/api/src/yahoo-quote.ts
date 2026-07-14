@@ -288,8 +288,8 @@ async function fetchTapeViaV7(symbols: readonly string[]): Promise<Map<string, T
 /** Per-symbol v8 chart meta fallback (same upstream pathway as `/api/prices`). */
 async function fetchTapeViaChart(symbols: readonly string[]): Promise<Map<string, TickerTapeQuote>> {
   const headers = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
-  const tasks = symbols.map(async (symbol) => {
-    const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
+  const tasks = symbols.map(async (requestSymbol) => {
+    const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(requestSymbol)}`);
     url.searchParams.set("range", "1d");
     url.searchParams.set("interval", "1d");
     const res = await fetch(url, { headers });
@@ -302,7 +302,7 @@ async function fetchTapeViaChart(symbols: readonly string[]): Promise<Map<string
     }
     const row = parseIndexFromChartBody(json);
     if (!row || !res.ok) return null;
-    return { symbol: row.symbol, price: row.price, changePercent: row.changePercent } satisfies TickerTapeQuote;
+    return { symbol: requestSymbol, price: row.price, changePercent: row.changePercent } satisfies TickerTapeQuote;
   });
   const rows = await Promise.all(tasks);
   const bySymbol = new Map<string, TickerTapeQuote>();
