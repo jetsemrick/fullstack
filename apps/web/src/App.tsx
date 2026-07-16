@@ -129,6 +129,10 @@ export default function App() {
 
   return (
     <div className="shell">
+      <div className="brand-bar">
+        <h1 className="brand-mark">Cursor Trade</h1>
+        <p className="brand-tagline">Stock charts · dial-up vibes · max volume</p>
+      </div>
       <header className="header">
         <MarketStrip />
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>

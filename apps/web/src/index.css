@@ -1,13 +1,36 @@
 :root {
-  --bg: #f4f5f3;
-  --fg: #2b302b;
-  --fg-muted: #6b726b;
-  --accent: #93af93;
-  --accent-hover: #7b997b;
+  /* Bright 90s retro palette — many saturated hues */
+  --bg: #fff45a;
+  --bg-alt: #7dffc3;
+  --fg: #1a0a2e;
+  --fg-muted: #4a2c6a;
+  --accent: #ff2d95;
+  --accent-hover: #ff5aad;
+  --accent-cyan: #00e5ff;
+  --accent-lime: #39ff14;
+  --accent-orange: #ff6b00;
+  --accent-purple: #b026ff;
+  --accent-blue: #3d5afe;
   --card: #ffffff;
-  --card-border: #e2e4e0;
-  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
-  --font: "Inter", system-ui, -apple-system, sans-serif;
+  --card-border: #1a0a2e;
+  --shadow: 6px 6px 0 #1a0a2e;
+  --shadow-sm: 3px 3px 0 #1a0a2e;
+  --shadow-pink: 5px 5px 0 #ff2d95;
+  --shadow-cyan: 5px 5px 0 #00e5ff;
+  --radius: 0;
+  --radius-sm: 0;
+  --font: "Space Grotesk", "Trebuchet MS", sans-serif;
+  --font-display: "Bungee", "Impact", "Arial Black", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+  --up: #008f11;
+  --up-bg: #c8ffb0;
+  --down: #c4002b;
+  --down-bg: #ffc4d0;
+  --stripe-a: #ff2d95;
+  --stripe-b: #00e5ff;
+  --stripe-c: #ffe600;
+  --stripe-d: #b026ff;
+  --stripe-e: #39ff14;
 }
 
 *,
@@ -25,19 +48,81 @@ body,
 
 body {
   font-family: var(--font);
-  background: var(--bg);
   color: var(--fg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 18px,
+      rgba(26, 10, 46, 0.06) 18px,
+      rgba(26, 10, 46, 0.06) 20px
+    ),
+    linear-gradient(
+      135deg,
+      #fff45a 0%,
+      #7dffc3 28%,
+      #00e5ff 55%,
+      #ff9ee0 78%,
+      #ffe600 100%
+    );
+  background-attachment: fixed;
+  animation: bg-shift 18s ease-in-out infinite alternate;
+}
+
+@keyframes bg-shift {
+  0% {
+    background-position: 0% 0%, 0% 50%;
+  }
+  100% {
+    background-position: 40px 40px, 100% 50%;
+  }
+}
+
+@keyframes marquee-pulse {
+  0%,
+  100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(25deg);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    transform: translateY(8px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes neon-flicker {
+  0%,
+  100% {
+    text-shadow: 3px 3px 0 var(--accent-cyan), -2px 2px 0 var(--accent);
+  }
+  40% {
+    text-shadow: 4px 3px 0 var(--accent), -3px 2px 0 var(--accent-lime);
+  }
+  70% {
+    text-shadow: 2px 4px 0 var(--accent-purple), -2px 1px 0 var(--accent-orange);
+  }
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent-cyan);
+  outline-offset: 3px;
 }
