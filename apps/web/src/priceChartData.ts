@@ -13,6 +13,39 @@ export type ChartRow = {
   price: number;
 };
 
+export interface SelectionStats {
+  dollarChange: number;
+  percentChange: number;
+  startPrice: number;
+  endPrice: number;
+  pointCount: number;
+}
+
+export function calculateSelectionStats(
+  rows: ChartRow[],
+  startX: number,
+  endX: number,
+  minPoints = 2,
+): SelectionStats | null {
+  const minX = Math.min(startX, endX);
+  const maxX = Math.max(startX, endX);
+  const selectedPoints = rows.filter((row) => row.t >= minX && row.t <= maxX);
+  if (selectedPoints.length < minPoints) return null;
+
+  const startPrice = selectedPoints[0]!.price;
+  const endPrice = selectedPoints[selectedPoints.length - 1]!.price;
+  if (startPrice === 0) return null;
+  const dollarChange = endPrice - startPrice;
+
+  return {
+    dollarChange,
+    percentChange: (dollarChange / startPrice) * 100,
+    startPrice,
+    endPrice,
+    pointCount: selectedPoints.length,
+  };
+}
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }

@@ -11,21 +11,11 @@ import {
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
-
-/** Selection stats returned to parent for display. */
-export interface SelectionStats {
-  /** Absolute dollar change (end - start) */
-  dollarChange: number;
-  /** Percent change ((end - start) / start * 100) */
-  percentChange: number;
-  /** Starting price in selection */
-  startPrice: number;
-  /** Ending price in selection */
-  endPrice: number;
-  /** Number of data points in selection */
-  pointCount: number;
-}
+import {
+  calculateSelectionStats,
+  downsampleRows,
+  type SelectionStats,
+} from "./priceChartData";
 
 const MIN_SELECTION_POINTS = 2;
 
@@ -110,28 +100,11 @@ export function PriceChart({
   const dragEndRef = useRef<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Calculate selection stats using full (non-downsampled) data for accuracy
+  // Calculate selection stats using full (non-downsampled) data for accuracy.
   const calculateStats = useCallback(
-    (startX: number, endX: number): SelectionStats | null => {
-      const minX = Math.min(startX, endX);
-      const maxX = Math.max(startX, endX);
-      const selectedPoints = fullRows.filter((r) => r.t >= minX && r.t <= maxX);
-      if (selectedPoints.length < MIN_SELECTION_POINTS) return null;
-
-      const startPrice = selectedPoints[0].price;
-      const endPrice = selectedPoints[selectedPoints.length - 1].price;
-      const dollarChange = endPrice - startPrice;
-      const percentChange = (dollarChange / startPrice) * 100;
-
-      return {
-        dollarChange,
-        percentChange,
-        startPrice,
-        endPrice,
-        pointCount: selectedPoints.length,
-      };
-    },
-    [fullRows]
+    (startX: number, endX: number) =>
+      calculateSelectionStats(fullRows, startX, endX, MIN_SELECTION_POINTS),
+    [fullRows],
   );
 
   // Handle mouse events for drag selection. Handlers read/update refs so they are
