@@ -3,6 +3,7 @@ import {
   buildPriceVolumeRows,
   calculateSelectionStats,
   downsampleRows,
+  filterSeriesByHorizon,
   seriesHasVolume,
   formatVolumeAxis,
   formatVolumeTooltip,
@@ -33,6 +34,31 @@ describe("calculateSelectionStats", () => {
   test("returns null for ranges with fewer than two points", () => {
     expect(calculateSelectionStats(rows, 2, 2)).toBeNull();
     expect(calculateSelectionStats(rows, 10, 20)).toBeNull();
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  test("slices Unix-second data into distinct year windows", () => {
+    const daySeconds = 24 * 60 * 60;
+    const data: GetPricesResponse = {
+      ticker: "X",
+      currency: "USD",
+      lastPrice: 2_190,
+      series: Array.from({ length: 2_191 }, (_, index) => ({
+        timestamp: 1_600_000_000 + index * daySeconds,
+        close: index,
+        volume: null,
+      })),
+    };
+
+    const oneYear = filterSeriesByHorizon(data, 365);
+    const fiveYear = filterSeriesByHorizon(data, 365 * 5);
+
+    expect(oneYear.series).toHaveLength(366);
+    expect(fiveYear.series).toHaveLength(1_826);
+    expect(oneYear.series[0]!.timestamp).toBe(
+      data.series[data.series.length - 1]!.timestamp - 365 * daySeconds,
+    );
   });
 });
 

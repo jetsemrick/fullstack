@@ -4,7 +4,7 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
-import type { SelectionStats } from "./priceChartData";
+import { filterSeriesByHorizon, type SelectionStats } from "./priceChartData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -54,18 +54,6 @@ const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number 
 
 function priceCacheKey(ticker: string, range: string, interval: string): string {
   return `${ticker}:${range}:${interval}`;
-}
-
-function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
-  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
-  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
-  return {
-    ...data,
-    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
-  };
 }
 
 export default function App() {
