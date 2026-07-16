@@ -264,7 +264,13 @@ export function PriceChart({
       ref={chartRef}
       role="img"
       aria-label="Price over time line chart. Drag to select a range and view net change."
-      style={{ width: "100%", height: "100%", cursor: isDragging ? "crosshair" : "default" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        cursor: isDragging ? "crosshair" : "default",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+      }}
     >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart
