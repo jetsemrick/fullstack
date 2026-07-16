@@ -79,11 +79,16 @@ export function BacktestForm() {
 
       setLoading(true);
 
+      const now = Date.now();
+      const tradeDateMs = tradeDateTs * 1000;
+      const yearsAgo = (now - tradeDateMs) / (365.25 * 24 * 60 * 60 * 1000);
+      const range = yearsAgo <= 2 ? "2y" : yearsAgo <= 5 ? "5y" : yearsAgo <= 10 ? "10y" : "max";
+
       let priceData: GetPricesResponse;
       try {
         const res = await fetchPrices({
           ticker: tickerValue,
-          range: "max",
+          range,
           interval: "1d",
         });
         if (!res.ok) {
