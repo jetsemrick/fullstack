@@ -152,8 +152,10 @@ export default function App() {
 
   const slicedSeries = useMemo(() => {
     const horizonDays = HORIZONS[horizonIndex].days;
-    return seriesData.map((d) => filterSeriesByHorizon(d, horizonDays));
-  }, [seriesData, horizonIndex]);
+    return seriesData
+      .filter((d) => tickers.includes(d.ticker))
+      .map((d) => filterSeriesByHorizon(d, horizonDays));
+  }, [seriesData, horizonIndex, tickers]);
 
   const primaryData = useMemo(() => {
     return slicedSeries.find((d) => d.ticker === primaryTicker) ?? slicedSeries[0] ?? null;
@@ -171,6 +173,8 @@ export default function App() {
     if (!isCompareMode) return [];
     return buildCompareSeriesMeta(slicedSeries.map((d) => d.ticker));
   }, [slicedSeries, isCompareMode]);
+
+  const tickerColors = useMemo(() => buildCompareSeriesMeta(tickers), [tickers]);
 
   const effectiveCompareMode =
     isCompareMode && slicedSeries.length >= 2 && compareRows !== null && compareRows.length > 0;
@@ -254,7 +258,7 @@ export default function App() {
                 <span key={t} className="compare-chip" role="listitem">
                   <span
                     className="compare-chip__dot"
-                    style={{ background: buildCompareSeriesMeta([t])[0]!.color }}
+                    style={{ background: tickerColors[i]?.color }}
                     aria-hidden
                   />
                   <span className="compare-chip__label">
@@ -352,7 +356,7 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  {isCompareMode ? (
+                  {effectiveCompareMode ? (
                     <span className="compare-indexed-label">Indexed to 100 at period start</span>
                   ) : null}
                 </div>
