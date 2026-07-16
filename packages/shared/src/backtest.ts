@@ -33,8 +33,9 @@ export interface BacktestResult {
 /** Error types for backtest computation. */
 export type BacktestErrorCode =
   | "INVALID_VOLUME"
-  | "FUTURE_DATE"
+  | "DATA_NOT_AVAILABLE_YET"
   | "EMPTY_SERIES"
+  | "DATA_STARTS_AFTER_DATE"
   | "NO_DATA_ON_OR_AFTER_DATE";
 
 /** Error result from backtest computation. */
@@ -72,7 +73,22 @@ export function computeBacktest(
   if (tradeDateTimestamp > latestBar.timestamp) {
     return {
       ok: false,
-      error: { code: "FUTURE_DATE", message: "Trade date is in the future" },
+      error: {
+        code: "DATA_NOT_AVAILABLE_YET",
+        message: "Price data is not yet available for this date",
+      },
+    };
+  }
+
+  const firstBar = series[0];
+  const maxGapSeconds = 7 * 24 * 60 * 60;
+  if (tradeDateTimestamp < firstBar.timestamp - maxGapSeconds) {
+    return {
+      ok: false,
+      error: {
+        code: "DATA_STARTS_AFTER_DATE",
+        message: "Historical data does not go back to the selected date",
+      },
     };
   }
 

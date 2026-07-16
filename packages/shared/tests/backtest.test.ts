@@ -50,9 +50,22 @@ describe("computeBacktest", () => {
     expect(result.result.entryPrice).toBe(105);
   });
 
-  test("uses first bar when trade date is before series start", () => {
+  test("returns error when trade date is significantly before series start", () => {
     const input: BacktestInput = {
       tradeDateTimestamp: 1690000000,
+      volume: 10,
+      series: mockSeries,
+    };
+    const result = computeBacktest(input);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    expect(result.error.code).toBe("DATA_STARTS_AFTER_DATE");
+  });
+
+  test("uses first bar when trade date is slightly before series start (within weekend/holiday tolerance)", () => {
+    const input: BacktestInput = {
+      tradeDateTimestamp: 1700000000 - 3 * 24 * 60 * 60,
       volume: 10,
       series: mockSeries,
     };
@@ -103,7 +116,7 @@ describe("computeBacktest", () => {
     expect(result.error.code).toBe("EMPTY_SERIES");
   });
 
-  test("returns error for future date", () => {
+  test("returns error when trade date is after latest bar", () => {
     const input: BacktestInput = {
       tradeDateTimestamp: 1800000000,
       volume: 10,
@@ -113,7 +126,7 @@ describe("computeBacktest", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
 
-    expect(result.error.code).toBe("FUTURE_DATE");
+    expect(result.error.code).toBe("DATA_NOT_AVAILABLE_YET");
   });
 
   test("handles negative P&L correctly", () => {

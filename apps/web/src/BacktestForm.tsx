@@ -1,4 +1,4 @@
-import { useCallback, useId, useState, type FormEvent } from "react";
+import { useCallback, useId, useRef, useState, type FormEvent } from "react";
 import {
   computeBacktest,
   dateStringToTimestamp,
@@ -46,6 +46,7 @@ export function BacktestForm() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [currency, setCurrency] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -53,6 +54,7 @@ export function BacktestForm() {
       setError(null);
       setResult(null);
 
+      const requestId = ++requestIdRef.current;
       const tickerValue = ticker.trim().toUpperCase();
       if (!tickerValue) {
         setError("Ticker is required");
@@ -91,6 +93,7 @@ export function BacktestForm() {
           range,
           interval: "1d",
         });
+        if (requestId !== requestIdRef.current) return;
         if (!res.ok) {
           setLoading(false);
           setError(res.error.error ?? "Failed to fetch price data");
@@ -98,6 +101,7 @@ export function BacktestForm() {
         }
         priceData = res.data;
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setLoading(false);
         setError(err instanceof Error ? err.message : "Failed to fetch price data");
         return;
@@ -116,8 +120,9 @@ export function BacktestForm() {
       if (!backtestResult.ok) {
         const errMap: Record<BacktestError["code"], string> = {
           INVALID_VOLUME: "Volume must be a positive number",
-          FUTURE_DATE: "Trade date is in the future",
+          DATA_NOT_AVAILABLE_YET: `Price data is not yet available for ${tradeDate}`,
           EMPTY_SERIES: `No price data available for ${tickerValue}`,
+          DATA_STARTS_AFTER_DATE: `Historical data for ${tickerValue} does not go back to ${tradeDate}`,
           NO_DATA_ON_OR_AFTER_DATE: `No trading data available on or after ${tradeDate}`,
         };
         setError(errMap[backtestResult.error.code] ?? backtestResult.error.message);
@@ -149,7 +154,10 @@ export function BacktestForm() {
               type="text"
               className="backtest-form__input"
               value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                setTicker(e.target.value.toUpperCase());
+                setResult(null);
+              }}
               placeholder="AAPL"
               maxLength={32}
               autoComplete="off"
@@ -166,7 +174,10 @@ export function BacktestForm() {
               type="number"
               className="backtest-form__input"
               value={volume}
-              onChange={(e) => setVolume(e.target.value)}
+              onChange={(e) => {
+                setVolume(e.target.value);
+                setResult(null);
+              }}
               placeholder="10"
               min="0.001"
               step="any"
@@ -182,7 +193,10 @@ export function BacktestForm() {
               type="date"
               className="backtest-form__input"
               value={tradeDate}
-              onChange={(e) => setTradeDate(e.target.value)}
+              onChange={(e) => {
+                setTradeDate(e.target.value);
+                setResult(null);
+              }}
               max={getTodayString()}
             />
           </div>
