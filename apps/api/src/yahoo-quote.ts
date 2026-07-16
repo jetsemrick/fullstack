@@ -1,5 +1,5 @@
-import type { MarketIndexQuote } from "@stock/shared";
-import { MAJOR_INDEX_SYMBOLS } from "@stock/shared";
+import type { MarketIndexQuote, TickerTapeQuote } from "@stock/shared";
+import { MAJOR_INDEX_SYMBOLS, SP_TICKER_TAPE_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -233,4 +233,105 @@ export async function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
     marketState: null,
     indexes: [],
   };
+}
+
+export type TickerTapeAggregate = {
+  errorMessage: string | null;
+  quotes: TickerTapeQuote[];
+};
+
+/** Parse a v7 quote payload into a symbol→quote map, tolerant of missing fields. */
+function parseTapeV7Body(body: unknown): { errorMessage: string | null; bySymbol: Map<string, TickerTapeQuote> } {
+  const bySymbol = new Map<string, TickerTapeQuote>();
+  if (typeof body !== "object" || body === null) {
+    return { errorMessage: "Invalid JSON", bySymbol };
+  }
+  const qr = (body as Record<string, unknown>).quoteResponse;
+  if (typeof qr !== "object" || qr === null) {
+    return { errorMessage: "Missing quote response", bySymbol };
+  }
+  const err = (qr as Record<string, unknown>).error;
+  if (typeof err === "string" && err.length > 0) {
+    return { errorMessage: err, bySymbol };
+  }
+  const result = (qr as Record<string, unknown>).result;
+  if (!Array.isArray(result)) {
+    return { errorMessage: "Malformed quote results", bySymbol };
+  }
+  for (const item of result) {
+    const q = parseQuoteItem(item);
+    if (!q) continue;
+    bySymbol.set(q.symbol, { symbol: q.symbol, price: q.price, changePercent: q.changePercent });
+  }
+  return { errorMessage: null, bySymbol };
+}
+
+/** Batch v7 quote for arbitrary symbols; often blocked, hence the chart fallback below. */
+async function fetchTapeViaV7(symbols: readonly string[]): Promise<Map<string, TickerTapeQuote>> {
+  const url = new URL(YAHOO_QUOTE_URL);
+  url.searchParams.set("symbols", symbols.join(","));
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
+  });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return new Map();
+  }
+  const parsed = parseTapeV7Body(json);
+  if (!res.ok || parsed.errorMessage) return new Map();
+  return parsed.bySymbol;
+}
+
+/** Per-symbol v8 chart meta fallback (same upstream pathway as `/api/prices`). */
+async function fetchTapeViaChart(symbols: readonly string[]): Promise<Map<string, TickerTapeQuote>> {
+  const headers = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
+  const tasks = symbols.map(async (requestSymbol) => {
+    const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(requestSymbol)}`);
+    url.searchParams.set("range", "1d");
+    url.searchParams.set("interval", "1d");
+    const res = await fetch(url, { headers });
+    const text = await res.text();
+    let json: unknown;
+    try {
+      json = JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
+    const row = parseIndexFromChartBody(json);
+    if (!row || !res.ok) return null;
+    return { symbol: requestSymbol, price: row.price, changePercent: row.changePercent } satisfies TickerTapeQuote;
+  });
+  const rows = await Promise.all(tasks);
+  const bySymbol = new Map<string, TickerTapeQuote>();
+  for (const r of rows) {
+    if (r) bySymbol.set(r.symbol, r);
+  }
+  return bySymbol;
+}
+
+/**
+ * Batch quotes for the curated ticker-tape symbols. Tries the v7 batch endpoint first,
+ * then backfills any missing symbols via per-symbol v8 chart meta. Results preserve the
+ * requested symbol order so the marquee is stable across refreshes.
+ */
+export async function fetchTickerTapeQuotes(
+  symbols: readonly string[] = SP_TICKER_TAPE_SYMBOLS,
+): Promise<TickerTapeAggregate> {
+  const v7 = await fetchTapeViaV7(symbols);
+  const missing = symbols.filter((s) => !v7.has(s));
+  const chart = missing.length > 0 ? await fetchTapeViaChart(missing) : new Map<string, TickerTapeQuote>();
+
+  const quotes: TickerTapeQuote[] = [];
+  for (const symbol of symbols) {
+    const q = v7.get(symbol) ?? chart.get(symbol);
+    if (q) quotes.push(q);
+  }
+
+  if (quotes.length === 0) {
+    return { errorMessage: "No ticker quotes", quotes: [] };
+  }
+  return { errorMessage: null, quotes };
 }
