@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import { buildPriceVolumeRows, downsampleRows, filterSeriesByHorizon, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -38,6 +38,37 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  const day = 24 * 60 * 60;
+  const data: GetPricesResponse = {
+    ticker: "X",
+    currency: "USD",
+    lastPrice: 40,
+    series: [
+      { timestamp: day, close: 10, volume: null },
+      { timestamp: 2 * day, close: 20, volume: null },
+      { timestamp: 3 * day, close: 30, volume: null },
+      { timestamp: 4 * day, close: 40, volume: null },
+    ],
+  };
+
+  test("filters second-based timestamps by selected day horizon", () => {
+    const filtered = filterSeriesByHorizon(data, 2);
+
+    expect(filtered.series.map((point) => point.timestamp)).toEqual([2 * day, 3 * day, 4 * day]);
+  });
+
+  test("returns all points for all-time horizon", () => {
+    expect(filterSeriesByHorizon(data, Infinity)).toBe(data);
+  });
+
+  test("keeps the latest point if every point is outside the horizon", () => {
+    const filtered = filterSeriesByHorizon(data, 0);
+
+    expect(filtered.series).toEqual([data.series[data.series.length - 1]]);
   });
 });
 
