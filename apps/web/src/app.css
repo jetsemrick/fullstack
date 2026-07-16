@@ -19,10 +19,142 @@
     grid-template-columns: 1fr;
   }
 
-  .search-form {
-    justify-self: end;
+  .header-controls {
+    justify-self: stretch;
   }
 }
+
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.compare-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.compare-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  text-align: right;
+}
+
+.compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.compare-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.compare-chip__label {
+  color: var(--fg);
+}
+
+.compare-chip__remove {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.compare-chip__remove:hover {
+  color: var(--fg);
+}
+
+.compare-add-form {
+  display: flex;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.compare-add-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--fg);
+}
+
+.compare-add-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.compare-add-btn {
+  border: none;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  color: var(--fg);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.compare-add-btn:hover:enabled {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+.compare-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.partial-error-banner {
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1rem;
+  background: #fdf8f0;
+  border-color: #e8dcc8;
+  color: var(--fg);
+  font-size: 0.875rem;
+}
+
+.horizon-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  width: 100%;
+}
+
+.compare-indexed-label {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
 
 .title {
   margin: 0;
