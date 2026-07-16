@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  applyTheme,
   getStoredTheme,
   resolveTheme,
   subscribeToStorageChanges,
@@ -39,6 +40,10 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<ResolvedTheme>(() => resolveTheme(getStoredTheme()));
 
   useEffect(() => {
+    // Re-apply theme on mount to ensure DOM matches current state
+    // (handles changes that occurred between initTheme and mount)
+    applyTheme(resolveTheme(getStoredTheme()));
+
     const unsubSystem = subscribeToSystemTheme(setTheme);
     const unsubStorage = subscribeToStorageChanges(setTheme);
     return () => {
