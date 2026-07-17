@@ -67,7 +67,7 @@ The web UI includes a **Report bug** control (bottom-right) that posts to `/api/
 bun test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Runs all Bun-discovered tests from the repo root, including API route/Yahoo parsing, web chart helpers, and shared utilities.)
 
 ## Typecheck
 

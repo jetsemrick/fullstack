@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { DEFAULT_TICKER, normalizeTicker, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
@@ -123,8 +123,9 @@ export default function App() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
-    setTicker(t);
+    const normalizedTicker = normalizeTicker(inputTicker);
+    setInputTicker(normalizedTicker);
+    setTicker(normalizedTicker);
   }
 
   return (
@@ -141,7 +142,7 @@ export default function App() {
               autoComplete="off"
               spellCheck={false}
               value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+              onChange={(e) => setInputTicker(e.target.value)}
               className="search-input"
               placeholder={`e.g. ${DEFAULT_TICKER}`}
               maxLength={32}

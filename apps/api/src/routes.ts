@@ -5,7 +5,7 @@ import type {
   ReportBugRequest,
   ReportBugResponse,
 } from "@stock/shared";
-import { DEFAULT_TICKER } from "@stock/shared";
+import { normalizeTicker } from "@stock/shared";
 import { runReportBugAgent } from "./cursor-agent";
 import { fetchYahooChart } from "./yahoo";
 import { fetchMajorIndexQuotes } from "./yahoo-quote";
@@ -66,11 +66,6 @@ function errBody(message: string, code: ApiErrorBody["code"], details?: string):
 }
 
 const TICKER_RE = /^[A-Za-z0-9._^=-]{1,32}$/;
-
-function normalizeTicker(raw: string | null): string {
-  if (!raw || !raw.trim()) return DEFAULT_TICKER;
-  return raw.trim().toUpperCase();
-}
 
 /**
  * Main HTTP entry for the API. Used by the Bun server in `index.ts` and by tests.

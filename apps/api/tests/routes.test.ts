@@ -95,6 +95,52 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.series[0].close).toBe(198.1);
   });
 
+  test.each([
+    ["MSFT", "MSFT"],
+    ["GOOGL", "GOOGL"],
+    ["BRK.B", "BRK.B"],
+    ["msft%20", "MSFT"],
+  ])("normalizes ticker query without reordering %p", async (queryTicker, expectedTicker) => {
+    let requestedTicker = "";
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      const match = /\/chart\/([^?]+)/.exec(u);
+      requestedTicker = match ? decodeURIComponent(match[1]) : "";
+      const body = {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                symbol: requestedTicker,
+                regularMarketPrice: 198.5,
+              },
+              timestamp: [1700000000],
+              indicators: {
+                quote: [
+                  {
+                    close: [198.5],
+                    volume: [1_100_000],
+                  },
+                ],
+              },
+            },
+          ],
+          error: null,
+        },
+      };
+      return Promise.resolve(
+        new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } }),
+      );
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request(`http://localhost/api/prices?ticker=${queryTicker}`));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ticker: string };
+    expect(requestedTicker).toBe(expectedTicker);
+    expect(body.ticker).toBe(expectedTicker);
+  });
+
   test("returns 200 and market context when Yahoo quote JSON is valid", async () => {
     const quotePath = join(import.meta.dir, "fixtures", "minimal-quote.json");
     const quoteFixture = await readFile(quotePath, "utf-8");
