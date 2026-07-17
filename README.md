@@ -9,6 +9,7 @@ Full stack app to visualize stock prices: **React** + **TypeScript** on the clie
 | `apps/web` | Vite + React + Recharts |
 | `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`, `/api/report-bug`) |
 | `packages/shared` | Shared types and constants |
+| `e2e` | Playwright demo end-to-end tests (mocked API) |
 
 ## Prerequisites
 
@@ -68,6 +69,22 @@ bun test
 ```
 
 (Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+
+### End-to-end (demo)
+
+Playwright drives the web UI against a local Vite server. `/api/*` responses are mocked in the browser, so the Bun API and Yahoo Finance are not required.
+
+First-time browser install:
+
+```bash
+bunx playwright install chromium
+```
+
+Run the demo suite:
+
+```bash
+bun run test:e2e
+```
 
 ## Typecheck
 

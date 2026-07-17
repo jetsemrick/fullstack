@@ -8,9 +8,11 @@
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "test": "bun run --cwd apps/api test",
+    "test:e2e": "playwright test",
     "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "concurrently": "^9.1.0"
   }
 }
