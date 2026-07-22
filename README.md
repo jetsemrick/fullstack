@@ -7,7 +7,7 @@ Full stack app to visualize stock prices: **React** + **TypeScript** on the clie
 | Path | Description |
 |------|-------------|
 | `apps/web` | Vite + React + Recharts |
-| `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`, `/api/report-bug`) |
+| `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`, `/api/market-context`, `/api/ticker-tape`, `/api/report-bug`) |
 | `packages/shared` | Shared types and constants |
 
 ## Prerequisites
@@ -58,9 +58,10 @@ Create a key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard
 - `GET /api/health` – health check.
 - `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
 - `GET /api/market-context` – US market session state plus major index quotes.
+- `GET /api/ticker-tape` – batch quotes for a curated set of large-cap S&P names (price + session % change) used by the scrolling ticker tape.
 - `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars). Runs a local Cursor agent (`@cursor/sdk`) against the monorepo to apply the requested edit. Requires `CURSOR_API_KEY`.
 
-The web UI includes a **Report bug** control (bottom-right) that posts to `/api/report-bug`.
+The web UI shows a full-width **S&P ticker tape** above the header (refreshes about every 60s) and a **Report bug** control (bottom-right) that posts to `/api/report-bug`.
 ## Test
 
 ```bash
