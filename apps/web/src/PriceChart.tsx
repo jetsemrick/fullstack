@@ -8,10 +8,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import {
+  calculateSelectionStats,
+  downsampleRows,
+  type SelectionStats,
+} from "./priceChartData";
+
+const MIN_SELECTION_POINTS = 2;
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -63,7 +69,18 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export interface PriceChartProps {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  /** Called when selection changes; null when selection is cleared. */
+  onSelectionChange?: (stats: SelectionStats | null) => void;
+}
+
+export function PriceChart({
+  data,
+  variant = "daily",
+  onSelectionChange,
+}: PriceChartProps) {
   const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
@@ -71,6 +88,120 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
   }, [fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+
+  // Drag selection state (reset automatically when component remounts via key prop).
+  // Refs mirror the in-progress drag so pointer handlers read current values
+  // synchronously, independent of React render/commit timing.
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const [confirmedSelection, setConfirmedSelection] = useState<{ start: number; end: number } | null>(null);
+  const dragStartRef = useRef<number | null>(null);
+  const dragEndRef = useRef<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  // Calculate selection stats using full (non-downsampled) data for accuracy.
+  const calculateStats = useCallback(
+    (startX: number, endX: number) =>
+      calculateSelectionStats(fullRows, startX, endX, MIN_SELECTION_POINTS),
+    [fullRows],
+  );
+
+  // Handle mouse events for drag selection. Handlers read/update refs so they are
+  // robust to render timing (recharts can fire mousemove before mousedown state commits).
+  const toNumber = (label: string | number): number =>
+    typeof label === "string" ? parseFloat(label) : label;
+
+  const handleMouseDown = useCallback(
+    (e: { activeLabel?: string | number }) => {
+      if (e.activeLabel === undefined) return;
+      const x = toNumber(e.activeLabel);
+      dragStartRef.current = x;
+      dragEndRef.current = x;
+      setSelectionStart(x);
+      setSelectionEnd(x);
+      setIsDragging(true);
+      setConfirmedSelection(null);
+      onSelectionChange?.(null);
+    },
+    [onSelectionChange]
+  );
+
+  const handleMouseMove = useCallback((e: { activeLabel?: string | number }) => {
+    if (dragStartRef.current === null || e.activeLabel === undefined) return;
+    const x = toNumber(e.activeLabel);
+    dragEndRef.current = x;
+    setSelectionEnd(x);
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    const start = dragStartRef.current;
+    const end = dragEndRef.current;
+    dragStartRef.current = null;
+    dragEndRef.current = null;
+    setIsDragging(false);
+    if (start === null || end === null) return;
+    const stats = calculateStats(start, end);
+    if (stats) {
+      setConfirmedSelection({ start, end });
+      onSelectionChange?.(stats);
+    } else {
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      setConfirmedSelection(null);
+      onSelectionChange?.(null);
+    }
+  }, [calculateStats, onSelectionChange]);
+
+  // Handle Escape key to clear selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && (confirmedSelection || isDragging)) {
+        dragStartRef.current = null;
+        dragEndRef.current = null;
+        setSelectionStart(null);
+        setSelectionEnd(null);
+        setConfirmedSelection(null);
+        setIsDragging(false);
+        onSelectionChange?.(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [confirmedSelection, isDragging, onSelectionChange]);
+
+  // Handle click outside to clear selection
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (chartRef.current && !chartRef.current.contains(e.target as Node) && confirmedSelection) {
+        dragStartRef.current = null;
+        dragEndRef.current = null;
+        setSelectionStart(null);
+        setSelectionEnd(null);
+        setConfirmedSelection(null);
+        onSelectionChange?.(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [confirmedSelection, onSelectionChange]);
+
+  // Selection bounds for rendering
+  const selectionBounds = useMemo(() => {
+    if (confirmedSelection) {
+      return {
+        x1: Math.min(confirmedSelection.start, confirmedSelection.end),
+        x2: Math.max(confirmedSelection.start, confirmedSelection.end),
+      };
+    }
+    if (isDragging && selectionStart !== null && selectionEnd !== null) {
+      return {
+        x1: Math.min(selectionStart, selectionEnd),
+        x2: Math.max(selectionStart, selectionEnd),
+      };
+    }
+    return null;
+  }, [confirmedSelection, isDragging, selectionStart, selectionEnd]);
 
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
@@ -102,9 +233,27 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={chartRef}
+      role="img"
+      aria-label="Price over time line chart. Drag to select a range and view net change."
+      style={{
+        width: "100%",
+        height: "100%",
+        cursor: isDragging ? "crosshair" : "default",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+      }}
+    >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -132,6 +281,19 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               />
             </>
           ) : null}
+          {selectionBounds && (
+            <ReferenceArea
+              x1={selectionBounds.x1}
+              x2={selectionBounds.x2}
+              fill="var(--accent)"
+              fillOpacity={0.15}
+              stroke="var(--accent)"
+              strokeOpacity={0.6}
+              strokeWidth={1}
+              ifOverflow="hidden"
+              className="selection-area"
+            />
+          )}
           <XAxis
             dataKey="t"
             type="number"

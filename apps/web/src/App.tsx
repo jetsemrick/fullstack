@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { filterSeriesByHorizon, type SelectionStats } from "./priceChartData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -27,6 +28,20 @@ function formatPercentChange(data: GetPricesResponse | null) {
   };
 }
 
+function formatSelectionStats(stats: SelectionStats | null) {
+  if (!stats) return null;
+  const { dollarChange, percentChange } = stats;
+  const dollarSign = dollarChange >= 0 ? "+" : "";
+  const pctSign = percentChange >= 0 ? "+" : "";
+  return {
+    dollarText: `${dollarSign}${dollarChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    percentText: `${pctSign}${percentChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+    isPositive: dollarChange > 0,
+    isNegative: dollarChange < 0,
+    isFlat: dollarChange === 0,
+  };
+}
+
 const HORIZONS = [
   { label: "Today", days: 1, range: "1d", interval: "5m" },
   { label: "1 Year", days: 365, range: "1y", interval: "1d" },
@@ -41,18 +56,6 @@ function priceCacheKey(ticker: string, range: string, interval: string): string 
   return `${ticker}:${range}:${interval}`;
 }
 
-function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
-  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
-  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
-  return {
-    ...data,
-    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
-  };
-}
-
 export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
@@ -63,6 +66,16 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+
+  // Selection state for drag-to-select feature
+  const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(null);
+
+  // Key that remounts the chart (resetting its internal selection) on ticker/horizon change.
+  const chartKey = `${ticker}-${horizonIndex}`;
+
+  const handleSelectionChange = useCallback((stats: SelectionStats | null) => {
+    setSelectionStats(stats);
+  }, []);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -124,7 +137,13 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setSelectionStats(null);
     setTicker(t);
+  }
+
+  function onHorizonSelect(i: number) {
+    setSelectionStats(null);
+    setHorizonIndex(i);
   }
 
   return (
@@ -190,13 +209,29 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {(() => {
+                      const selStats = formatSelectionStats(selectionStats);
+                      if (!selStats) return null;
+                      const statusClass = selStats.isPositive ? "positive" : selStats.isNegative ? "negative" : "muted";
+                      return (
+                        <span className="selection-stats" aria-live="polite">
+                          <span className="selection-label">Selection:</span>
+                          <span className={`metric-badge selection-badge ${statusClass}`}>
+                            {selStats.dollarText}
+                          </span>
+                          <span className={`metric-badge selection-badge ${statusClass}`}>
+                            {selStats.percentText}
+                          </span>
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => onHorizonSelect(i)}
                       >
                         {h.label}
                       </button>
@@ -209,8 +244,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={chartKey}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onSelectionChange={handleSelectionChange}
                 />
               </div>
               {loading && (
