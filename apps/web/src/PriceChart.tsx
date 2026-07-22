@@ -186,6 +186,17 @@ export function PriceChart({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [confirmedSelection, onSelectionChange]);
 
+  // Document-level mouseup listener to handle releases outside the chart area.
+  // Recharts doesn't reliably fire onMouseUp when pointer releases outside the chart.
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleDocumentMouseUp = () => {
+      handleMouseUp();
+    };
+    document.addEventListener("mouseup", handleDocumentMouseUp);
+    return () => document.removeEventListener("mouseup", handleDocumentMouseUp);
+  }, [isDragging, handleMouseUp]);
+
   // Selection bounds for rendering
   const selectionBounds = useMemo(() => {
     if (confirmedSelection) {
@@ -252,7 +263,6 @@ export function PriceChart({
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
         >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
