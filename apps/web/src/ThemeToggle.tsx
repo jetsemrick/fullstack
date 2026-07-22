@@ -22,7 +22,7 @@ export function ThemeToggle() {
   useEffect(() => {
     if (preference !== "system") return;
 
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const media = globalThis.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => applyTheme("system");
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
