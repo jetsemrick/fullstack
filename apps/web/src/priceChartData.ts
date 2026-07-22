@@ -13,6 +13,19 @@ export type ChartRow = {
   price: number;
 };
 
+export type MultiSeriesRow = {
+  t: number;
+  [ticker: string]: number | undefined;
+};
+
+export const SERIES_COLORS = [
+  "var(--series-1)",
+  "var(--series-2)",
+  "var(--series-3)",
+  "var(--series-4)",
+  "var(--series-5)",
+] as const;
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
@@ -24,6 +37,48 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
     volume: p.volume,
     volumeBar: p.volume ?? 0,
   }));
+}
+
+export function alignAndIndexSeries(
+  datasets: GetPricesResponse[],
+  mode: "absolute" | "indexed",
+): { rows: MultiSeriesRow[]; tickers: string[] } {
+  const tickers = datasets.map((d) => d.ticker);
+  const byTimestamp = new Map<number, MultiSeriesRow>();
+
+  for (const dataset of datasets) {
+    if (dataset.series.length === 0) continue;
+    const firstClose = dataset.series[0]!.close;
+    const indexBase = mode === "indexed" && firstClose !== 0 ? firstClose : null;
+
+    for (const point of dataset.series) {
+      const t = point.timestamp * 1000;
+      const value =
+        indexBase != null ? (100 * point.close) / indexBase : point.close;
+      const row = byTimestamp.get(t) ?? { t };
+      row[dataset.ticker] = value;
+      byTimestamp.set(t, row);
+    }
+  }
+
+  const rows = [...byTimestamp.values()].sort((a, b) => a.t - b.t);
+  return { rows, tickers };
+}
+
+export function downsampleMultiRows(
+  rows: MultiSeriesRow[],
+  tickers: string[],
+  maxRows: number,
+): MultiSeriesRow[] {
+  if (rows.length <= maxRows || tickers.length === 0) return rows;
+
+  const primary = tickers[0]!;
+  const asChartRows: ChartRow[] = rows.map((row) => ({
+    t: row.t,
+    price: row[primary] ?? 0,
+  }));
+  const sampledTimes = new Set(downsampleRows(asChartRows, maxRows).map((r) => r.t));
+  return rows.filter((row) => sampledTimes.has(row.t));
 }
 
 export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {

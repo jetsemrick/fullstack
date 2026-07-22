@@ -1,6 +1,27 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  alignAndIndexSeries,
+  buildPriceVolumeRows,
+  downsampleMultiRows,
+  downsampleRows,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
+
+function makeSeries(ticker: string, points: Array<[number, number]>): GetPricesResponse {
+  return {
+    ticker,
+    currency: "USD",
+    lastPrice: points.at(-1)?.[1] ?? null,
+    series: points.map(([timestamp, close]) => ({
+      timestamp,
+      close,
+      volume: null,
+    })),
+  };
+}
 
 describe("seriesHasVolume", () => {
   test("false when empty", () => {
@@ -73,5 +94,72 @@ describe("downsampleRows", () => {
     expect(sampled).toContainEqual(rows[5]);
     expect(sampled).toContainEqual(rows[14]);
     expect(sampled.length).toBeLessThan(rows.length);
+  });
+});
+
+describe("alignAndIndexSeries", () => {
+  test("outer-joins timestamps across tickers", () => {
+    const aapl = makeSeries("AAPL", [
+      [1_000, 100],
+      [2_000, 110],
+    ]);
+    const msft = makeSeries("MSFT", [
+      [1_500, 200],
+      [2_000, 220],
+    ]);
+
+    const { rows, tickers } = alignAndIndexSeries([aapl, msft], "absolute");
+
+    expect(tickers).toEqual(["AAPL", "MSFT"]);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual({ t: 1_000_000, AAPL: 100 });
+    expect(rows[1]).toEqual({ t: 1_500_000, MSFT: 200 });
+    expect(rows[2]).toEqual({ t: 2_000_000, AAPL: 110, MSFT: 220 });
+  });
+
+  test("indexes each series to 100 at its first point", () => {
+    const aapl = makeSeries("AAPL", [
+      [1_000, 100],
+      [2_000, 120],
+    ]);
+    const msft = makeSeries("MSFT", [
+      [1_000, 50],
+      [2_000, 75],
+    ]);
+
+    const { rows } = alignAndIndexSeries([aapl, msft], "indexed");
+
+    expect(rows[0]).toEqual({ t: 1_000_000, AAPL: 100, MSFT: 100 });
+    expect(rows[1]).toEqual({ t: 2_000_000, AAPL: 120, MSFT: 150 });
+  });
+
+  test("skips empty series", () => {
+    const empty = makeSeries("EMPTY", []);
+    const aapl = makeSeries("AAPL", [[1_000, 100]]);
+
+    const { rows, tickers } = alignAndIndexSeries([empty, aapl], "absolute");
+
+    expect(tickers).toEqual(["EMPTY", "AAPL"]);
+    expect(rows).toEqual([{ t: 1_000_000, AAPL: 100 }]);
+  });
+});
+
+describe("downsampleMultiRows", () => {
+  test("preserves all ticker values at sampled timestamps", () => {
+    const rows = Array.from({ length: 20 }, (_, i) => ({
+      t: i * 1_000,
+      AAPL: i,
+      MSFT: i * 2,
+    }));
+
+    const sampled = downsampleMultiRows(rows, ["AAPL", "MSFT"], 6);
+
+    expect(sampled[0]).toEqual(rows[0]);
+    expect(sampled[sampled.length - 1]).toEqual(rows[rows.length - 1]);
+    expect(sampled.length).toBeLessThan(rows.length);
+    for (const row of sampled) {
+      expect(row.AAPL).toBeDefined();
+      expect(row.MSFT).toBe(row.AAPL! * 2);
+    }
   });
 });
