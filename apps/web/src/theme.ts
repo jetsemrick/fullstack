@@ -11,7 +11,7 @@ export function getStoredThemePreference(): ThemePreference {
 export function resolveEffectiveTheme(preference: ThemePreference): "light" | "dark" {
   if (preference === "light") return "light";
   if (preference === "dark") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return globalThis.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function applyTheme(preference: ThemePreference): "light" | "dark" {
