@@ -106,13 +106,14 @@ export default function App() {
 
     const nextSeries: Record<string, GetPricesResponse> = {};
     const nextFailed: Record<string, string> = {};
-    let successCount = Object.keys(nextSeries).length;
+    let successCount = 0;
 
     for (let i = 0; i < results.length; i++) {
       const ticker = tickers[i]!;
       const result = results[i]!;
       if (result.status === "fulfilled") {
         nextSeries[ticker] = result.value.data;
+        successCount++;
       } else {
         const message =
           result.reason instanceof Error ? result.reason.message : "Request failed";
@@ -328,6 +329,7 @@ export default function App() {
                   comparing={compareMode}
                   mode={compareMode ? "indexed" : "absolute"}
                   variant={horizonIndex === 0 && !compareMode ? "intraday" : "daily"}
+                  tickerOrder={tickers}
                 />
               </div>
               {loading && (

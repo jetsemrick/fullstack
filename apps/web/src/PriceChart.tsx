@@ -102,11 +102,13 @@ export function PriceChart({
   comparing = false,
   mode = "absolute",
   variant = "daily",
+  tickerOrder,
 }: {
   series: GetPricesResponse[];
   comparing?: boolean;
   mode?: PriceChartMode;
   variant?: PriceChartVariant;
+  tickerOrder?: string[];
 }) {
   const fillGradientId = useId().replace(/:/g, "");
   const compareMode = comparing || series.length >= 2;
@@ -237,20 +239,24 @@ export function PriceChart({
               ]}
             />
             <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
-            {renderedTickers.map((ticker, i) => (
-              <Line
-                key={ticker}
-                type="linear"
-                dataKey={ticker}
-                name={ticker}
-                stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2 }}
-                connectNulls
-                isAnimationActive={false}
-              />
-            ))}
+            {renderedTickers.map((ticker) => {
+              const colorIndex = tickerOrder ? tickerOrder.indexOf(ticker) : tickers.indexOf(ticker);
+              const safeIndex = colorIndex >= 0 ? colorIndex : tickers.indexOf(ticker);
+              return (
+                <Line
+                  key={ticker}
+                  type="linear"
+                  dataKey={ticker}
+                  name={ticker}
+                  stroke={SERIES_COLORS[safeIndex % SERIES_COLORS.length]}
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2 }}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              );
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>

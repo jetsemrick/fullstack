@@ -72,11 +72,21 @@ export function downsampleMultiRows(
 ): MultiSeriesRow[] {
   if (rows.length <= maxRows || tickers.length === 0) return rows;
 
-  const primary = tickers[0]!;
-  const asChartRows: ChartRow[] = rows.map((row) => ({
-    t: row.t,
-    price: row[primary] ?? 0,
-  }));
+  const asChartRows: ChartRow[] = rows.map((row) => {
+    let sum = 0;
+    let count = 0;
+    for (const ticker of tickers) {
+      const val = row[ticker];
+      if (typeof val === "number" && Number.isFinite(val)) {
+        sum += val;
+        count++;
+      }
+    }
+    return {
+      t: row.t,
+      price: count > 0 ? sum / count : 0,
+    };
+  });
   const sampledTimes = new Set(downsampleRows(asChartRows, maxRows).map((r) => r.t));
   return rows.filter((row) => sampledTimes.has(row.t));
 }
