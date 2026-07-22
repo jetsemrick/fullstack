@@ -54,3 +54,37 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** Input for computing a buy-at-date backtest. */
+export interface BacktestInput {
+  /** Price series (daily bars with timestamp and close). */
+  series: PricePoint[];
+  /** Trade date as YYYY-MM-DD string (local calendar date). */
+  tradeDate: string;
+  /** Number of shares to buy (positive). */
+  volume: number;
+}
+
+/** Result of a buy-at-date backtest computation. */
+export interface BacktestResult {
+  /** Entry date used (YYYY-MM-DD), may differ from tradeDate if rolled to next trading day. */
+  entryDate: string;
+  /** Entry price (close on entryDate). */
+  entryPrice: number;
+  /** Latest close price from the series. */
+  latestPrice: number;
+  /** Cost basis = entryPrice * volume. */
+  costBasis: number;
+  /** Market value = latestPrice * volume. */
+  marketValue: number;
+  /** Dollar P&L = marketValue - costBasis. */
+  pnlDollars: number;
+  /** Percent P&L = (latestPrice - entryPrice) / entryPrice * 100. */
+  pnlPercent: number;
+}
+
+/** Error returned when backtest cannot be computed. */
+export interface BacktestError {
+  code: "INVALID_DATE" | "FUTURE_DATE" | "NO_DATA_AFTER_DATE" | "INVALID_VOLUME" | "EMPTY_SERIES";
+  message: string;
+}

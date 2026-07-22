@@ -514,3 +514,146 @@
   word-break: break-word;
   color: var(--fg);
 }
+
+/* Backtest Card */
+.backtest-card {
+  margin-top: 1.5rem;
+}
+
+.backtest-card .content-toolbar {
+  border-bottom: none;
+}
+
+/* Backtest Form Styles */
+.backtest-section {
+  width: 100%;
+}
+
+.backtest-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.backtest-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.backtest-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.backtest-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.backtest-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.backtest-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.9rem;
+  min-width: 120px;
+}
+
+.backtest-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(147, 175, 147, 0.2);
+}
+
+.backtest-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.backtest-submit {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.backtest-submit:hover:enabled {
+  background: var(--accent-hover);
+}
+
+.backtest-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.backtest-error {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fdf5f5;
+  border: 1px solid #f5c2c2;
+  color: #ba3b3b;
+  font-size: 0.875rem;
+}
+
+.backtest-results {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+}
+
+.backtest-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.backtest-result-row--highlight {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--card-border);
+}
+
+.backtest-result-label {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.backtest-result-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.backtest-pnl.positive {
+  color: #2b703e;
+}
+
+.backtest-pnl.negative {
+  color: #ba3b3b;
+}
+
+.backtest-pnl.muted {
+  color: var(--fg-muted);
+}

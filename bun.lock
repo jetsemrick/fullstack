@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "stock-visualizer",
@@ -47,6 +48,7 @@
       "name": "@stock/shared",
       "version": "0.0.1",
       "devDependencies": {
+        "@types/bun": "latest",
         "typescript": "^5.7.2",
       },
     },
