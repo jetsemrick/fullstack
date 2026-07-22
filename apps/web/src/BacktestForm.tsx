@@ -1,4 +1,4 @@
-import { useCallback, useId, useState, type FormEvent } from "react";
+import { useCallback, useId, useRef, useState, type FormEvent } from "react";
 import {
   DEFAULT_TICKER,
   computeBacktest,
@@ -6,11 +6,12 @@ import {
 } from "@stock/shared";
 import { fetchPrices } from "./api";
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString(undefined, {
+function formatCurrency(value: number, currency: string | null): string {
+  const formatted = value.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  return currency ? `${formatted} ${currency}` : formatted;
 }
 
 function formatPercent(value: number): string {
@@ -23,9 +24,9 @@ function formatPercent(value: number): string {
 
 function getTodayDateString(): string {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
@@ -38,12 +39,16 @@ export function BacktestForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [currency, setCurrency] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
+      const requestId = ++requestIdRef.current;
       setError(null);
       setResult(null);
+      setCurrency(null);
 
       const tickerVal = ticker.trim().toUpperCase() || DEFAULT_TICKER;
       const volumeVal = parseFloat(volume);
@@ -66,9 +71,9 @@ export function BacktestForm() {
       }
 
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setUTCHours(0, 0, 0, 0);
       const [, y, m, d] = dateMatch;
-      const inputDate = new Date(Number(y), Number(m) - 1, Number(d));
+      const inputDate = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
       if (inputDate > today) {
         setError("Trade date cannot be in the future");
         return;
@@ -78,7 +83,7 @@ export function BacktestForm() {
 
       try {
         // Calculate appropriate range based on trade date to ensure daily resolution
-        const tradeDateObj = new Date(Number(y), Number(m) - 1, Number(d));
+        const tradeDateObj = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
         const now = new Date();
         const daysDiff = Math.ceil((now.getTime() - tradeDateObj.getTime()) / (1000 * 60 * 60 * 24));
         
@@ -101,6 +106,8 @@ export function BacktestForm() {
           interval: "1d",
         });
 
+        if (requestId !== requestIdRef.current) return;
+
         if (!res.ok) {
           setError(res.error.error || "Failed to fetch prices");
           setLoading(false);
@@ -119,11 +126,15 @@ export function BacktestForm() {
           return;
         }
 
+        setCurrency(res.data.currency);
         setResult(backtestResult.result);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : "Request failed");
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [ticker, volume, tradeDate]
@@ -211,31 +222,31 @@ export function BacktestForm() {
           <div className="backtest-result-row">
             <span className="backtest-result-label">Entry Price</span>
             <span className="backtest-result-value">
-              ${formatCurrency(result.entryPrice)}
+              {formatCurrency(result.entryPrice, currency)}
             </span>
           </div>
           <div className="backtest-result-row">
             <span className="backtest-result-label">Latest Price</span>
             <span className="backtest-result-value">
-              ${formatCurrency(result.latestPrice)}
+              {formatCurrency(result.latestPrice, currency)}
             </span>
           </div>
           <div className="backtest-result-row">
             <span className="backtest-result-label">Cost Basis</span>
             <span className="backtest-result-value">
-              ${formatCurrency(result.costBasis)}
+              {formatCurrency(result.costBasis, currency)}
             </span>
           </div>
           <div className="backtest-result-row">
             <span className="backtest-result-label">Market Value</span>
             <span className="backtest-result-value">
-              ${formatCurrency(result.marketValue)}
+              {formatCurrency(result.marketValue, currency)}
             </span>
           </div>
           <div className="backtest-result-row backtest-result-row--highlight">
             <span className="backtest-result-label">P&L</span>
             <span className={`backtest-result-value backtest-pnl ${pnlClass}`}>
-              {result.pnlDollars >= 0 ? "+" : ""}${formatCurrency(result.pnlDollars)} ({formatPercent(result.pnlPercent)})
+              {result.pnlDollars >= 0 ? "+" : ""}{formatCurrency(result.pnlDollars, currency)} ({formatPercent(result.pnlPercent)})
             </span>
           </div>
         </div>
