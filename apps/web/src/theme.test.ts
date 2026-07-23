@@ -140,6 +140,7 @@ describe("pre-paint theme script", () => {
       },
     };
     const window = {
+      localStorage,
       matchMedia(query: string) {
         expect(query).toBe("(prefers-color-scheme: dark)");
         return { matches };
