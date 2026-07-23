@@ -2,19 +2,10 @@
   "name": "@stock/api",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "test": "bun test",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "dependencies": {
-    "@cursor/sdk": "^1.0.23",
-    "@stock/shared": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5.7.2"
+    "dev": "sh scripts/python.sh -m uvicorn stock_api.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload",
+    "start": "sh scripts/python.sh -m uvicorn stock_api.main:app --host 0.0.0.0 --port ${PORT:-3001}",
+    "test": "sh scripts/python.sh -m pytest",
+    "typecheck": "sh scripts/python.sh -m compileall stock_api tests"
   }
 }

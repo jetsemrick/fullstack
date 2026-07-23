@@ -6,3 +6,6 @@ dist
 .env.local
 coverage
 .vite
+.venv
+__pycache__
+.pytest_cache
