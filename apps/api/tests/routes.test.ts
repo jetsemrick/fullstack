@@ -121,6 +121,55 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
   });
 
+  test("returns 200 and quotes for ticker tape when v7 quote is valid", async () => {
+    const quote = {
+      quoteResponse: {
+        result: [
+          { symbol: "AAPL", shortName: "Apple Inc.", regularMarketPrice: 200.5, regularMarketChangePercent: 1.23, marketState: "REGULAR" },
+          { symbol: "MSFT", shortName: "Microsoft", regularMarketPrice: 410.1, regularMarketChangePercent: -0.45, marketState: "REGULAR" },
+        ],
+        error: null,
+      },
+    };
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u.includes("finance.yahoo.com") && u.includes("v7/finance/quote")) {
+        return Promise.resolve(
+          new Response(JSON.stringify(quote), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number | null; changePercent: number | null }[] };
+    expect(body.quotes.map((q) => q.symbol)).toEqual(["AAPL", "MSFT"]);
+    expect(body.quotes[0]?.price).toBe(200.5);
+    expect(body.quotes[1]?.changePercent).toBe(-0.45);
+  });
+
+  test("returns 502 for ticker tape when both v7 quote and v8 chart fail", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u.includes("finance.yahoo.com") && u.includes("v7/finance/quote")) {
+        const blocked = { finance: { result: null, error: { code: "Unauthorized", description: "blocked" } } };
+        return Promise.resolve(
+          new Response(JSON.stringify(blocked), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      if (u.includes("finance.yahoo.com") && u.includes("v8/finance/chart")) {
+        return Promise.resolve(new Response("upstream error", { status: 500 }));
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
+  });
+
   test("returns 200 and market context when v7 quote is blocked but v8 chart works", async () => {
     globalThis.fetch = mock((url) => {
       const u = typeof url === "string" ? url : url.toString();

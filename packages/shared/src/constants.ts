@@ -6,3 +6,26 @@ export const DEFAULT_TICKER = "AAPL" as const;
 
 /** Yahoo symbols for S&P 500, Dow Jones Industrial Average, and Nasdaq Composite quotes. */
 export const MAJOR_INDEX_SYMBOLS = ["^GSPC", "^DJI", "^IXIC"] as const;
+
+/**
+ * Curated large-cap S&P 500 constituents for the scrolling ticker tape.
+ * Kept to a fixed, well-known set (not user-configurable) to bound Yahoo batch
+ * size and keep the marquee legible. `BRK-B` uses Yahoo's hyphenated symbol form.
+ */
+export const SP_TICKER_TAPE_SYMBOLS = [
+  "AAPL",
+  "MSFT",
+  "NVDA",
+  "AMZN",
+  "GOOGL",
+  "META",
+  "TSLA",
+  "BRK-B",
+  "JPM",
+  "V",
+  "UNH",
+  "JNJ",
+  "WMT",
+  "XOM",
+  "MA",
+] as const;

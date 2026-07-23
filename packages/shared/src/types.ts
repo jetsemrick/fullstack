@@ -54,3 +54,11 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/**
+ * Batch quotes for the scrolling S&P ticker tape (`GET /api/ticker-tape`).
+ * Shares the {@link MarketIndexQuote} shape (symbol, price, session % change).
+ */
+export interface TickerTapeResponse {
+  quotes: MarketIndexQuote[];
+}
