@@ -68,7 +68,7 @@ The web UI includes a **Report bug** control (bottom-right) that posts to `/api/
 ## Test
 
 ```bash
-bun test
+bun run test
 ```
 
 (Runs from the repo root via `bun test` in `package.json` -> `apps/api` Pytest coverage for Yahoo parsers and FastAPI routes.)
