@@ -7,14 +7,18 @@ declare const Bun: {
 };
 
 let systemPrefersDark = false;
+let storageReadFails = false;
+let storageWriteFails = false;
 
 const store = new Map<string, string>();
 
 const localStorageMock = {
   getItem(key: string) {
+    if (storageReadFails) throw new Error("Access denied");
     return store.has(key) ? store.get(key)! : null;
   },
   setItem(key: string, value: string) {
+    if (storageWriteFails) throw new Error("Access denied");
     store.set(key, String(value));
   },
   clear() {
@@ -61,6 +65,8 @@ describe("theme", () => {
     store.clear();
     html.dataset = {};
     systemPrefersDark = false;
+    storageReadFails = false;
+    storageWriteFails = false;
   });
 
   test("defaults to system when unset", () => {
@@ -74,6 +80,11 @@ describe("theme", () => {
 
   test("ignores invalid stored preference", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "neon");
+    expect(getStoredThemePreference()).toBe("system");
+  });
+
+  test("defaults to system when storage is unavailable", () => {
+    storageReadFails = true;
     expect(getStoredThemePreference()).toBe("system");
   });
 
@@ -107,16 +118,24 @@ describe("theme", () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("system");
     expect(html.dataset.theme).toBe("dark");
   });
+
+  test("applies preference when storage is unavailable", () => {
+    storageWriteFails = true;
+
+    expect(setThemePreference("dark")).toBe("dark");
+    expect(html.dataset.theme).toBe("dark");
+  });
 });
 
 describe("pre-paint theme script", () => {
   const scriptMatch = indexHtml.match(/<script>([\s\S]*?)<\/script>/);
 
-  function runPrePaintScript(stored: string | null, matches: boolean) {
+  function runPrePaintScript(stored: string | null, matches: boolean, storageThrows = false) {
     const documentElement = { dataset: {} as Record<string, string> };
     const localStorage = {
       getItem(key: string) {
         expect(key).toBe(THEME_STORAGE_KEY);
+        if (storageThrows) throw new Error("Access denied");
         return stored;
       },
     };
@@ -143,5 +162,9 @@ describe("pre-paint theme script", () => {
 
   test("falls back to system preference when unset", () => {
     expect(runPrePaintScript(null, true)).toBe("dark");
+  });
+
+  test("falls back to system preference when storage is unavailable", () => {
+    expect(runPrePaintScript(null, true, true)).toBe("dark");
   });
 });

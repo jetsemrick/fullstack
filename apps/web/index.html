@@ -4,7 +4,12 @@
     <script>
       (function () {
         var key = "stock-visualizer-theme";
-        var stored = localStorage.getItem(key);
+        var stored = null;
+        try {
+          stored = window.localStorage.getItem(key);
+        } catch (_error) {
+          stored = null;
+        }
         var preference =
           stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
         var theme =

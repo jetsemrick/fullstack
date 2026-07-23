@@ -3,7 +3,12 @@ export type ThemePreference = "light" | "dark" | "system";
 export const THEME_STORAGE_KEY = "stock-visualizer-theme";
 
 export function getStoredThemePreference(): ThemePreference {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  let stored: string | null;
+  try {
+    stored = globalThis.localStorage.getItem(THEME_STORAGE_KEY);
+  } catch {
+    return "system";
+  }
   if (stored === "light" || stored === "dark" || stored === "system") return stored;
   return "system";
 }
@@ -21,6 +26,10 @@ export function applyTheme(preference: ThemePreference): "light" | "dark" {
 }
 
 export function setThemePreference(preference: ThemePreference): "light" | "dark" {
-  localStorage.setItem(THEME_STORAGE_KEY, preference);
+  try {
+    globalThis.localStorage.setItem(THEME_STORAGE_KEY, preference);
+  } catch {
+    // The in-memory preference still applies when storage is unavailable.
+  }
   return applyTheme(preference);
 }
