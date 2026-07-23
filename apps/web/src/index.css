@@ -1,13 +1,26 @@
 :root {
-  --bg: #f4f5f3;
-  --fg: #2b302b;
-  --fg-muted: #6b726b;
-  --accent: #93af93;
-  --accent-hover: #7b997b;
-  --card: #ffffff;
-  --card-border: #e2e4e0;
-  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
-  --font: "Inter", system-ui, -apple-system, sans-serif;
+  /* Signal Floor — cool mist desk with teal pulse */
+  --bg: #d8e2e8;
+  --bg-deep: #c5d3dc;
+  --fg: #0b1c2c;
+  --fg-muted: #5a6f7f;
+  --accent: #0f8f86;
+  --accent-hover: #0b736c;
+  --accent-soft: rgba(15, 143, 134, 0.14);
+  --card: rgba(248, 251, 252, 0.82);
+  --card-solid: #f5f9fb;
+  --card-border: rgba(11, 28, 44, 0.1);
+  --shadow: 0 18px 40px rgba(11, 28, 44, 0.08), 0 2px 6px rgba(11, 28, 44, 0.04);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --up: #0b7a5b;
+  --up-soft: #d9f3ea;
+  --down: #c0394a;
+  --down-soft: #fce8eb;
+  --font: "DM Sans", system-ui, sans-serif;
+  --font-display: "Syne", "DM Sans", system-ui, sans-serif;
+  --chart-stroke: #0f8f86;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 *,
@@ -25,19 +38,86 @@ body,
 
 body {
   font-family: var(--font);
-  background: var(--bg);
   color: var(--fg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 90% 60% at 8% -10%, rgba(15, 143, 134, 0.18), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(45, 90, 130, 0.16), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 70% 100%, rgba(11, 28, 44, 0.06), transparent 55%),
+    linear-gradient(165deg, #e4eef3 0%, var(--bg) 42%, var(--bg-deep) 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(11, 28, 44, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 28, 44, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 20%, transparent 75%);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }

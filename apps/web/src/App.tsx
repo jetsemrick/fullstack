@@ -127,10 +127,17 @@ export default function App() {
     setTicker(t);
   }
 
+  const percentChange = formatPercentChange(displayData);
+
   return (
     <div className="shell">
-      <header className="header">
-        <MarketStrip />
+      <div className="brand-bar">
+        <div className="brand">
+          <h1 className="brand__mark">
+            Cursor <span className="brand__mark-accent">Trade</span>
+          </h1>
+          <p className="brand__tag">Live prices with a calm, focused chart desk.</p>
+        </div>
         <form className="search-form" onSubmit={onSubmit} aria-labelledby={`${formId}-legend`}>
           <label id={`${formId}-legend`} htmlFor={`${formId}-ticker`} className="sr-only">Ticker</label>
           <div className="search-input-wrapper">
@@ -152,10 +159,14 @@ export default function App() {
               className="search-btn"
               disabled={loading}
             >
-              Search
+              Look up
             </button>
           </div>
         </form>
+      </div>
+
+      <header className="header">
+        <MarketStrip />
       </header>
 
       <main className="main-content">
@@ -173,53 +184,53 @@ export default function App() {
         )}
 
         {!error && data && displayData && (
-          <>
-            <div className="card content-card chart-card--loading-context" aria-busy={loading}>
-              <div className="content-toolbar">
-                <div className="metrics-block">
-                  <div className="metrics-inline">
-                    <h2 className="ticker-display">{data.ticker}</h2>
-                    <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
-                    {(() => {
-                      const percentChange = formatPercentChange(displayData);
-                      if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
-                      return (
-                        <span className={`metric-badge ${statusClass}`}>
-                          {percentChange.text}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
-                  </div>
+          <div className="card content-card chart-card--loading-context" aria-busy={loading}>
+            <div className="content-toolbar">
+              <div className="metrics-block">
+                <div className="metrics-inline">
+                  <h2 className="ticker-display">{data.ticker}</h2>
+                  <span className="metric-price">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
+                  {percentChange ? (
+                    <span
+                      className={`metric-badge ${
+                        percentChange.isPositive
+                          ? "positive"
+                          : percentChange.isNegative
+                            ? "negative"
+                            : "muted"
+                      }`}
+                    >
+                      {percentChange.text}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="horizon-buttons" role="group" aria-label="Chart range">
+                  {HORIZONS.map((h, i) => (
+                    <button
+                      key={h.label}
+                      type="button"
+                      className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                      onClick={() => setHorizonIndex(i)}
+                      aria-pressed={i === horizonIndex}
+                    >
+                      {h.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div
-                className="chart-container"
-                aria-label="Price chart"
-              >
-                <PriceChart
-                  data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
-                />
-              </div>
-              {loading && (
-                <div className="chart-loading-overlay" role="status">
-                  Loading latest data...
-                </div>
-              )}
             </div>
-          </>
+            <div className="chart-container" aria-label="Price chart">
+              <PriceChart
+                data={displayData}
+                variant={horizonIndex === 0 ? "intraday" : "daily"}
+              />
+            </div>
+            {loading && (
+              <div className="chart-loading-overlay" role="status">
+                Loading latest data...
+              </div>
+            )}
+          </div>
         )}
       </main>
       <ReportBug />

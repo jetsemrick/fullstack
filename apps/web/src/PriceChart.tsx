@@ -107,18 +107,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--chart-stroke)" stopOpacity={0.32} />
+              <stop offset="100%" stopColor="var(--chart-stroke)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+          <CartesianGrid stroke="var(--card-border)" strokeDasharray="2 8" vertical={false} />
           {variant === "intraday" && sessionLayout ? (
             <>
               <ReferenceArea
                 x1={sessionLayout.preMarket[0]}
                 x2={sessionLayout.preMarket[1]}
                 fill="var(--fg-muted)"
-                fillOpacity={0.08}
+                fillOpacity={0.07}
                 strokeOpacity={0}
                 ifOverflow="hidden"
               />
@@ -126,7 +126,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 x1={sessionLayout.afterHours[0]}
                 x2={sessionLayout.afterHours[1]}
                 fill="var(--fg-muted)"
-                fillOpacity={0.08}
+                fillOpacity={0.07}
                 strokeOpacity={0}
                 ifOverflow="hidden"
               />
@@ -138,7 +138,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             domain={xDomain}
             scale="time"
             ticks={variant === "intraday" ? intradayTicks : undefined}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+            tick={{ fill: "var(--fg-muted)", fontSize: 12, fontFamily: "var(--font)" }}
             tickLine={false}
             axisLine={false}
             tickFormatter={tickFormatter}
@@ -149,7 +149,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dataKey="price"
             domain={["auto", "auto"]}
             width={60}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+            tick={{ fill: "var(--fg-muted)", fontSize: 12, fontFamily: "var(--font)" }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v: number) => formatPrice(v)}
@@ -157,12 +157,13 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           />
           <Tooltip
             contentStyle={{
-              background: "var(--card)",
+              background: "var(--card-solid)",
               border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
+              borderRadius: "var(--radius-sm)",
               color: "var(--fg)",
               boxShadow: "var(--shadow)",
               padding: "12px",
+              fontFamily: "var(--font)",
             }}
             labelFormatter={(_, payload) => {
               const t = (payload?.[0]?.payload as { t?: number })?.t;
@@ -174,14 +175,14 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />
           <Area
-            type="linear"
+            type="monotone"
             dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
+            stroke="var(--chart-stroke)"
+            strokeWidth={2.5}
             fill={`url(#${fillGradientId})`}
             baseValue="dataMin"
             dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+            activeDot={{ r: 5, stroke: "var(--card-solid)", strokeWidth: 2, fill: "var(--chart-stroke)" }}
             isAnimationActive={false}
           />
         </ComposedChart>

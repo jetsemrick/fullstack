@@ -8,22 +8,28 @@ alwaysApply: false
 
 Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file as the **single source of truth** for surfaces, typography, radius, and default shadows.
 
+## Direction
+
+**Signal Floor** — cool mist desk atmosphere, deep navy ink, teal pulse accent. Display type is Syne; UI/body is DM Sans.
+
 ## Tokens (reference)
 
 | Token | Role |
 |-------|------|
-| `--bg`, `--fg`, `--fg-muted` | Page background, primary text, secondary text (~60% feel—use muted for hints) |
-| `--accent`, `--accent-hover` | Primary actions, focus ring, emphasis borders |
-| `--card`, `--card-border`, `--shadow` | Elevated surfaces and separation |
+| `--bg`, `--bg-deep`, `--fg`, `--fg-muted` | Page atmosphere, primary text, secondary text |
+| `--accent`, `--accent-hover`, `--accent-soft` | Primary actions, focus ring, soft fills |
+| `--card`, `--card-solid`, `--card-border`, `--shadow` | Elevated surfaces and separation |
 | `--radius`, `--radius-sm` | Default and smaller corner radius |
-| `--font` | Inter stack; body already sets `font-family` — inherit in components |
+| `--up`, `--up-soft`, `--down`, `--down-soft` | Market direction hues |
+| `--font`, `--font-display` | Body (DM Sans) and brand/display (Syne) |
+| `--chart-stroke` | Price series stroke color |
 
 ## Rules
 
-1. **Prefer CSS variables** for layout chrome: backgrounds, borders, foreground, accents. Avoid new hard-coded hex/rgb except for **meaning-specific** hues (e.g. market up/down) until those become named tokens in `:root`.
+1. **Prefer CSS variables** for layout chrome: backgrounds, borders, foreground, accents. Avoid new hard-coded hex/rgb except where a semantic token already covers the meaning.
 2. **Add new primitives in `:root` first**, then wire components with `var(--…)`—do not scatter one-off palette values across TSX or CSS without a matching token when the color is reused.
 3. **Focus**: use `:focus-visible` patterns consistent with globals (accent outline)—do not remove focus outlines without an accessible replacement.
-4. **Consistency**: spacing and component layout follow existing patterns in `app.css`; match established gaps (e.g. `rem`-based grids) unless changing the shell intentionally.
+4. **Consistency**: spacing and component layout follow patterns in `app.css`; match established gaps unless changing the shell intentionally.
 
 ### Example
 
