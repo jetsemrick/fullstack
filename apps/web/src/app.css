@@ -41,7 +41,7 @@
   align-items: center;
   white-space: nowrap;
   /* translateX(-50%) equals one full copy since the track holds two copies. */
-  animation: ticker-scroll 90s linear infinite;
+  animation: ticker-scroll 45s linear infinite;
   will-change: transform;
 }
 
