@@ -2,51 +2,70 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi.testclient import TestClient
+import httpx
+import pytest
 
 from stock_api import main
 
-client = TestClient(main.app)
+pytestmark = pytest.mark.anyio
 
 
-def test_rejects_invalid_ticker_with_400() -> None:
-    response = client.get("/api/prices?ticker=!!!")
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
+
+@pytest.fixture
+async def client() -> httpx.AsyncClient:
+    transport = httpx.ASGITransport(app=main.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as test_client:
+        yield test_client
+
+
+async def test_rejects_invalid_ticker_with_400(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/prices?ticker=!!!")
 
     assert response.status_code == 400
     assert response.json()["code"] == "VALIDATION"
 
 
-def test_returns_400_for_invalid_range_query() -> None:
-    response = client.get("/api/prices?ticker=AAPL&range=invalid")
+async def test_returns_400_for_invalid_range_query(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/prices?ticker=AAPL&range=invalid")
 
     assert response.status_code == 400
     assert response.json()["code"] == "VALIDATION"
 
 
-def test_health_check_returns_200() -> None:
-    response = client.get("/api/health")
+async def test_health_check_returns_200(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/health")
 
     assert response.status_code == 200
     assert response.json() == {"ok": True}
 
 
-def test_report_bug_rejects_empty_message_with_400() -> None:
-    response = client.post("/api/report-bug", json={"message": "   "})
+async def test_report_bug_rejects_empty_message_with_400(client: httpx.AsyncClient) -> None:
+    response = await client.post("/api/report-bug", json={"message": "   "})
 
     assert response.status_code == 400
     assert response.json()["code"] == "VALIDATION"
 
 
-def test_report_bug_returns_503_when_cursor_api_key_is_missing(monkeypatch: Any) -> None:
+async def test_report_bug_returns_503_when_cursor_api_key_is_missing(
+    client: httpx.AsyncClient,
+    monkeypatch: Any,
+) -> None:
     monkeypatch.delenv("CURSOR_API_KEY", raising=False)
 
-    response = client.post("/api/report-bug", json={"message": "Fix the chart legend"})
+    response = await client.post("/api/report-bug", json={"message": "Fix the chart legend"})
 
     assert response.status_code == 503
     assert response.json()["code"] == "CONFIG"
 
 
-def test_returns_200_and_series_when_upstream_chart_json_is_valid(monkeypatch: Any) -> None:
+async def test_returns_200_and_series_when_upstream_chart_json_is_valid(
+    client: httpx.AsyncClient,
+    monkeypatch: Any,
+) -> None:
     async def fake_fetch_yahoo_chart(ticker: str, *, range_value: str | None = None, interval: str | None = None):
         assert ticker == "AAPL"
         assert range_value is None
@@ -64,7 +83,7 @@ def test_returns_200_and_series_when_upstream_chart_json_is_valid(monkeypatch: A
 
     monkeypatch.setattr(main, "fetch_yahoo_chart", fake_fetch_yahoo_chart)
 
-    response = client.get("/api/prices?ticker=AAPL")
+    response = await client.get("/api/prices?ticker=AAPL")
 
     assert response.status_code == 200
     body = response.json()
@@ -74,7 +93,10 @@ def test_returns_200_and_series_when_upstream_chart_json_is_valid(monkeypatch: A
     assert body["series"][0]["close"] == 198.1
 
 
-def test_returns_200_and_market_context_when_yahoo_quote_json_is_valid(monkeypatch: Any) -> None:
+async def test_returns_200_and_market_context_when_yahoo_quote_json_is_valid(
+    client: httpx.AsyncClient,
+    monkeypatch: Any,
+) -> None:
     async def fake_fetch_major_index_quotes():
         return {
             "errorMessage": None,
@@ -88,7 +110,7 @@ def test_returns_200_and_market_context_when_yahoo_quote_json_is_valid(monkeypat
 
     monkeypatch.setattr(main, "fetch_major_index_quotes", fake_fetch_major_index_quotes)
 
-    response = client.get("/api/market-context")
+    response = await client.get("/api/market-context")
 
     assert response.status_code == 200
     body = response.json()
@@ -96,7 +118,10 @@ def test_returns_200_and_market_context_when_yahoo_quote_json_is_valid(monkeypat
     assert [index["symbol"] for index in body["indexes"]] == ["^GSPC", "^DJI", "^IXIC"]
 
 
-def test_returns_200_and_market_context_when_v8_chart_fallback_works(monkeypatch: Any) -> None:
+async def test_returns_200_and_market_context_when_v8_chart_fallback_works(
+    client: httpx.AsyncClient,
+    monkeypatch: Any,
+) -> None:
     async def fake_fetch_major_index_quotes():
         return {
             "errorMessage": None,
@@ -110,7 +135,7 @@ def test_returns_200_and_market_context_when_v8_chart_fallback_works(monkeypatch
 
     monkeypatch.setattr(main, "fetch_major_index_quotes", fake_fetch_major_index_quotes)
 
-    response = client.get("/api/market-context")
+    response = await client.get("/api/market-context")
 
     assert response.status_code == 200
     body = response.json()
