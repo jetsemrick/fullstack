@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  downsampleRows,
+  filterSeriesByHorizon,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+  seriesHasVolume,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -38,6 +45,37 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  test("filters second-based timestamps for 1Y and 5Y horizons", () => {
+    const startTimestamp = 1_700_000_000;
+    const daySeconds = 24 * 60 * 60;
+    const data: GetPricesResponse = {
+      ticker: "X",
+      currency: "USD",
+      lastPrice: 10,
+      series: Array.from({ length: 2_200 }, (_, i) => ({
+        timestamp: startTimestamp + i * daySeconds,
+        close: i + 1,
+        volume: null,
+      })),
+    };
+
+    const oneYear = filterSeriesByHorizon(data, 365);
+    const fiveYear = filterSeriesByHorizon(data, 1_825);
+    const allTime = filterSeriesByHorizon(data, Infinity);
+
+    expect(oneYear.series.length).toBeLessThan(fiveYear.series.length);
+    expect(fiveYear.series.length).toBeLessThan(allTime.series.length);
+    expect(oneYear.series[0]?.timestamp).toBe(
+      data.series[data.series.length - 1]!.timestamp - 365 * daySeconds,
+    );
+    expect(fiveYear.series[0]?.timestamp).toBe(
+      data.series[data.series.length - 1]!.timestamp - 1_825 * daySeconds,
+    );
+    expect(allTime).toBe(data);
   });
 });
 
