@@ -128,7 +128,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   // hovered label lets the drag start from the correct point in that case.
   const hoverRef = useRef<number | null>(null);
 
+  // When mousedown has no label yet (common on intraday cold press), arm the
+  // drag and seed start/end from the first mousemove that reports a label.
+  const pendingDragRef = useRef(false);
+
   const clearAll = useCallback(() => {
+    pendingDragRef.current = false;
     dragRef.current = { start: null, end: null };
     setDragStart(null);
     setDragEnd(null);
@@ -146,22 +151,37 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     (s: ChartMouseState) => {
       const label = labelFromState(s) ?? hoverRef.current;
       if (label == null) {
-        // Press with no known position (e.g. outside the plot area): clear.
-        clearAll();
+        // No known x yet: clear any committed selection and wait for the first
+        // labeled mousemove (or mouseup, which abandons the pending drag).
+        pendingDragRef.current = true;
+        dragRef.current = { start: null, end: null };
+        setDragStart(null);
+        setDragEnd(null);
+        setSelection(null);
         return;
       }
+      pendingDragRef.current = false;
       dragRef.current = { start: label, end: label };
       setDragStart(label);
       setDragEnd(label);
       setSelection(null);
     },
-    [labelFromState, clearAll],
+    [labelFromState],
   );
 
   const onMouseMove = useCallback(
     (s: ChartMouseState) => {
       const label = labelFromState(s);
       if (label != null) hoverRef.current = label;
+
+      if (pendingDragRef.current && label != null && dragRef.current.start == null) {
+        pendingDragRef.current = false;
+        dragRef.current = { start: label, end: label };
+        setDragStart(label);
+        setDragEnd(label);
+        return;
+      }
+
       if (dragRef.current.start == null) return;
       if (label != null) {
         dragRef.current.end = label;
@@ -172,6 +192,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   );
 
   const finalizeDrag = useCallback(() => {
+    pendingDragRef.current = false;
     const { start, end } = dragRef.current;
     if (start == null) return;
     dragRef.current = { start: null, end: null };
@@ -206,8 +227,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       : { a: null, b: null };
 
   // Prefer full series for stats so daily downsample does not skew net change.
+  // Band only when stats exist (≥2 points in window); never highlight without a readout.
   const stats = computeRangeChange(fullRows, bounds.a, bounds.b);
-  const showBand = bounds.a != null && bounds.b != null && bounds.a !== bounds.b;
+  const showBand = stats != null;
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
