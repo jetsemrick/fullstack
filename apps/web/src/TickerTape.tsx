@@ -47,12 +47,14 @@ export function TickerTape() {
 
   useEffect(() => {
     let cancelled = false;
+    let requestId = 0;
     const controller = new AbortController();
 
     async function load() {
+      const id = ++requestId;
       try {
         const res = await fetchTickerTape(controller.signal);
-        if (cancelled) return;
+        if (cancelled || id !== requestId) return;
         if (res.ok && res.data.quotes.length > 0) {
           setQuotes(res.data.quotes);
           setFailed(false);
@@ -60,7 +62,7 @@ export function TickerTape() {
           setFailed(true);
         }
       } catch {
-        if (!cancelled) setFailed(true);
+        if (!cancelled && id === requestId) setFailed(true);
       }
     }
 
