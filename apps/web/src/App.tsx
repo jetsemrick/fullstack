@@ -45,7 +45,8 @@ function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): Ge
   if (horizonDays === Infinity) return data;
   const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
   if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
+  // Series timestamps are Unix seconds (see PriceChart chartData mapping).
+  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60;
   const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
   return {
     ...data,
@@ -209,6 +210,7 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${data.ticker}-${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                 />
