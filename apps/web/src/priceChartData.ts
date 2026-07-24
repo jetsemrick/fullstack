@@ -13,6 +13,22 @@ export type ChartRow = {
   price: number;
 };
 
+/** Wide row for multi-ticker compare charts (indexed values keyed by ticker). */
+export type CompareChartRow = {
+  t: number;
+  [ticker: string]: number | null;
+};
+
+export type TickerCloseSeries = {
+  ticker: string;
+  points: ReadonlyArray<{ timestamp: number; close: number }>;
+};
+
+export type AlignedTickerSeries = {
+  ticker: string;
+  aligned: Array<{ timestamp: number; close: number | null }>;
+};
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
@@ -24,6 +40,86 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
     volume: p.volume,
     volumeBar: p.volume ?? 0,
   }));
+}
+
+export function alignSeriesOnTimestamps(inputs: TickerCloseSeries[]): AlignedTickerSeries[] {
+  const allTimestamps = new Set<number>();
+  for (const input of inputs) {
+    for (const point of input.points) {
+      allTimestamps.add(point.timestamp);
+    }
+  }
+  const timestamps = [...allTimestamps].sort((a, b) => a - b);
+
+  return inputs.map((input) => {
+    const byTimestamp = new Map(input.points.map((point) => [point.timestamp, point.close]));
+    return {
+      ticker: input.ticker,
+      aligned: timestamps.map((timestamp) => ({
+        timestamp,
+        close: byTimestamp.get(timestamp) ?? null,
+      })),
+    };
+  });
+}
+
+export function indexSeriesTo100(aligned: AlignedTickerSeries[]): CompareChartRow[] {
+  if (aligned.length === 0) return [];
+
+  const timestamps = aligned[0]!.aligned.map((point) => point.timestamp);
+  const bases = new Map<string, number>();
+
+  for (const { ticker, aligned: points } of aligned) {
+    const first = points.find((point) => point.close != null && point.close !== 0);
+    if (first?.close != null) {
+      bases.set(ticker, first.close);
+    }
+  }
+
+  return timestamps.map((timestamp, index) => {
+    const row: CompareChartRow = { t: timestamp * 1000 };
+    for (const { ticker, aligned: points } of aligned) {
+      const close = points[index]?.close ?? null;
+      const base = bases.get(ticker);
+      if (close == null || base == null || base === 0) {
+        row[ticker] = null;
+      } else {
+        row[ticker] = (100 * close) / base;
+      }
+    }
+    return row;
+  });
+}
+
+export function buildIndexedCompareRows(responses: GetPricesResponse[]): CompareChartRow[] {
+  const inputs: TickerCloseSeries[] = responses.map((response) => ({
+    ticker: response.ticker,
+    points: response.series.map((point) => ({
+      timestamp: point.timestamp,
+      close: point.close,
+    })),
+  }));
+  return indexSeriesTo100(alignSeriesOnTimestamps(inputs));
+}
+
+export function downsampleWideRows(
+  rows: CompareChartRow[],
+  tickerKeys: string[],
+  maxRows: number,
+): CompareChartRow[] {
+  if (rows.length <= maxRows || tickerKeys.length === 0) return rows;
+
+  const primaryKey = tickerKeys[0]!;
+  const chartRows: ChartRow[] = rows.map((row) => ({
+    t: row.t,
+    price: typeof row[primaryKey] === "number" ? row[primaryKey]! : Number.NaN,
+  }));
+
+  const finiteRows = chartRows.filter((row) => Number.isFinite(row.price));
+  if (finiteRows.length === 0) return rows;
+
+  const sampledTs = new Set(downsampleRows(finiteRows, maxRows).map((row) => row.t));
+  return rows.filter((row) => sampledTs.has(row.t));
 }
 
 export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
