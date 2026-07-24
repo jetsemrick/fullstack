@@ -159,7 +159,11 @@ export default function App() {
   const compareResponses = useMemo(() => {
     return tickers
       .filter((symbol) => tickerData[symbol])
-      .map((symbol) => filterSeriesByHorizon(tickerData[symbol]!, HORIZONS[horizonIndex].days));
+      .map((symbol) => ({
+        // Keep row keys aligned with request symbols used by chartSeries dataKeys.
+        ...filterSeriesByHorizon(tickerData[symbol]!, HORIZONS[horizonIndex].days),
+        ticker: symbol,
+      }));
   }, [tickers, tickerData, horizonIndex]);
 
   const compareRows = useMemo(() => {
@@ -188,7 +192,11 @@ export default function App() {
     setInputTicker(nextPrimary);
     setTickers((prev) => {
       const compare = prev.slice(1).filter((symbol) => symbol !== nextPrimary);
-      return [nextPrimary, ...compare].slice(0, MAX_TICKERS);
+      const next = [nextPrimary, ...compare].slice(0, MAX_TICKERS);
+      if (next.length === prev.length && next.every((symbol, index) => symbol === prev[index])) {
+        return prev;
+      }
+      return next;
     });
   }
 
