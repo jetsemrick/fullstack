@@ -108,7 +108,7 @@ export function ReportBug() {
             </button>
           </div>
           <p className="report-bug__hint">
-            Describe the bug or the change you want. A Cursor agent will edit this project locally.
+            Describe the bug or change you want. The Python API accepts reports; local agent execution is deferred in this demo.
           </p>
           <form className="report-bug__form" onSubmit={onSubmit}>
             <label htmlFor={textareaId} className="sr-only">
@@ -138,7 +138,7 @@ export function ReportBug() {
             )}
             {state.kind === "submitting" && (
               <p className="report-bug__status" role="status">
-                Running agent… this can take a minute.
+                Sending report...
               </p>
             )}
             <div className="report-bug__actions">
@@ -147,7 +147,7 @@ export function ReportBug() {
                 className="report-bug__submit"
                 disabled={state.kind === "submitting" || !message.trim()}
               >
-                {state.kind === "submitting" ? "Sending…" : "Send to agent"}
+                {state.kind === "submitting" ? "Sending..." : "Submit report"}
               </button>
             </div>
           </form>
