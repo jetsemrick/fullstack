@@ -144,7 +144,7 @@ def _parse_index_from_chart_body(body: Any) -> ChartIndexQuote | None:
 
 async def _fetch_major_index_quotes_via_v7() -> YahooQuoteAggregate:
     params = {"symbols": ",".join(MAJOR_INDEX_SYMBOLS)}
-    async with httpx.AsyncClient(headers=YAHOO_HEADERS, timeout=10.0) as client:
+    async with httpx.AsyncClient(headers=YAHOO_HEADERS, timeout=10.0, follow_redirects=True) as client:
         response = await client.get(YAHOO_QUOTE_URL, params=params)
 
     try:
@@ -159,7 +159,7 @@ async def _fetch_major_index_quotes_via_v7() -> YahooQuoteAggregate:
 
 
 async def _fetch_major_index_quotes_via_chart() -> YahooQuoteAggregate:
-    async with httpx.AsyncClient(headers=YAHOO_HEADERS, timeout=10.0) as client:
+    async with httpx.AsyncClient(headers=YAHOO_HEADERS, timeout=10.0, follow_redirects=True) as client:
         responses = await _fetch_chart_rows(client)
 
     rows = [row for row in responses if row is not None]

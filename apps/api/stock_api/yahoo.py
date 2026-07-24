@@ -135,7 +135,7 @@ async def fetch_yahoo_chart(
 ) -> YahooParseResult:
     url = f"{YAHOO_CHART_BASE}/{quote(ticker, safe='')}"
     params = {"range": range_value or DEFAULT_RANGE, "interval": interval or DEFAULT_INTERVAL}
-    async with httpx.AsyncClient(headers=YAHOO_HEADERS, timeout=10.0) as client:
+    async with httpx.AsyncClient(headers=YAHOO_HEADERS, timeout=10.0, follow_redirects=True) as client:
         response = await client.get(url, params=params)
 
     try:
