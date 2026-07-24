@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { HORIZONS, filterSeriesByHorizon, formatPercentChange } from "./stockHorizonData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -12,45 +13,11 @@ function formatLast(v: number | null, currency: string | null) {
   return `${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
 }
 
-function formatPercentChange(data: GetPricesResponse | null) {
-  if (!data || !data.series || data.series.length < 2) return null;
-  const first = data.series[0].close;
-  const last = data.series[data.series.length - 1].close;
-  if (!first) return null;
-  const diff = last - first;
-  const pct = (diff / first) * 100;
-  const sign = pct > 0 ? "+" : "";
-  return {
-    text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
-    isPositive: pct > 0,
-    isNegative: pct < 0
-  };
-}
-
-const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
-];
-
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
 
 function priceCacheKey(ticker: string, range: string, interval: string): string {
   return `${ticker}:${range}:${interval}`;
-}
-
-function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
-  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
-  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
-  return {
-    ...data,
-    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
-  };
 }
 
 export default function App() {
