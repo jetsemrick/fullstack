@@ -135,6 +135,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const clearAll = useCallback(() => {
     pendingDragRef.current = false;
+    hoverRef.current = null;
     dragRef.current = { start: null, end: null };
     setDragStart(null);
     setDragEnd(null);
@@ -245,6 +246,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       ref={rootRef}
       role="img"
       aria-label="Price over time line chart. Drag horizontally to select a range and see its net change. Press Escape to clear the selection."
+      onMouseLeave={() => {
+        hoverRef.current = null;
+      }}
       style={{
         width: "100%",
         height: "100%",
