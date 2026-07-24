@@ -58,6 +58,7 @@ Create a key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard
 - `GET /api/health` – health check.
 - `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
 - `GET /api/market-context` – US market session state plus major index quotes.
+- `GET /api/ticker-tape` – batch quotes for the scrolling S&P ticker tape (curated large-cap symbols).
 - `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars). Runs a local Cursor agent (`@cursor/sdk`) against the monorepo to apply the requested edit. Requires `CURSOR_API_KEY`.
 
 The web UI includes a **Report bug** control (bottom-right) that posts to `/api/report-bug`.
