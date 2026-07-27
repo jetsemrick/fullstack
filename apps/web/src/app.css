@@ -60,6 +60,10 @@
   opacity: 1;
 }
 
+.ticker-tape__motion-toggle:focus-visible {
+  outline-color: var(--card);
+}
+
 .ticker-tape__viewport {
   min-width: 0;
   overflow: hidden;

@@ -113,6 +113,7 @@ export function TickerTape() {
           type="button"
           className="ticker-tape__motion-toggle"
           aria-pressed={paused}
+          tabIndex={0}
           onClick={() => setPaused((current) => !current)}
         >
           {paused ? "Resume" : "Pause"}
