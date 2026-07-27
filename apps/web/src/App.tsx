@@ -120,8 +120,8 @@ export default function App() {
 
     setSeriesByTicker((prev) => {
       if (!nextSeries[ticker]) {
+        setError(nextErrors[ticker] ?? "Request failed");
         if (Object.keys(prev).length === 0) {
-          setError(nextErrors[ticker] ?? "Request failed");
           return {};
         }
         return { ...prev, ...nextSeries };

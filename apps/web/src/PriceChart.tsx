@@ -233,7 +233,13 @@ function MultiTickerPriceChart({
   multiSeries: MultiSeriesChartData;
   variant: PriceChartVariant;
 }) {
-  const { rows, tickers } = multiSeries;
+  const { rows: fullRows, tickers } = multiSeries;
+  const rows = useMemo(() => {
+    if (variant === "intraday") return fullRows;
+    const primary = tickers[0];
+    if (!primary) return fullRows;
+    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS, (row) => row[primary] ?? 0);
+  }, [fullRows, tickers, variant]);
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
     variant === "intraday"

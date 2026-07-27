@@ -133,10 +133,14 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
   }));
 }
 
-export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
+export function downsampleRows<T extends { t: number }>(
+  rows: T[],
+  maxRows: number,
+  getValue: (row: T) => number = (row) => (row as unknown as ChartRow).price,
+): T[] {
   if (rows.length <= maxRows) return rows;
 
-  const result: ChartRow[] = [rows[0]!];
+  const result: T[] = [rows[0]!];
   const bucketCount = maxRows - 2;
   const bucketSize = (rows.length - 2) / bucketCount;
 
@@ -149,8 +153,8 @@ export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
     let max = rows[start]!;
     for (let i = start + 1; i < end; i++) {
       const row = rows[i]!;
-      if (row.price < min.price) min = row;
-      if (row.price > max.price) max = row;
+      if (getValue(row) < getValue(min)) min = row;
+      if (getValue(row) > getValue(max)) max = row;
     }
 
     if (min.t < max.t) {
