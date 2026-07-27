@@ -61,7 +61,7 @@
   opacity: 1;
 }
 
-.ticker-tape__motion-toggle:focus-visible {
+.ticker-tape__motion-toggle:focus {
   outline: 2px solid var(--card);
   outline-offset: 1px;
   background: var(--card);
