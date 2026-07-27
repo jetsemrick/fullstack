@@ -40,6 +40,8 @@ bun run dev:web
 
 The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
 
+On the price chart, click-drag horizontally to select a time range and see net dollar and percent change (first/last close in the window). Press **Escape** or click outside the chart to clear the selection; changing ticker or horizon also resets it. Keyboard range adjustment beyond Escape is not implemented yet (drag is the primary interaction).
+
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
 ### Environment (optional)
