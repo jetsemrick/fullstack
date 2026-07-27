@@ -1,5 +1,5 @@
-import type { MarketIndexQuote } from "@stock/shared";
-import { MAJOR_INDEX_SYMBOLS } from "@stock/shared";
+import type { MarketIndexQuote, TickerTapeQuote } from "@stock/shared";
+import { MAJOR_INDEX_SYMBOLS, TICKER_TAPE_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -8,6 +8,11 @@ export type YahooQuoteAggregate = {
   errorMessage: string | null;
   marketState: string | null;
   indexes: MarketIndexQuote[];
+};
+
+export type YahooTickerTapeAggregate = {
+  errorMessage: string | null;
+  quotes: TickerTapeQuote[];
 };
 
 function pickNum(v: unknown): number | null {
@@ -232,5 +237,81 @@ export async function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
     errorMessage: v7.errorMessage ?? viaChart.errorMessage ?? "No benchmark quotes",
     marketState: null,
     indexes: [],
+  };
+}
+
+function orderTickerTapeQuotes(quotes: MarketIndexQuote[]): TickerTapeQuote[] {
+  const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote] as const));
+  return TICKER_TAPE_SYMBOLS.flatMap((symbol) => {
+    const quote = bySymbol.get(symbol);
+    return quote
+      ? [{ symbol: quote.symbol, price: quote.price, changePercent: quote.changePercent }]
+      : [];
+  });
+}
+
+async function fetchTickerTapeQuotesViaV7(): Promise<YahooTickerTapeAggregate> {
+  try {
+    const url = new URL(YAHOO_QUOTE_URL);
+    url.searchParams.set("symbols", TICKER_TAPE_SYMBOLS.join(","));
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
+    });
+    const text = await res.text();
+    let json: unknown;
+    try {
+      json = JSON.parse(text) as unknown;
+    } catch {
+      return { errorMessage: `Invalid response (${res.status})`, quotes: [] };
+    }
+    const parsed = parseQuoteResponse(json);
+    const quotes = orderTickerTapeQuotes(parsed.indexes);
+    if (!res.ok) {
+      return { errorMessage: parsed.errorMessage ?? `HTTP ${res.status}`, quotes };
+    }
+    return { errorMessage: parsed.errorMessage, quotes };
+  } catch {
+    return { errorMessage: "Yahoo quote request failed", quotes: [] };
+  }
+}
+
+async function fetchTickerTapeQuotesViaChart(): Promise<YahooTickerTapeAggregate> {
+  const headers = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
+  const rows = await Promise.all(
+    TICKER_TAPE_SYMBOLS.map(async (symbol) => {
+      try {
+        const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
+        url.searchParams.set("range", "1d");
+        url.searchParams.set("interval", "1d");
+        const res = await fetch(url, { headers });
+        const text = await res.text();
+        const json = JSON.parse(text) as unknown;
+        const row = parseIndexFromChartBody(json);
+        return res.ok ? row : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const quotes = orderTickerTapeQuotes(rows.filter((row): row is NonNullable<typeof row> => row !== null));
+  return {
+    errorMessage: quotes.length > 0 ? null : "No ticker tape quotes",
+    quotes,
+  };
+}
+
+/** Fetch the curated ticker list in one Yahoo request, with chart-meta fallback when v7 is blocked. */
+export async function fetchTickerTapeQuotes(): Promise<YahooTickerTapeAggregate> {
+  const v7 = await fetchTickerTapeQuotesViaV7();
+  if (!v7.errorMessage && v7.quotes.length > 0) {
+    return v7;
+  }
+  const viaChart = await fetchTickerTapeQuotesViaChart();
+  if (viaChart.quotes.length > 0) {
+    return viaChart;
+  }
+  return {
+    errorMessage: v7.errorMessage ?? viaChart.errorMessage ?? "No ticker tape quotes",
+    quotes: [],
   };
 }

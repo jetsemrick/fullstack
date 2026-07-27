@@ -6,3 +6,19 @@ export const DEFAULT_TICKER = "AAPL" as const;
 
 /** Yahoo symbols for S&P 500, Dow Jones Industrial Average, and Nasdaq Composite quotes. */
 export const MAJOR_INDEX_SYMBOLS = ["^GSPC", "^DJI", "^IXIC"] as const;
+
+/** Stable large-cap S&P 500 leaders shown in the ambient ticker tape. */
+export const TICKER_TAPE_SYMBOLS = [
+  "AAPL",
+  "MSFT",
+  "NVDA",
+  "AMZN",
+  "GOOGL",
+  "META",
+  "BRK-B",
+  "AVGO",
+  "TSLA",
+  "JPM",
+  "LLY",
+  "WMT",
+] as const;
