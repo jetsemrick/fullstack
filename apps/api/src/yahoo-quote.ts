@@ -3,6 +3,7 @@ import { MAJOR_INDEX_SYMBOLS, TICKER_TAPE_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
+const TICKER_TAPE_REQUEST_TIMEOUT_MS = 8_000;
 
 export type YahooQuoteAggregate = {
   errorMessage: string | null;
@@ -256,6 +257,7 @@ async function fetchTickerTapeQuotesViaV7(): Promise<YahooTickerTapeAggregate> {
     url.searchParams.set("symbols", TICKER_TAPE_SYMBOLS.join(","));
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
+      signal: AbortSignal.timeout(TICKER_TAPE_REQUEST_TIMEOUT_MS),
     });
     const text = await res.text();
     let json: unknown;
@@ -283,7 +285,10 @@ async function fetchTickerTapeQuotesViaChart(): Promise<YahooTickerTapeAggregate
         const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
         url.searchParams.set("range", "1d");
         url.searchParams.set("interval", "1d");
-        const res = await fetch(url, { headers });
+        const res = await fetch(url, {
+          headers,
+          signal: AbortSignal.timeout(TICKER_TAPE_REQUEST_TIMEOUT_MS),
+        });
         const text = await res.text();
         const json = JSON.parse(text) as unknown;
         const row = parseIndexFromChartBody(json);

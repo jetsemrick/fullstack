@@ -41,6 +41,25 @@
   font-weight: 500;
 }
 
+.ticker-tape__motion-toggle {
+  align-self: flex-start;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 0.625rem;
+  line-height: 1.2;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.ticker-tape__motion-toggle:hover {
+  opacity: 1;
+}
+
 .ticker-tape__viewport {
   min-width: 0;
   overflow: hidden;
@@ -52,6 +71,10 @@
   min-height: 100%;
   animation: ticker-tape-scroll 48s linear infinite;
   will-change: transform;
+}
+
+.ticker-tape--paused .ticker-tape__track {
+  animation-play-state: paused;
 }
 
 .ticker-tape__copy {
@@ -141,6 +164,10 @@
   }
 
   .ticker-tape__copy--duplicate {
+    display: none;
+  }
+
+  .ticker-tape__motion-toggle {
     display: none;
   }
 }

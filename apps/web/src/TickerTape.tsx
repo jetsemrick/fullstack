@@ -27,11 +27,15 @@ export function TickerTape() {
   const [quotes, setQuotes] = useState<TickerTapeQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
 
     async function load() {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const response = await fetchTickerTape();
         if (cancelled) return;
@@ -44,6 +48,7 @@ export function TickerTape() {
       } catch {
         if (!cancelled) setFailed(true);
       } finally {
+        inFlight = false;
         if (!cancelled) setLoading(false);
       }
     }
@@ -97,13 +102,24 @@ export function TickerTape() {
   }
 
   return (
-    <section className="ticker-tape" aria-label="S&P 500 large-cap ticker tape">
+    <section
+      className={`ticker-tape${paused ? " ticker-tape--paused" : ""}`}
+      aria-label="S&P 500 large-cap ticker tape"
+    >
       <div className="ticker-tape__heading">
         <strong>S&amp;P leaders</strong>
         <span role="status">{status}</span>
+        <button
+          type="button"
+          className="ticker-tape__motion-toggle"
+          aria-pressed={paused}
+          onClick={() => setPaused((current) => !current)}
+        >
+          {paused ? "Resume" : "Pause"}
+        </button>
       </div>
       <div className="ticker-tape__viewport">
-        {/* Prices are informational, so only the first loop copy is exposed to assistive technology. */}
+        {/* Only the semantic first copy is announced; the visible control lets users stop the moving content. */}
         <div className="ticker-tape__track">
           {renderItems(false)}
           {renderItems(true)}
