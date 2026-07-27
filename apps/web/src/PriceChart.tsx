@@ -244,8 +244,6 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   return (
     <div
       ref={rootRef}
-      role="img"
-      aria-label="Price over time line chart. Drag horizontally to select a range and see its net change. Press Escape to clear the selection."
       onMouseLeave={() => {
         hoverRef.current = null;
       }}
@@ -266,106 +264,112 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           </span>
         </div>
       )}
-      <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart
-          data={rows}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={finalizeDrag}
-        >
-          <defs>
-            <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
-          {variant === "intraday" && sessionLayout ? (
-            <>
-              <ReferenceArea
-                x1={sessionLayout.preMarket[0]}
-                x2={sessionLayout.preMarket[1]}
-                fill="var(--fg-muted)"
-                fillOpacity={0.08}
-                strokeOpacity={0}
-                ifOverflow="hidden"
-              />
-              <ReferenceArea
-                x1={sessionLayout.afterHours[0]}
-                x2={sessionLayout.afterHours[1]}
-                fill="var(--fg-muted)"
-                fillOpacity={0.08}
-                strokeOpacity={0}
-                ifOverflow="hidden"
-              />
-            </>
-          ) : null}
-          <XAxis
-            dataKey="t"
-            type="number"
-            domain={xDomain}
-            scale="time"
-            ticks={variant === "intraday" ? intradayTicks : undefined}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={tickFormatter}
-            minTickGap={variant === "intraday" ? 0 : 32}
-            dy={10}
-          />
-          <YAxis
-            dataKey="price"
-            domain={["auto", "auto"]}
-            width={60}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
-            dx={-10}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--card)",
-              border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
-              color: "var(--fg)",
-              boxShadow: "var(--shadow)",
-              padding: "12px",
-            }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
-              }
-              return "";
-            }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
-          />
-          {showBand && (
-            <ReferenceArea
-              x1={Math.min(bounds.a!, bounds.b!)}
-              x2={Math.max(bounds.a!, bounds.b!)}
-              fill="var(--accent)"
-              fillOpacity={0.12}
-              stroke="var(--accent)"
-              strokeOpacity={0.4}
-              ifOverflow="visible"
+      <div
+        role="img"
+        aria-label="Price over time line chart. Drag horizontally to select a range and see its net change. Press Escape to clear the selection."
+        style={{ width: "100%", height: "100%" }}
+      >
+        <ResponsiveContainer width="100%" height="100%" minHeight={320}>
+          <ComposedChart
+            data={rows}
+            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={finalizeDrag}
+          >
+            <defs>
+              <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+            {variant === "intraday" && sessionLayout ? (
+              <>
+                <ReferenceArea
+                  x1={sessionLayout.preMarket[0]}
+                  x2={sessionLayout.preMarket[1]}
+                  fill="var(--fg-muted)"
+                  fillOpacity={0.08}
+                  strokeOpacity={0}
+                  ifOverflow="hidden"
+                />
+                <ReferenceArea
+                  x1={sessionLayout.afterHours[0]}
+                  x2={sessionLayout.afterHours[1]}
+                  fill="var(--fg-muted)"
+                  fillOpacity={0.08}
+                  strokeOpacity={0}
+                  ifOverflow="hidden"
+                />
+              </>
+            ) : null}
+            <XAxis
+              dataKey="t"
+              type="number"
+              domain={xDomain}
+              scale="time"
+              ticks={variant === "intraday" ? intradayTicks : undefined}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={tickFormatter}
+              minTickGap={variant === "intraday" ? 0 : 32}
+              dy={10}
             />
-          )}
-          <Area
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+            <YAxis
+              dataKey="price"
+              domain={["auto", "auto"]}
+              width={60}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatPrice(v)}
+              dx={-10}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--card)",
+                border: `1px solid var(--card-border)`,
+                borderRadius: "12px",
+                color: "var(--fg)",
+                boxShadow: "var(--shadow)",
+                padding: "12px",
+              }}
+              labelFormatter={(_, payload) => {
+                const t = (payload?.[0]?.payload as { t?: number })?.t;
+                if (typeof t === "number") {
+                  return formatTooltipWhen(t, variant, spanDays);
+                }
+                return "";
+              }}
+              formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            />
+            {showBand && (
+              <ReferenceArea
+                x1={Math.min(bounds.a!, bounds.b!)}
+                x2={Math.max(bounds.a!, bounds.b!)}
+                fill="var(--accent)"
+                fillOpacity={0.12}
+                stroke="var(--accent)"
+                strokeOpacity={0.4}
+                ifOverflow="visible"
+              />
+            )}
+            <Area
+              type="linear"
+              dataKey="price"
+              stroke="var(--accent)"
+              strokeWidth={3}
+              fill={`url(#${fillGradientId})`}
+              baseValue="dataMin"
+              dot={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+              isAnimationActive={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
