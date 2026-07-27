@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  downsampleRows,
+  filterSeriesByHorizon,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+  seriesHasVolume,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -38,6 +45,31 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  const day = 24 * 60 * 60;
+  const latest = 1_700_000_000;
+  const data: GetPricesResponse = {
+    ticker: "X",
+    currency: "USD",
+    lastPrice: 40,
+    series: [
+      { timestamp: latest - 2_000 * day, close: 10, volume: null },
+      { timestamp: latest - 1_825 * day, close: 20, volume: null },
+      { timestamp: latest - 365 * day, close: 30, volume: null },
+      { timestamp: latest, close: 40, volume: null },
+    ],
+  };
+
+  test("uses Unix seconds for daily horizon cutoffs", () => {
+    expect(filterSeriesByHorizon(data, 365).series.map((p) => p.close)).toEqual([30, 40]);
+    expect(filterSeriesByHorizon(data, 1825).series.map((p) => p.close)).toEqual([20, 30, 40]);
+  });
+
+  test("preserves the full series for all time", () => {
+    expect(filterSeriesByHorizon(data, Infinity).series).toEqual(data.series);
   });
 });
 
