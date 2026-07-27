@@ -13,6 +13,113 @@ export type ChartRow = {
   price: number;
 };
 
+export type IndexedChartRow = {
+  t: number;
+} & Record<string, number>;
+
+export type TickerSeriesInput = {
+  ticker: string;
+  series: PricePoint[];
+};
+
+export type AlignAndIndexResult = {
+  rows: IndexedChartRow[];
+  tickers: string[];
+};
+
+export const MAX_COMPARE_TICKERS_TOTAL = 5;
+
+export function normalizeCompareTickers(
+  primary: string,
+  candidates: string[],
+  maxTotal = MAX_COMPARE_TICKERS_TOTAL,
+): string[] {
+  const primaryNorm = primary.trim().toUpperCase();
+  const maxCompare = Math.max(0, maxTotal - 1);
+  const seen = new Set<string>(primaryNorm ? [primaryNorm] : []);
+  const result: string[] = [];
+
+  for (const raw of candidates) {
+    const ticker = raw.trim().toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    result.push(ticker);
+    if (result.length >= maxCompare) break;
+  }
+
+  return result;
+}
+
+export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (horizonDays === Infinity) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (!latestTimestamp) return data;
+  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
+}
+
+export function alignAndIndexSeries(inputs: TickerSeriesInput[]): AlignAndIndexResult {
+  if (inputs.length === 0) return { rows: [], tickers: [] };
+
+  const tickers: string[] = [];
+  const closeByTimestamp = new Map<number, Map<string, number>>();
+
+  for (const { ticker, series } of inputs) {
+    if (!series.length) continue;
+    tickers.push(ticker);
+    for (const point of series) {
+      if (!Number.isFinite(point.close)) continue;
+      let row = closeByTimestamp.get(point.timestamp);
+      if (!row) {
+        row = new Map<string, number>();
+        closeByTimestamp.set(point.timestamp, row);
+      }
+      row.set(ticker, point.close);
+    }
+  }
+
+  if (tickers.length === 0) return { rows: [], tickers: [] };
+
+  const timestamps = [...closeByTimestamp.keys()].sort((a, b) => a - b);
+  const intersectionTimestamps = timestamps.filter((timestamp) => {
+    const row = closeByTimestamp.get(timestamp);
+    return row != null && tickers.every((ticker) => row.has(ticker));
+  });
+
+  if (intersectionTimestamps.length === 0) return { rows: [], tickers };
+
+  const firstTimestamp = intersectionTimestamps[0]!;
+  const firstRow = closeByTimestamp.get(firstTimestamp)!;
+  const validTickers = tickers.filter((ticker) => {
+    const baseClose = firstRow.get(ticker);
+    return baseClose != null && Number.isFinite(baseClose) && baseClose !== 0;
+  });
+
+  if (validTickers.length === 0) return { rows: [], tickers: [] };
+
+  const baseCloseByTicker = new Map<string, number>();
+  for (const ticker of validTickers) {
+    baseCloseByTicker.set(ticker, firstRow.get(ticker)!);
+  }
+
+  const rows: IndexedChartRow[] = intersectionTimestamps.map((timestamp) => {
+    const closes = closeByTimestamp.get(timestamp)!;
+    const row: IndexedChartRow = { t: timestamp * 1000 };
+    for (const ticker of validTickers) {
+      const close = closes.get(ticker)!;
+      const baseClose = baseCloseByTicker.get(ticker)!;
+      row[ticker] = (close / baseClose) * 100;
+    }
+    return row;
+  });
+
+  return { rows, tickers: validTickers };
+}
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }

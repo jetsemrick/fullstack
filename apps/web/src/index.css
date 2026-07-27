@@ -4,6 +4,11 @@
   --fg-muted: #6b726b;
   --accent: #93af93;
   --accent-hover: #7b997b;
+  --series-1: #93af93;
+  --series-2: #5c7a8a;
+  --series-3: #8a6b5c;
+  --series-4: #6b5c8a;
+  --series-5: #8a7a5c;
   --card: #ffffff;
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);

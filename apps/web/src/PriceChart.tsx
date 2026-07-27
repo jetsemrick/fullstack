@@ -2,6 +2,8 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  Legend,
+  Line,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
@@ -11,9 +13,17 @@ import {
 import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import { downsampleRows, type IndexedChartRow } from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
+
+export const SERIES_COLOR_VARS = [
+  "var(--series-1)",
+  "var(--series-2)",
+  "var(--series-3)",
+  "var(--series-4)",
+  "var(--series-5)",
+] as const;
 
 const chartData = (data: GetPricesResponse) =>
   data.series.map((p) => ({
@@ -26,7 +36,6 @@ function spanCalendarDays(rows: { t: number }[]): number {
   return (rows[rows.length - 1].t - rows[0].t) / 86_400_000;
 }
 
-/** X-axis labels for daily series: format depends on chart span so ticks read as calendar milestones. */
 function formatDailyAxisTick(ms: number, spanDays: number): string {
   const d = new Date(ms);
   if (spanDays > 365 * 5) {
@@ -61,9 +70,37 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatIndexed(n: number): string {
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export type MultiSeriesChartData = {
+  rows: IndexedChartRow[];
+  tickers: string[];
+};
+
+type SingleChartProps = {
+  data: GetPricesResponse;
+  multiSeries?: undefined;
+  variant?: PriceChartVariant;
+};
+
+type MultiChartProps = {
+  data?: undefined;
+  multiSeries: MultiSeriesChartData;
+  variant?: PriceChartVariant;
+};
+
+export function PriceChart(props: SingleChartProps | MultiChartProps) {
+  if (props.multiSeries) {
+    return <MultiTickerPriceChart multiSeries={props.multiSeries} variant={props.variant ?? "daily"} />;
+  }
+  return <SingleTickerPriceChart data={props.data} variant={props.variant ?? "daily"} />;
+}
+
+function SingleTickerPriceChart({ data, variant }: { data: GetPricesResponse; variant: PriceChartVariant }) {
   const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
@@ -92,14 +129,13 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     if (variant === "intraday" && sessionLayout && rows.length > 0) {
       const dataStart = rows[0].t;
       const dataEnd = rows[rows.length - 1].t;
-      // Anchor left to first bar so pre-market domain padding does not leave empty chart space.
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
-  if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
+  if (rows.length === 0) return <p className="muted chart-empty">No data to chart.</p>;
 
   return (
     <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
@@ -184,6 +220,125 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function MultiTickerPriceChart({
+  multiSeries,
+  variant,
+}: {
+  multiSeries: MultiSeriesChartData;
+  variant: PriceChartVariant;
+}) {
+  const { rows, tickers } = multiSeries;
+  const spanDays = spanCalendarDays(rows);
+  const tickFormatter =
+    variant === "intraday"
+      ? (ms: number) => formatIntradayAxisTick(ms)
+      : (ms: number) => formatDailyAxisTick(ms, spanDays);
+
+  if (rows.length === 0) {
+    return <p className="muted chart-empty">No overlapping dates for the selected tickers.</p>;
+  }
+
+  return (
+    <div role="img" aria-label="Indexed price comparison chart" style={{ width: "100%", height: "100%" }}>
+      <ResponsiveContainer width="100%" height="100%" minHeight={320}>
+        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="t"
+            type="number"
+            domain={["dataMin", "dataMax"]}
+            scale="time"
+            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={tickFormatter}
+            minTickGap={32}
+            dy={10}
+          />
+          <YAxis
+            domain={["auto", "auto"]}
+            width={72}
+            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v: number) => formatIndexed(v)}
+            dx={-10}
+            label={{
+              value: "Indexed (100 = start)",
+              angle: -90,
+              position: "insideLeft",
+              fill: "var(--fg-muted)",
+              fontSize: 11,
+              dx: -4,
+            }}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--card)",
+              border: `1px solid var(--card-border)`,
+              borderRadius: "12px",
+              color: "var(--fg)",
+              boxShadow: "var(--shadow)",
+              padding: "12px",
+            }}
+            labelFormatter={(_, payload) => {
+              const t = (payload?.[0]?.payload as { t?: number })?.t;
+              if (typeof t === "number") {
+                return formatTooltipWhen(t, variant, spanDays);
+              }
+              return "";
+            }}
+            formatter={(value: number | string, name: string) => [
+              typeof value === "number" ? formatIndexed(value) : value,
+              name,
+            ]}
+          />
+          <Legend
+            verticalAlign="top"
+            align="right"
+            wrapperStyle={{ fontSize: 12, color: "var(--fg-muted)", paddingBottom: 8 }}
+          />
+          {tickers.map((ticker, index) => {
+            const color = SERIES_COLOR_VARS[index % SERIES_COLOR_VARS.length]!;
+            const isPrimary = index === 0;
+            if (isPrimary) {
+              return (
+                <Area
+                  key={ticker}
+                  type="linear"
+                  dataKey={ticker}
+                  name={ticker}
+                  stroke={color}
+                  strokeWidth={2.5}
+                  fill={color}
+                  fillOpacity={0.12}
+                  baseValue="dataMin"
+                  dot={false}
+                  activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2, fill: color }}
+                  isAnimationActive={false}
+                />
+              );
+            }
+            return (
+              <Line
+                key={ticker}
+                type="linear"
+                dataKey={ticker}
+                name={ticker}
+                stroke={color}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 5, stroke: "var(--bg)", strokeWidth: 2, fill: color }}
+                isAnimationActive={false}
+              />
+            );
+          })}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

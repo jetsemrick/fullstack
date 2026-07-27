@@ -347,6 +347,110 @@
   border-color: #d1e2d3;
 }
 
+.compare-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.compare-form__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.compare-form__row {
+  display: flex;
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+.compare-form__input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+.compare-form__add {
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--fg);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.compare-form__add:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.compare-form__add:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.compare-form__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.compare-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.45rem 0.2rem 0.55rem;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.compare-chip__remove {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+
+.compare-chip__remove:hover {
+  color: var(--fg);
+}
+
+.compare-errors {
+  padding: 0.75rem 2rem 0;
+  color: #8a5c3a;
+  font-size: 0.8125rem;
+}
+
+.compare-errors p {
+  margin: 0 0 0.35rem;
+}
+
+.chart-empty {
+  text-align: center;
+  margin-top: 2rem;
+}
+
 .report-bug {
   position: fixed;
   right: 1.25rem;
