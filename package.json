@@ -8,7 +8,7 @@
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "test": "bun run --cwd apps/api test",
-    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck"
+    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

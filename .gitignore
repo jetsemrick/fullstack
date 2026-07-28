@@ -6,3 +6,10 @@ dist
 .env.local
 coverage
 .vite
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/

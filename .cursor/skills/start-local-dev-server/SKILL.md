@@ -19,14 +19,14 @@ Run once after clone or dependency changes:
 bun install
 ```
 
-Requires **Bun** 1.3+ (`README.md`).
+Requires **Bun** 1.3+ and **Python 3.11+** with API deps installed (`bun run --cwd apps/api install:py`). See `README.md`.
 
 ## Commands (this repo)
 
 | Goal | Command |
 |------|---------|
 | API + web together | `bun run dev` |
-| API only | `bun run dev:api` |
+| API only (Python FastAPI / uvicorn) | `bun run dev:api` |
 | Web only | `bun run dev:web` |
 
 From repo root (`package.json` uses `concurrently` to run `apps/api` and `apps/web`).
@@ -34,7 +34,7 @@ From repo root (`package.json` uses `concurrently` to run `apps/api` and `apps/w
 ### Ports and routing
 
 - **Web (Vite)**: default `http://localhost:5173`
-- **API (Bun)**: default `http://localhost:3001`
+- **API (Python FastAPI)**: default `http://localhost:3001`
 - Vite proxies `/api/*` to the API—use same-origin `/api/...` from the browser.
 
 ### Optional env (API)

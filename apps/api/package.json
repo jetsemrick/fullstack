@@ -2,19 +2,10 @@
   "name": "@stock/api",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "test": "bun test",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "dependencies": {
-    "@cursor/sdk": "^1.0.23",
-    "@stock/shared": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5.7.2"
+    "dev": "python3 run.py --reload",
+    "start": "python3 run.py",
+    "test": "python3 -m pytest",
+    "install:py": "python3 -m pip install -r requirements.txt"
   }
 }
