@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
@@ -141,28 +142,36 @@ def parse_index_from_chart_body(body: Any) -> dict[str, Any] | None:
     }
 
 
+async def _fetch_index_chart_row(
+    client: httpx.AsyncClient,
+    symbol: str,
+    headers: dict[str, str],
+) -> dict[str, Any] | None:
+    path = f"{YAHOO_CHART_BASE}/{quote(symbol, safe='')}"
+    res = await client.get(
+        path,
+        params={"range": "1d", "interval": "1d"},
+        headers=headers,
+    )
+    try:
+        json_body: Any = res.json()
+    except Exception:
+        return None
+    row = parse_index_from_chart_body(json_body)
+    if not row or not res.is_success:
+        return None
+    return row
+
+
 async def fetch_major_index_quotes_via_chart(
     client: httpx.AsyncClient,
 ) -> dict[str, Any]:
     headers = {"User-Agent": USER_AGENT}
-    rows: list[dict[str, Any] | None] = []
-    for symbol in MAJOR_INDEX_SYMBOLS:
-        path = f"{YAHOO_CHART_BASE}/{quote(symbol, safe='')}"
-        res = await client.get(
-            path,
-            params={"range": "1d", "interval": "1d"},
-            headers=headers,
+    rows = list(
+        await asyncio.gather(
+            *[_fetch_index_chart_row(client, symbol, headers) for symbol in MAJOR_INDEX_SYMBOLS]
         )
-        try:
-            json_body: Any = res.json()
-        except Exception:
-            rows.append(None)
-            continue
-        row = parse_index_from_chart_body(json_body)
-        if not row or not res.is_success:
-            rows.append(None)
-        else:
-            rows.append(row)
+    )
 
     market_state = None
     for r in rows:
