@@ -42,6 +42,12 @@ The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
+### Chart range selection
+
+Drag horizontally across the price chart to brush a time range. The toolbar then shows the net change in currency and percent between the first and last close inside that window, colored the same way as the header change badge. Ranges covering fewer than two closes report nothing.
+
+Selection is pointer-driven (mouse or trackpad). Press **Escape**, click outside the chart, or change the ticker or horizon to clear it. Keyboard-only range selection is not implemented yet; keyboard users can still read the full-range change from the header badge.
+
 ### Environment (optional)
 
 | Variable | Default | Description |

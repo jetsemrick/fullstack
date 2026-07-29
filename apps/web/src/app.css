@@ -251,6 +251,30 @@
   border-color: #f5c2c2;
 }
 
+.range-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  min-height: 1.9rem;
+}
+
+.range-selection__label {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.range-selection .metric-badge {
+  font-size: 0.8125rem;
+  padding: 0.2rem 0.55rem;
+}
+
+.range-selection__hint {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
 .chart-container {
   padding: 2rem;
   height: 450px;

@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { PriceChart } from "./PriceChart";
+import { PriceChart, type PriceChartVariant } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import {
+  formatRangeWindow,
+  formatSignedPercent,
+  formatSignedPrice,
+  type RangeStats,
+} from "./rangeSelection";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -25,6 +31,12 @@ function formatPercentChange(data: GetPricesResponse | null) {
     isPositive: pct > 0,
     isNegative: pct < 0
   };
+}
+
+function badgeClassFor(direction: RangeStats["direction"]): string {
+  if (direction === "up") return "positive";
+  if (direction === "down") return "negative";
+  return "muted";
 }
 
 const HORIZONS = [
@@ -62,6 +74,7 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rangeStats, setRangeStats] = useState<RangeStats | null>(null);
   const requestIdRef = useRef(0);
 
   const load = useCallback(async (signal: AbortSignal) => {
@@ -120,6 +133,7 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
+  const chartVariant: PriceChartVariant = horizonIndex === 0 ? "intraday" : "daily";
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -202,15 +216,37 @@ export default function App() {
                       </button>
                     ))}
                   </div>
+                  <div className="range-selection" role="status" aria-live="polite">
+                    {rangeStats ? (
+                      <>
+                        <span className="range-selection__label">
+                          {formatRangeWindow(rangeStats.startMs, rangeStats.endMs, chartVariant)}
+                        </span>
+                        <span className={`metric-badge ${badgeClassFor(rangeStats.direction)}`}>
+                          {formatSignedPrice(rangeStats.change, currencyDisplay)}
+                        </span>
+                        <span className={`metric-badge ${badgeClassFor(rangeStats.direction)}`}>
+                          {formatSignedPercent(rangeStats.percentChange)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="range-selection__hint">
+                        Drag across the chart to measure net change for a range. Press Esc to clear.
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div
                 className="chart-container"
                 aria-label="Price chart"
               >
+                {/* Remounting on ticker/horizon change drops any range selection that no longer applies. */}
                 <PriceChart
+                  key={`${ticker}:${horizonIndex}`}
                   data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  variant={chartVariant}
+                  onSelectionChange={setRangeStats}
                 />
               </div>
               {loading && (

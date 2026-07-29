@@ -8,10 +8,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import { computeRangeStats, type RangeStats } from "./rangeSelection";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -63,8 +64,24 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+/** Subset of the Recharts chart state this component reads; avoids importing Recharts internal types. */
+type ChartMouseState = { activeTooltipIndex?: number };
+
+export function PriceChart({
+  data,
+  variant = "daily",
+  onSelectionChange,
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  /** Called with the net change for the brushed window, or null when nothing is selected. */
+  onSelectionChange?: (stats: RangeStats | null) => void;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [drag, setDrag] = useState<{ anchorMs: number; currentMs: number } | null>(null);
+  const [selection, setSelection] = useState<{ startMs: number; endMs: number } | null>(null);
+  const dragRef = useRef(drag);
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -99,12 +116,113 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
+  useEffect(() => {
+    dragRef.current = drag;
+  }, [drag]);
+
+  const clearSelection = useCallback(() => {
+    setDrag(null);
+    setSelection(null);
+  }, []);
+
+  const isDragging = drag != null;
+
+  const onChartMouseDown = useCallback(
+    (state: ChartMouseState) => {
+      const index = state?.activeTooltipIndex;
+      const t = index == null ? undefined : rows[index]?.t;
+      if (t == null) return;
+      setSelection(null);
+      setDrag({ anchorMs: t, currentMs: t });
+    },
+    [rows],
+  );
+
+  const onChartMouseMove = useCallback(
+    (state: ChartMouseState) => {
+      const index = state?.activeTooltipIndex;
+      const t = index == null ? undefined : rows[index]?.t;
+      if (t == null) return;
+      setDrag((prev) => (prev == null || prev.currentMs === t ? prev : { ...prev, currentMs: t }));
+    },
+    [rows],
+  );
+
+  // Pointer release is handled on the window so a drag that ends outside the plot still commits.
+  useEffect(() => {
+    if (!isDragging) return;
+    const finish = () => {
+      const current = dragRef.current;
+      setDrag(null);
+      if (!current || current.anchorMs === current.currentMs) return;
+      setSelection({
+        startMs: Math.min(current.anchorMs, current.currentMs),
+        endMs: Math.max(current.anchorMs, current.currentMs),
+      });
+    };
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+    return () => {
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+  }, [isDragging]);
+
+  useEffect(() => {
+    if (!selection && !isDragging) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") clearSelection();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target;
+      if (target instanceof Node && containerRef.current?.contains(target)) return;
+      clearSelection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [selection, isDragging, clearSelection]);
+
+  const activeWindow = useMemo(() => {
+    if (drag) {
+      return { startMs: Math.min(drag.anchorMs, drag.currentMs), endMs: Math.max(drag.anchorMs, drag.currentMs) };
+    }
+    return selection;
+  }, [drag, selection]);
+
+  // Stats come from the full series so downsampling of the daily view cannot shift the endpoints.
+  const stats = useMemo(() => {
+    if (!activeWindow) return null;
+    return computeRangeStats(fullRows, activeWindow.startMs, activeWindow.endMs);
+  }, [fullRows, activeWindow]);
+
+  useEffect(() => {
+    onSelectionChange?.(stats);
+  }, [stats, onSelectionChange]);
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const selectionStroke =
+    stats?.direction === "up" ? "#2b703e" : stats?.direction === "down" ? "#ba3b3b" : "var(--fg-muted)";
+
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={containerRef}
+      role="img"
+      aria-label="Price over time line chart. Drag across the chart to measure net change for a range."
+      style={{ width: "100%", height: "100%", userSelect: "none", touchAction: "pan-y" }}
+    >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={onChartMouseDown}
+          onMouseMove={onChartMouseMove}
+          style={{ cursor: isDragging ? "col-resize" : "crosshair" }}
+        >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -184,6 +302,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
+          {activeWindow && activeWindow.startMs !== activeWindow.endMs ? (
+            <ReferenceArea
+              x1={activeWindow.startMs}
+              x2={activeWindow.endMs}
+              fill={selectionStroke}
+              fillOpacity={0.12}
+              stroke={selectionStroke}
+              strokeOpacity={0.45}
+              ifOverflow="hidden"
+              isFront
+            />
+          ) : null}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
