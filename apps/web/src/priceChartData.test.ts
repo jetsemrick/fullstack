@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  downsampleRows,
+  filterSeriesByHorizon,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+  seriesHasVolume,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -38,6 +45,47 @@ describe("buildPriceVolumeRows", () => {
       { t: 1_000_000, price: 1.5, volume: 100, volumeBar: 100 },
       { t: 2_000_000, price: 2, volume: null, volumeBar: 0 },
     ]);
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  const day = 24 * 60 * 60;
+  const baseTimestamp = 1_700_000_000;
+  const data: GetPricesResponse = {
+    ticker: "AAPL",
+    currency: "USD",
+    lastPrice: 190,
+    series: [
+      { timestamp: baseTimestamp - 6 * 365 * day, close: 100, volume: null },
+      { timestamp: baseTimestamp - 2 * 365 * day, close: 150, volume: null },
+      { timestamp: baseTimestamp - 30 * day, close: 180, volume: null },
+      { timestamp: baseTimestamp, close: 190, volume: null },
+    ],
+  };
+
+  test("uses Unix seconds when slicing one-year history", () => {
+    const filtered = filterSeriesByHorizon(data, 365);
+
+    expect(filtered.series.map((p) => p.close)).toEqual([180, 190]);
+  });
+
+  test("returns a broader slice for five-year history", () => {
+    const filtered = filterSeriesByHorizon(data, 5 * 365);
+
+    expect(filtered.series.map((p) => p.close)).toEqual([150, 180, 190]);
+  });
+
+  test("leaves all-time history unchanged", () => {
+    expect(filterSeriesByHorizon(data, Infinity)).toBe(data);
+  });
+
+  test("keeps sparse latest-point history visible", () => {
+    const sparse: GetPricesResponse = {
+      ...data,
+      series: [{ timestamp: baseTimestamp, close: 190, volume: null }],
+    };
+
+    expect(filterSeriesByHorizon(sparse, 1).series).toEqual(sparse.series);
   });
 });
 

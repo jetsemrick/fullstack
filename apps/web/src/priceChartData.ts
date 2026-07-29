@@ -13,8 +13,22 @@ export type ChartRow = {
   price: number;
 };
 
+const SECONDS_PER_DAY = 24 * 60 * 60;
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
+}
+
+export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (horizonDays === Infinity) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (!latestTimestamp) return data;
+  const cutoff = latestTimestamp - horizonDays * SECONDS_PER_DAY;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
 }
 
 export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] {
