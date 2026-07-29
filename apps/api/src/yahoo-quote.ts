@@ -126,8 +126,9 @@ function parseIndexFromChartBody(body: unknown): (MarketIndexQuote & { marketSta
   if (typeof chart !== "object" || chart === null) return null;
   const result = (chart as Record<string, unknown>).result;
   if (!Array.isArray(result) || result[0] === undefined) return null;
-  const first = result[0] as Record<string, unknown>;
-  const meta = first.meta;
+  const first = result[0];
+  if (typeof first !== "object" || first === null) return null;
+  const meta = (first as Record<string, unknown>).meta;
   if (typeof meta !== "object" || meta === null) return null;
   const m = meta as Record<string, unknown>;
   const symbol = typeof m.symbol === "string" ? m.symbol : null;
@@ -268,41 +269,39 @@ function parseTapeV7Body(body: unknown): { errorMessage: string | null; bySymbol
 
 /** Batch v7 quote for arbitrary symbols; often blocked, hence the chart fallback below. */
 async function fetchTapeViaV7(symbols: readonly string[]): Promise<Map<string, TickerTapeQuote>> {
-  const url = new URL(YAHOO_QUOTE_URL);
-  url.searchParams.set("symbols", symbols.join(","));
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
-  });
-  const text = await res.text();
-  let json: unknown;
   try {
-    json = JSON.parse(text) as unknown;
+    const url = new URL(YAHOO_QUOTE_URL);
+    url.searchParams.set("symbols", symbols.join(","));
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
+    });
+    const text = await res.text();
+    const json = JSON.parse(text) as unknown;
+    const parsed = parseTapeV7Body(json);
+    if (!res.ok || parsed.errorMessage) return new Map();
+    return parsed.bySymbol;
   } catch {
     return new Map();
   }
-  const parsed = parseTapeV7Body(json);
-  if (!res.ok || parsed.errorMessage) return new Map();
-  return parsed.bySymbol;
 }
 
 /** Per-symbol v8 chart meta fallback (same upstream pathway as `/api/prices`). */
 async function fetchTapeViaChart(symbols: readonly string[]): Promise<Map<string, TickerTapeQuote>> {
   const headers = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
   const tasks = symbols.map(async (requestSymbol) => {
-    const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(requestSymbol)}`);
-    url.searchParams.set("range", "1d");
-    url.searchParams.set("interval", "1d");
-    const res = await fetch(url, { headers });
-    const text = await res.text();
-    let json: unknown;
     try {
-      json = JSON.parse(text) as unknown;
+      const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(requestSymbol)}`);
+      url.searchParams.set("range", "1d");
+      url.searchParams.set("interval", "1d");
+      const res = await fetch(url, { headers });
+      const text = await res.text();
+      const json = JSON.parse(text) as unknown;
+      const row = parseIndexFromChartBody(json);
+      if (!row || !res.ok) return null;
+      return { symbol: requestSymbol, price: row.price, changePercent: row.changePercent } satisfies TickerTapeQuote;
     } catch {
       return null;
     }
-    const row = parseIndexFromChartBody(json);
-    if (!row || !res.ok) return null;
-    return { symbol: requestSymbol, price: row.price, changePercent: row.changePercent } satisfies TickerTapeQuote;
   });
   const rows = await Promise.all(tasks);
   const bySymbol = new Map<string, TickerTapeQuote>();
