@@ -1,4 +1,7 @@
 import type { ApiErrorBody, GetPricesResponse, MarketContextResponse, ReportBugRequest, ReportBugResponse, TickerTapeResponse } from "@stock/shared";
+import { SP_TICKER_TAPE_SYMBOLS } from "@stock/shared";
+
+const TICKER_ORDER = new Map<string, number>(SP_TICKER_TAPE_SYMBOLS.map((symbol, index) => [symbol, index]));
 
 export async function fetchPrices(params: {
   ticker: string;
@@ -57,16 +60,22 @@ function parseTickerTapeResponse(json: unknown): TickerTapeResponse | null {
   const rawQuotes = (json as Record<string, unknown>).quotes;
   if (!Array.isArray(rawQuotes) || rawQuotes.length < 10) return null;
 
-  const quotes = rawQuotes.map((raw) => {
+  const quotes: TickerTapeResponse["quotes"] = [];
+  const seenSymbols = new Set<string>();
+  let previousIndex = -1;
+  for (const raw of rawQuotes) {
     if (typeof raw !== "object" || raw === null) return null;
     const quote = raw as Record<string, unknown>;
     if (typeof quote.symbol !== "string" || !quote.symbol) return null;
     if (typeof quote.price !== "number" || !Number.isFinite(quote.price)) return null;
     if (typeof quote.changePercent !== "number" || !Number.isFinite(quote.changePercent)) return null;
-    return { symbol: quote.symbol, price: quote.price, changePercent: quote.changePercent };
-  });
-  if (quotes.some((quote) => quote === null)) return null;
-  return { quotes: quotes as TickerTapeResponse["quotes"] };
+    const symbolIndex = TICKER_ORDER.get(quote.symbol);
+    if (symbolIndex === undefined || seenSymbols.has(quote.symbol) || symbolIndex <= previousIndex) return null;
+    seenSymbols.add(quote.symbol);
+    previousIndex = symbolIndex;
+    quotes.push({ symbol: quote.symbol, price: quote.price, changePercent: quote.changePercent });
+  }
+  return { quotes };
 }
 
 export async function fetchTickerTape(
