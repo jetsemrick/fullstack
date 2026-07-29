@@ -7,7 +7,7 @@ Full stack app to visualize stock prices: **React** + **TypeScript** on the clie
 | Path | Description |
 |------|-------------|
 | `apps/web` | Vite + React + Recharts |
-| `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`, `/api/report-bug`) |
+| `apps/api` | Bun HTTP API and Yahoo Finance proxy |
 | `packages/shared` | Shared types and constants |
 
 ## Prerequisites
@@ -38,7 +38,7 @@ bun run dev:api
 bun run dev:web
 ```
 
-The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
+The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin API requests.
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
@@ -58,6 +58,7 @@ Create a key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard
 - `GET /api/health` – health check.
 - `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
 - `GET /api/market-context` – US market session state plus major index quotes.
+- `GET /api/ticker-tape` – current price and session change for the curated large-cap ticker tape.
 - `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars). Runs a local Cursor agent (`@cursor/sdk`) against the monorepo to apply the requested edit. Requires `CURSOR_API_KEY`.
 
 The web UI includes a **Report bug** control (bottom-right) that posts to `/api/report-bug`.
