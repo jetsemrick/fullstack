@@ -143,12 +143,11 @@ export function PriceChart({
       const index = state?.activeTooltipIndex;
       const t = index == null ? undefined : rows[index]?.t;
       if (t == null) return;
-      setDrag((prev) => {
-        if (prev == null || prev.currentMs === t) return prev;
-        const next = { ...prev, currentMs: t };
-        dragRef.current = next;
-        return next;
-      });
+      const prev = dragRef.current;
+      if (prev == null || prev.currentMs === t) return;
+      const next = { ...prev, currentMs: t };
+      dragRef.current = next;
+      setDrag(next);
     },
     [rows],
   );
