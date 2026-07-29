@@ -35,15 +35,15 @@ function TickerItem({ quote, listItem }: { quote: TickerTapeQuote; listItem?: bo
 /**
  * Full-width scrolling S&P ticker tape rendered above the header.
  *
- * Accessibility: the tape is ambient/decorative market motion, so it is not focusable
- * (no interactive elements). One accessible copy of the quotes carries labels for
- * assistive tech; the duplicated copy that makes the marquee loop seamlessly is
- * `aria-hidden`. The animation honours `prefers-reduced-motion` via CSS (see app.css),
- * where it becomes a static, horizontally-scrollable strip instead of animating.
+ * Accessibility: quote items are ambient market context rather than links. The
+ * pause/resume control is keyboard-accessible, one quote copy carries list semantics,
+ * and the duplicate used for the seamless loop is `aria-hidden`. The animation also
+ * honours `prefers-reduced-motion`, becoming a static horizontal strip.
  */
 export function TickerTape() {
   const [quotes, setQuotes] = useState<TickerTapeQuote[]>([]);
   const [errored, setErrored] = useState(false);
+  const [paused, setPaused] = useState(false);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -97,19 +97,29 @@ export function TickerTape() {
           Live quotes delayed
         </div>
       ) : null}
-      <div className="ticker-tape__viewport">
-        <div className="ticker-tape__track">
-          <div className="ticker-tape__group" role="list" aria-label="S&P large-cap quotes">
-            {quotes.map((q) => (
-              <TickerItem key={q.symbol} quote={q} listItem />
-            ))}
-          </div>
-          <div className="ticker-tape__group" aria-hidden="true">
-            {quotes.map((q) => (
-              <TickerItem key={`dup-${q.symbol}`} quote={q} />
-            ))}
+      <div className="ticker-tape__row">
+        <div className="ticker-tape__viewport">
+          <div className={`ticker-tape__track${paused ? " ticker-tape__track--paused" : ""}`}>
+            <div className="ticker-tape__group" role="list" aria-label="S&P large-cap quotes">
+              {quotes.map((q) => (
+                <TickerItem key={q.symbol} quote={q} listItem />
+              ))}
+            </div>
+            <div className="ticker-tape__group" aria-hidden="true">
+              {quotes.map((q) => (
+                <TickerItem key={`dup-${q.symbol}`} quote={q} />
+              ))}
+            </div>
           </div>
         </div>
+        <button
+          type="button"
+          className="ticker-tape__control"
+          aria-pressed={paused}
+          onClick={() => setPaused((current) => !current)}
+        >
+          {paused ? "Resume" : "Pause"}
+        </button>
       </div>
     </div>
   );

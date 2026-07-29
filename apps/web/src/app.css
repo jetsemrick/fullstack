@@ -13,8 +13,14 @@
   border-bottom: 1px solid var(--card-border);
 }
 
+.ticker-tape__row {
+  display: flex;
+  min-width: 0;
+}
+
 .ticker-tape__viewport {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -25,6 +31,10 @@
 }
 
 .ticker-tape:hover .ticker-tape__track {
+  animation-play-state: paused;
+}
+
+.ticker-tape__track--paused {
   animation-play-state: paused;
 }
 
@@ -87,6 +97,22 @@
   font-size: 0.75rem;
 }
 
+.ticker-tape__control {
+  flex: none;
+  border: 0;
+  border-left: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--fg-muted);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.ticker-tape__control:hover {
+  background: var(--bg);
+  color: var(--fg);
+}
+
 @keyframes ticker-tape-scroll {
   from {
     transform: translateX(0);
@@ -106,6 +132,10 @@
 
   /* Without motion the duplicated group is redundant; hide it to avoid a doubled static list. */
   .ticker-tape__group[aria-hidden="true"] {
+    display: none;
+  }
+
+  .ticker-tape__control {
     display: none;
   }
 }
