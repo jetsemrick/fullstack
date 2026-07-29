@@ -116,11 +116,8 @@ export function PriceChart({
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
-  useEffect(() => {
-    dragRef.current = drag;
-  }, [drag]);
-
   const clearSelection = useCallback(() => {
+    dragRef.current = null;
     setDrag(null);
     setSelection(null);
   }, []);
@@ -133,7 +130,10 @@ export function PriceChart({
       const t = index == null ? undefined : rows[index]?.t;
       if (t == null) return;
       setSelection(null);
-      setDrag({ anchorMs: t, currentMs: t });
+      // Keep the ref current during the gesture; pointerup must not wait for an effect flush.
+      const next = { anchorMs: t, currentMs: t };
+      dragRef.current = next;
+      setDrag(next);
     },
     [rows],
   );
@@ -143,7 +143,12 @@ export function PriceChart({
       const index = state?.activeTooltipIndex;
       const t = index == null ? undefined : rows[index]?.t;
       if (t == null) return;
-      setDrag((prev) => (prev == null || prev.currentMs === t ? prev : { ...prev, currentMs: t }));
+      setDrag((prev) => {
+        if (prev == null || prev.currentMs === t) return prev;
+        const next = { ...prev, currentMs: t };
+        dragRef.current = next;
+        return next;
+      });
     },
     [rows],
   );
@@ -153,6 +158,7 @@ export function PriceChart({
     if (!isDragging) return;
     const finish = () => {
       const current = dragRef.current;
+      dragRef.current = null;
       setDrag(null);
       if (!current || current.anchorMs === current.currentMs) return;
       setSelection({

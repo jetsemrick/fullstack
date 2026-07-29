@@ -40,7 +40,8 @@ export function computeRangeStats(rows: ChartRow[], a: number, b: number): Range
     startPrice: first.price,
     endPrice: last.price,
     change,
-    percentChange: first.price === 0 ? null : ((last.price - first.price) / first.price) * 100,
+    // Derive percent from the cent-rounded change so flat windows stay unsigned at 0%.
+    percentChange: first.price === 0 ? null : (change / first.price) * 100,
     pointCount: within.length,
     direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
   };

@@ -53,6 +53,7 @@ describe("computeRangeStats", () => {
     const stats = computeRangeStats(flat, 1, 2);
     expect(stats!.change).toBe(0);
     expect(stats!.direction).toBe("flat");
+    expect(stats!.percentChange).toBe(0);
   });
 
   test("omits percent change when the first close is zero", () => {

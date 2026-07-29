@@ -138,6 +138,8 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    // Clear in the same event as the ticker change so the toolbar never paints the prior window.
+    setRangeStats(null);
     setTicker(t);
   }
 
@@ -210,7 +212,11 @@ export default function App() {
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          // Clear in the same event as the horizon change so the toolbar never paints the prior window.
+                          setRangeStats(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
