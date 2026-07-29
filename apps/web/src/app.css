@@ -113,6 +113,10 @@
   color: var(--fg);
 }
 
+.ticker-tape__control:focus-visible {
+  outline-offset: -3px;
+}
+
 @keyframes ticker-tape-scroll {
   from {
     transform: translateX(0);
