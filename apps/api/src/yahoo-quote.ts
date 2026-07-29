@@ -3,6 +3,7 @@ import { MAJOR_INDEX_SYMBOLS, SP_TICKER_TAPE_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
+const YAHOO_TIMEOUT_MS = 8_000;
 
 export type YahooQuoteAggregate = {
   errorMessage: string | null;
@@ -274,6 +275,7 @@ async function fetchTapeViaV7(symbols: readonly string[]): Promise<Map<string, T
     url.searchParams.set("symbols", symbols.join(","));
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
+      signal: AbortSignal.timeout(YAHOO_TIMEOUT_MS),
     });
     const text = await res.text();
     const json = JSON.parse(text) as unknown;
@@ -293,7 +295,7 @@ async function fetchTapeViaChart(symbols: readonly string[]): Promise<Map<string
       const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(requestSymbol)}`);
       url.searchParams.set("range", "1d");
       url.searchParams.set("interval", "1d");
-      const res = await fetch(url, { headers });
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(YAHOO_TIMEOUT_MS) });
       const text = await res.text();
       const json = JSON.parse(text) as unknown;
       const row = parseIndexFromChartBody(json);
@@ -320,17 +322,27 @@ export async function fetchTickerTapeQuotes(
   symbols: readonly string[] = SP_TICKER_TAPE_SYMBOLS,
 ): Promise<TickerTapeAggregate> {
   const v7 = await fetchTapeViaV7(symbols);
-  const missing = symbols.filter((s) => !v7.has(s));
+  const missing = symbols.filter((symbol) => {
+    const quote = v7.get(symbol);
+    return quote?.price === null || quote?.price === undefined || quote.changePercent === null;
+  });
   const chart = missing.length > 0 ? await fetchTapeViaChart(missing) : new Map<string, TickerTapeQuote>();
 
   const quotes: TickerTapeQuote[] = [];
   for (const symbol of symbols) {
-    const q = v7.get(symbol) ?? chart.get(symbol);
-    if (q) quotes.push(q);
+    const batchQuote = v7.get(symbol);
+    const chartQuote = chart.get(symbol);
+    const quote: TickerTapeQuote = {
+      symbol,
+      price: batchQuote?.price ?? chartQuote?.price ?? null,
+      changePercent: batchQuote?.changePercent ?? chartQuote?.changePercent ?? null,
+    };
+    if (quote.price !== null && quote.changePercent !== null) quotes.push(quote);
   }
 
-  if (quotes.length === 0) {
-    return { errorMessage: "No ticker quotes", quotes: [] };
+  const minimumQuoteCount = Math.min(10, symbols.length);
+  if (quotes.length === 0 || quotes.length < minimumQuoteCount) {
+    return { errorMessage: `Only ${quotes.length} ticker quotes were available`, quotes: [] };
   }
   return { errorMessage: null, quotes };
 }

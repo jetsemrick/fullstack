@@ -48,24 +48,27 @@ export function TickerTape() {
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
     const controller = new AbortController();
     async function load() {
+      if (inFlight) return;
+      inFlight = true;
       const requestId = ++requestIdRef.current;
-      let res: Awaited<ReturnType<typeof fetchTickerTape>>;
       try {
-        res = await fetchTickerTape(controller.signal);
+        const res = await fetchTickerTape(controller.signal);
+        if (cancelled || requestId !== requestIdRef.current) return;
+        if (res.ok) {
+          setQuotes(res.data.quotes);
+          setErrored(false);
+        } else {
+          setErrored(true);
+        }
       } catch {
         if (cancelled || controller.signal.aborted) return;
         if (requestId !== requestIdRef.current) return;
         setErrored(true);
-        return;
-      }
-      if (cancelled || requestId !== requestIdRef.current) return;
-      if (res.ok) {
-        setQuotes(res.data.quotes);
-        setErrored(false);
-      } else {
-        setErrored(true);
+      } finally {
+        inFlight = false;
       }
     }
     void load();
@@ -89,6 +92,11 @@ export function TickerTape() {
 
   return (
     <div className="ticker-tape" aria-label="S&P live ticker tape">
+      {errored ? (
+        <div className="ticker-tape__notice" role="status">
+          Live quotes delayed
+        </div>
+      ) : null}
       <div className="ticker-tape__viewport">
         <div className="ticker-tape__track">
           <div className="ticker-tape__group" role="list" aria-label="S&P large-cap quotes">

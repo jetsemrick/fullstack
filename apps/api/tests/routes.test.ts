@@ -173,7 +173,7 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.indexes[0]?.price).toBe(100);
   });
 
-  test("returns 200 and ticker tape quotes from v7 batch quote", async () => {
+  test("returns ticker tape quotes in curated order from v7 batch quote", async () => {
     globalThis.fetch = mock((url) => {
       const u = typeof url === "string" ? url : url.toString();
       if (!u.includes("finance.yahoo.com")) {
@@ -181,11 +181,19 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
       }
       if (u.includes("v7/finance/quote")) {
         const symbols = (new URL(u).searchParams.get("symbols") ?? "").split(",");
-        const result = symbols.map((symbol, i) => ({
-          symbol,
-          regularMarketPrice: 100 + i,
-          regularMarketChangePercent: i % 2 === 0 ? 1.25 : -0.75,
-        }));
+        const result = [...symbols].reverse().map((symbol) => {
+          const i = symbols.indexOf(symbol);
+          return {
+            symbol,
+            regularMarketPrice: 100 + i,
+            regularMarketChangePercent: i % 2 === 0 ? 1.25 : -0.75,
+          };
+        });
+        result.unshift({
+          symbol: "NOT-CURATED",
+          regularMarketPrice: 999,
+          regularMarketChangePercent: 9.99,
+        });
         return Promise.resolve(
           new Response(JSON.stringify({ quoteResponse: { result, error: null } }), {
             status: 200,
@@ -202,8 +210,111 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.quotes.length).toBe(SP_TICKER_TAPE_SYMBOLS.length);
     expect(body.quotes.length).toBeGreaterThanOrEqual(10);
     expect(body.quotes.map((q) => q.symbol)).toEqual([...SP_TICKER_TAPE_SYMBOLS]);
-    expect(body.quotes[0]?.price).toBe(100);
-    expect(body.quotes[0]?.changePercent).toBe(1.25);
+    for (const [i, quote] of body.quotes.entries()) {
+      expect(quote.price).toBe(100 + i);
+      expect(quote.changePercent).toBe(i % 2 === 0 ? 1.25 : -0.75);
+    }
+  });
+
+  test("ticker tape backfills incomplete v7 quote fields with v8 chart meta", async () => {
+    const chartSymbols: string[] = [];
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const symbols = (new URL(u).searchParams.get("symbols") ?? "").split(",");
+        const result = symbols.map((symbol, i) => ({
+          symbol,
+          regularMarketPrice: 100 + i,
+          ...(i === 1 ? {} : { regularMarketChangePercent: i % 2 === 0 ? 1.25 : -0.75 }),
+          ...(i === 3 ? { regularMarketPrice: null } : {}),
+        }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ quoteResponse: { result, error: null } }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      if (u.includes("v8/finance/chart")) {
+        const m = /\/chart\/([^?]+)/.exec(u);
+        const decoded = m ? decodeURIComponent(m[1]) : "AAPL";
+        const symbolIndex = SP_TICKER_TAPE_SYMBOLS.indexOf(decoded as (typeof SP_TICKER_TAPE_SYMBOLS)[number]);
+        chartSymbols.push(decoded);
+        const body = {
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: decoded,
+                  regularMarketPrice: 500 + symbolIndex,
+                  chartPreviousClose: 250,
+                },
+              },
+            ],
+            error: null,
+          },
+        };
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number; changePercent: number }[] };
+    expect(body.quotes.length).toBe(SP_TICKER_TAPE_SYMBOLS.length);
+    expect(body.quotes.length).toBeGreaterThanOrEqual(10);
+    expect(body.quotes.map((q) => q.symbol)).toEqual([...SP_TICKER_TAPE_SYMBOLS]);
+    expect(chartSymbols).toEqual([SP_TICKER_TAPE_SYMBOLS[1], SP_TICKER_TAPE_SYMBOLS[3]]);
+    expect(body.quotes[1]?.price).toBe(101);
+    expect(body.quotes[1]?.changePercent).toBeCloseTo(((501 - 250) / 250) * 100, 5);
+    expect(body.quotes[3]?.price).toBe(503);
+    expect(body.quotes[3]?.changePercent).toBe(-0.75);
+  });
+
+  test("ticker tape returns 502 when fewer than 10 quotes are usable", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (!u.includes("finance.yahoo.com")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (u.includes("v7/finance/quote")) {
+        const symbols = (new URL(u).searchParams.get("symbols") ?? "").split(",");
+        const resultJson = symbols
+          .map((symbol, i) =>
+            i < 9
+              ? `{"symbol":${JSON.stringify(symbol)},"regularMarketPrice":${100 + i},"regularMarketChangePercent":0.5}`
+              : `{"symbol":${JSON.stringify(symbol)},"regularMarketPrice":1e999,"regularMarketChangePercent":0.5}`,
+          )
+          .join(",");
+        return Promise.resolve(
+          new Response(`{"quoteResponse":{"result":[${resultJson}],"error":null}}`, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      if (u.includes("v8/finance/chart")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ chart: { result: [{ meta: {} }], error: null } }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { error: string; code: string };
+    expect(body.code).toBe("UPSTREAM");
+    expect(body.error).toBe("Only 9 ticker quotes were available");
   });
 
   test("ticker tape backfills missing v7 quotes with v8 chart meta in curated order", async () => {

@@ -52,6 +52,23 @@ export async function fetchMarketContext(): Promise<
   return { ok: true, data: json as MarketContextResponse };
 }
 
+function parseTickerTapeResponse(json: unknown): TickerTapeResponse | null {
+  if (typeof json !== "object" || json === null) return null;
+  const rawQuotes = (json as Record<string, unknown>).quotes;
+  if (!Array.isArray(rawQuotes) || rawQuotes.length < 10) return null;
+
+  const quotes = rawQuotes.map((raw) => {
+    if (typeof raw !== "object" || raw === null) return null;
+    const quote = raw as Record<string, unknown>;
+    if (typeof quote.symbol !== "string" || !quote.symbol) return null;
+    if (typeof quote.price !== "number" || !Number.isFinite(quote.price)) return null;
+    if (typeof quote.changePercent !== "number" || !Number.isFinite(quote.changePercent)) return null;
+    return { symbol: quote.symbol, price: quote.price, changePercent: quote.changePercent };
+  });
+  if (quotes.some((quote) => quote === null)) return null;
+  return { quotes: quotes as TickerTapeResponse["quotes"] };
+}
+
 export async function fetchTickerTape(
   signal?: AbortSignal,
 ): Promise<{ ok: true; data: TickerTapeResponse } | { ok: false; error: ApiErrorBody; status: number }> {
@@ -71,7 +88,15 @@ export async function fetchTickerTape(
     const err = json as ApiErrorBody;
     return { ok: false, status: res.status, error: err };
   }
-  return { ok: true, data: json as TickerTapeResponse };
+  const data = parseTickerTapeResponse(json);
+  if (!data) {
+    return {
+      ok: false,
+      status: 500,
+      error: { error: "Invalid ticker tape response", code: "INTERNAL" },
+    };
+  }
+  return { ok: true, data };
 }
 
 export async function reportBug(

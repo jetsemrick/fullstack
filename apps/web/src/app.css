@@ -80,6 +80,13 @@
   color: var(--fg-muted);
 }
 
+.ticker-tape__notice {
+  padding: 0.2rem 1.15rem;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+}
+
 @keyframes ticker-tape-scroll {
   from {
     transform: translateX(0);
