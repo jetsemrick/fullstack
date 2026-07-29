@@ -115,7 +115,6 @@ export function TickerTape() {
         <button
           type="button"
           className="ticker-tape__control"
-          aria-pressed={paused}
           onClick={() => setPaused((current) => !current)}
         >
           {paused ? "Resume" : "Pause"}

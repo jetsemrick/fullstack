@@ -30,10 +30,6 @@
   animation: ticker-tape-scroll 60s linear infinite;
 }
 
-.ticker-tape:hover .ticker-tape__track {
-  animation-play-state: paused;
-}
-
 .ticker-tape__track--paused {
   animation-play-state: paused;
 }
@@ -114,6 +110,7 @@
 }
 
 .ticker-tape__control:focus-visible {
+  outline-color: var(--fg);
   outline-offset: -3px;
 }
 
