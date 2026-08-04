@@ -104,14 +104,16 @@ describe("calculateRangeSelection", () => {
   });
 
   test("calculates a negative change for right-to-left selection", () => {
-    expect(calculateRangeSelection(rows, 30, 20)).toEqual({
+    const selection = calculateRangeSelection(rows, 30, 20);
+    expect(selection).toEqual({
       startTime: 20,
       endTime: 30,
       startPrice: 125,
       endPrice: 90,
       change: -35,
-      percentChange: -28,
+      percentChange: expect.any(Number),
     });
+    expect(selection?.percentChange).toBeCloseTo(-28);
   });
 
   test("calculates a flat change when prices are unchanged", () => {
@@ -131,14 +133,16 @@ describe("calculateRangeSelection", () => {
   });
 
   test("uses the first and last closes inside the selected boundaries", () => {
-    expect(calculateRangeSelection(rows, 15, 45)).toEqual({
+    const selection = calculateRangeSelection(rows, 15, 45);
+    expect(selection).toEqual({
       startTime: 20,
       endTime: 40,
       startPrice: 125,
       endPrice: 90,
       change: -35,
-      percentChange: -28,
+      percentChange: expect.any(Number),
     });
+    expect(selection?.percentChange).toBeCloseTo(-28);
   });
 
   test("returns null when the starting price is zero", () => {

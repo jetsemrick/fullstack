@@ -155,10 +155,6 @@ export function PriceChart({
   }, [fullRows, onSelectionChange]);
 
   useEffect(() => {
-    clearSelection();
-  }, [data, variant, clearSelection]);
-
-  useEffect(() => {
     function onMouseUp() {
       if (dragStartRef.current != null) finishSelection();
     }
