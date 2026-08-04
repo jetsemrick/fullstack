@@ -26,7 +26,16 @@ export function TickerTape() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const response = await fetchTickerTape();
+      let response: Awaited<ReturnType<typeof fetchTickerTape>>;
+      try {
+        response = await fetchTickerTape();
+      } catch {
+        if (!cancelled) {
+          setLoading(false);
+          setUnavailable(true);
+        }
+        return;
+      }
       if (cancelled) return;
       setLoading(false);
       if (response.ok) {
