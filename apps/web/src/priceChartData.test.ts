@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  calculateRangeSelection,
+  downsampleRows,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -73,5 +80,77 @@ describe("downsampleRows", () => {
     expect(sampled).toContainEqual(rows[5]);
     expect(sampled).toContainEqual(rows[14]);
     expect(sampled.length).toBeLessThan(rows.length);
+  });
+});
+
+describe("calculateRangeSelection", () => {
+  const rows = [
+    { t: 10, price: 100 },
+    { t: 20, price: 125 },
+    { t: 30, price: 90 },
+    { t: 40, price: 90 },
+    { t: 50, price: 110 },
+  ];
+
+  test("calculates a positive change for left-to-right selection", () => {
+    expect(calculateRangeSelection(rows, 10, 20)).toEqual({
+      startTime: 10,
+      endTime: 20,
+      startPrice: 100,
+      endPrice: 125,
+      change: 25,
+      percentChange: 25,
+    });
+  });
+
+  test("calculates a negative change for right-to-left selection", () => {
+    expect(calculateRangeSelection(rows, 30, 20)).toEqual({
+      startTime: 20,
+      endTime: 30,
+      startPrice: 125,
+      endPrice: 90,
+      change: -35,
+      percentChange: -28,
+    });
+  });
+
+  test("calculates a flat change when prices are unchanged", () => {
+    expect(calculateRangeSelection(rows, 30, 40)).toEqual({
+      startTime: 30,
+      endTime: 40,
+      startPrice: 90,
+      endPrice: 90,
+      change: 0,
+      percentChange: 0,
+    });
+  });
+
+  test("returns null when fewer than two points are selected", () => {
+    expect(calculateRangeSelection(rows, 15, 25)).toBeNull();
+    expect(calculateRangeSelection(rows, 55, 60)).toBeNull();
+  });
+
+  test("uses the first and last closes inside the selected boundaries", () => {
+    expect(calculateRangeSelection(rows, 15, 45)).toEqual({
+      startTime: 20,
+      endTime: 40,
+      startPrice: 125,
+      endPrice: 90,
+      change: -35,
+      percentChange: -28,
+    });
+  });
+
+  test("returns null when the starting price is zero", () => {
+    expect(
+      calculateRangeSelection(
+        [
+          { t: 1, price: 0 },
+          { t: 2, price: 10 },
+        ],
+        1,
+        2,
+      ),
+    ).toBeNull();
   });
 });

@@ -13,6 +13,40 @@ export type ChartRow = {
   price: number;
 };
 
+export type PriceRangeSelection = {
+  startTime: number;
+  endTime: number;
+  startPrice: number;
+  endPrice: number;
+  change: number;
+  percentChange: number;
+};
+
+export function calculateRangeSelection(
+  rows: ChartRow[],
+  firstTime: number,
+  secondTime: number,
+): PriceRangeSelection | null {
+  const startTime = Math.min(firstTime, secondTime);
+  const endTime = Math.max(firstTime, secondTime);
+  const selectedRows = rows.filter((row) => row.t >= startTime && row.t <= endTime);
+  if (selectedRows.length < 2) return null;
+
+  const first = selectedRows[0]!;
+  const last = selectedRows[selectedRows.length - 1]!;
+  if (first.price === 0) return null;
+
+  const change = last.price - first.price;
+  return {
+    startTime: first.t,
+    endTime: last.t,
+    startPrice: first.price,
+    endPrice: last.price,
+    change,
+    percentChange: (change / first.price) * 100,
+  };
+}
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
