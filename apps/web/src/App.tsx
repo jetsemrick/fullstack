@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
+import type { PriceRangeSelection } from "./priceChartData";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -24,6 +25,23 @@ function formatPercentChange(data: GetPricesResponse | null) {
     text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
     isPositive: pct > 0,
     isNegative: pct < 0
+  };
+}
+
+function formatRangeChange(selection: PriceRangeSelection, currency: string | null) {
+  const sign = selection.change > 0 ? "+" : "";
+  const currencySuffix = currency ? ` ${currency}` : "";
+  const change = `${sign}${selection.change.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}${currencySuffix}`;
+  const percent = `${sign}${selection.percentChange.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}%`;
+  return {
+    text: `${change} (${percent})`,
+    statusClass: selection.change > 0 ? "positive" : selection.change < 0 ? "negative" : "muted",
   };
 }
 
@@ -58,6 +76,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [selectedRange, setSelectedRange] = useState<PriceRangeSelection | null>(null);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,6 +143,7 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setSelectedRange(null);
     setTicker(t);
   }
 
@@ -190,13 +210,25 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {selectedRange ? (() => {
+                      const rangeChange = formatRangeChange(selectedRange, currencyDisplay);
+                      return (
+                        <span className={`metric-badge range-change ${rangeChange.statusClass}`} aria-live="polite">
+                          <span className="range-change__label">Selected range</span>
+                          {rangeChange.text}
+                        </span>
+                      );
+                    })() : null}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setSelectedRange(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -209,8 +241,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${ticker}:${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onSelectionChange={setSelectedRange}
                 />
               </div>
               {loading && (
