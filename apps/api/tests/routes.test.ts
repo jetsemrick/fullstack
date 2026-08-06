@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { TICKER_TAPE_SYMBOLS } from "@stock/shared";
 import { handleApiRequest } from "../src/routes";
 
 describe("handleApiRequest", () => {
@@ -170,5 +171,41 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.marketState).toBe("REGULAR");
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
     expect(body.indexes[0]?.price).toBe(100);
+  });
+
+  test("returns the curated ticker tape from Yahoo's batch quote response", async () => {
+    globalThis.fetch = mock((url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      expect(u).toContain("v7/finance/quote");
+      const result = TICKER_TAPE_SYMBOLS.map((symbol, index) => ({
+        symbol,
+        regularMarketPrice: 100 + index,
+        regularMarketChangePercent: index % 2 === 0 ? 1.25 : -0.75,
+      }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ quoteResponse: { result, error: null } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { quotes: { symbol: string; price: number; changePercent: number }[] };
+    expect(body.quotes).toHaveLength(TICKER_TAPE_SYMBOLS.length);
+    expect(body.quotes.map((quote) => quote.symbol)).toEqual([...TICKER_TAPE_SYMBOLS]);
+    expect(body.quotes[0]).toEqual({ symbol: "AAPL", price: 100, changePercent: 1.25 });
+  });
+
+  test("returns 502 when ticker quote sources are unavailable", async () => {
+    globalThis.fetch = mock(() =>
+      Promise.resolve(new Response("service unavailable", { status: 503 })),
+    ) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
   });
 });

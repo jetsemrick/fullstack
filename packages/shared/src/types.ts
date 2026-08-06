@@ -54,3 +54,15 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** One large-cap quote displayed in the ticker tape. */
+export interface TickerTapeQuote {
+  symbol: string;
+  price: number | null;
+  /** Regular session percent change vs previous close when available */
+  changePercent: number | null;
+}
+
+export interface TickerTapeResponse {
+  quotes: TickerTapeQuote[];
+}

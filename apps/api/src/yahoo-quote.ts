@@ -1,5 +1,5 @@
-import type { MarketIndexQuote } from "@stock/shared";
-import { MAJOR_INDEX_SYMBOLS } from "@stock/shared";
+import type { MarketIndexQuote, TickerTapeQuote } from "@stock/shared";
+import { MAJOR_INDEX_SYMBOLS, TICKER_TAPE_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -8,6 +8,11 @@ export type YahooQuoteAggregate = {
   errorMessage: string | null;
   marketState: string | null;
   indexes: MarketIndexQuote[];
+};
+
+export type YahooTickerTapeAggregate = {
+  errorMessage: string | null;
+  quotes: TickerTapeQuote[];
 };
 
 function pickNum(v: unknown): number | null {
@@ -233,4 +238,82 @@ export async function fetchMajorIndexQuotes(): Promise<YahooQuoteAggregate> {
     marketState: null,
     indexes: [],
   };
+}
+
+function parseTickerTapeResponse(body: unknown): YahooTickerTapeAggregate {
+  if (typeof body !== "object" || body === null) {
+    return { errorMessage: "Invalid JSON", quotes: [] };
+  }
+  const quoteResponse = (body as Record<string, unknown>).quoteResponse;
+  if (typeof quoteResponse !== "object" || quoteResponse === null) {
+    return { errorMessage: "Missing quote response", quotes: [] };
+  }
+  const result = (quoteResponse as Record<string, unknown>).result;
+  if (!Array.isArray(result)) {
+    return { errorMessage: "Malformed quote results", quotes: [] };
+  }
+
+  const parsed = result.map(parseQuoteItem).filter((quote): quote is MarketIndexQuote => quote !== null);
+  const bySymbol = new Map(parsed.map((quote) => [quote.symbol, quote]));
+  const quotes = TICKER_TAPE_SYMBOLS.flatMap((symbol) => {
+    const quote = bySymbol.get(symbol);
+    return quote ? [{ symbol, price: quote.price, changePercent: quote.changePercent }] : [];
+  });
+  return quotes.length > 0
+    ? { errorMessage: null, quotes }
+    : { errorMessage: "No ticker quotes parsed", quotes: [] };
+}
+
+async function fetchTickerTapeViaV7(): Promise<YahooTickerTapeAggregate> {
+  const url = new URL(YAHOO_QUOTE_URL);
+  url.searchParams.set("symbols", [...TICKER_TAPE_SYMBOLS].join(","));
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" },
+  });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return { errorMessage: `Invalid response (${res.status})`, quotes: [] };
+  }
+  const parsed = parseTickerTapeResponse(json);
+  return res.ok ? parsed : { ...parsed, errorMessage: parsed.errorMessage ?? `HTTP ${res.status}` };
+}
+
+async function fetchTickerTapeViaChart(): Promise<YahooTickerTapeAggregate> {
+  const headers = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
+  const quotes = await Promise.all(
+    TICKER_TAPE_SYMBOLS.map(async (symbol): Promise<TickerTapeQuote | null> => {
+      const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
+      url.searchParams.set("range", "1d");
+      url.searchParams.set("interval", "1d");
+      const res = await fetch(url, { headers });
+      const text = await res.text();
+      let json: unknown;
+      try {
+        json = JSON.parse(text) as unknown;
+      } catch {
+        return null;
+      }
+      const quote = parseIndexFromChartBody(json);
+      return res.ok && quote
+        ? { symbol: quote.symbol, price: quote.price, changePercent: quote.changePercent }
+        : null;
+    }),
+  );
+  const available = quotes.filter((quote): quote is TickerTapeQuote => quote !== null);
+  return available.length > 0
+    ? { errorMessage: null, quotes: available }
+    : { errorMessage: "No ticker quotes", quotes: [] };
+}
+
+/** Uses Yahoo's batch quote API first and the chart endpoint when v7 is unavailable. */
+export async function fetchTickerTapeQuotes(): Promise<YahooTickerTapeAggregate> {
+  const v7 = await fetchTickerTapeViaV7();
+  if (!v7.errorMessage && v7.quotes.length > 0) return v7;
+
+  const chart = await fetchTickerTapeViaChart();
+  if (chart.quotes.length > 0) return chart;
+  return { errorMessage: v7.errorMessage ?? chart.errorMessage ?? "No ticker quotes", quotes: [] };
 }
