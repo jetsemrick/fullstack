@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { TICKER_TAPE_SYMBOLS } from "@stock/shared";
 import { handleApiRequest } from "../src/routes";
 
 describe("handleApiRequest", () => {
@@ -119,6 +120,47 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     const body = (await res.json()) as { marketState: string | null; indexes: { symbol: string }[] };
     expect(body.marketState).toBe("REGULAR");
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
+  });
+
+  test("returns the curated ticker tape from one Yahoo batch request", async () => {
+    let requestedSymbols: string[] = [];
+    globalThis.fetch = mock((url) => {
+      const u = new URL(typeof url === "string" ? url : url.toString());
+      if (u.pathname.includes("/v7/finance/quote")) {
+        requestedSymbols = u.searchParams.get("symbols")?.split(",") ?? [];
+        const result = [...TICKER_TAPE_SYMBOLS].map((symbol, index) => ({
+          symbol,
+          shortName: `${symbol} Inc.`,
+          regularMarketPrice: 100 + index,
+          regularMarketChangePercent: index % 2 === 0 ? 1.25 : -0.75,
+          marketState: "REGULAR",
+        }));
+        return Promise.resolve(
+          Response.json({ quoteResponse: { result, error: null } }),
+        );
+      }
+      return Promise.resolve(new Response("unsupported yahoo fixture", { status: 404 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      quotes: { symbol: string; price: number; changePercent: number }[];
+    };
+    expect(requestedSymbols).toEqual([...TICKER_TAPE_SYMBOLS]);
+    expect(body.quotes).toHaveLength(TICKER_TAPE_SYMBOLS.length);
+    expect(body.quotes[0]).toMatchObject({ symbol: "AAPL", price: 100, changePercent: 1.25 });
+  });
+
+  test("returns a non-success response when ticker tape quotes are unavailable", async () => {
+    globalThis.fetch = mock(() =>
+      Promise.resolve(new Response("upstream unavailable", { status: 503 })),
+    ) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/ticker-tape"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
   });
 
   test("returns 200 and market context when v7 quote is blocked but v8 chart works", async () => {
