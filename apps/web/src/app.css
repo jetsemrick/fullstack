@@ -347,6 +347,56 @@
   border-color: #d1e2d3;
 }
 
+.selection-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  min-height: 1.75rem;
+}
+
+.selection-row__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+.selection-row__range {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.selection-row .metric-badge {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.selection-row__clear {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--fg-muted);
+  border-radius: 0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.selection-row__clear:hover {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+.selection-row__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
 .report-bug {
   position: fixed;
   right: 1.25rem;

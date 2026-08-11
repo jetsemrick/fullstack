@@ -8,10 +8,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useCallback, useId, useMemo, useRef } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import type { SelectionRange } from "./selectionStats";
+
+/** Subset of the Recharts chart state we read from mouse handlers. */
+type ChartMouseState = { activeLabel?: string | number };
+
+function toLabelMs(activeLabel: string | number | undefined): number | null {
+  if (activeLabel == null) return null;
+  const n = Number(activeLabel);
+  return Number.isFinite(n) ? n : null;
+}
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -63,8 +73,52 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export function PriceChart({
+  data,
+  variant = "daily",
+  selection = null,
+  onSelectionChange,
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  selection?: SelectionRange | null;
+  onSelectionChange?: (range: SelectionRange | null) => void;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
+  const dragStartRef = useRef<number | null>(null);
+  const draggedRef = useRef(false);
+
+  const handleMouseDown = useCallback(
+    (state: ChartMouseState) => {
+      if (!onSelectionChange) return;
+      const label = toLabelMs(state?.activeLabel);
+      if (label == null) return;
+      dragStartRef.current = label;
+      draggedRef.current = false;
+      onSelectionChange({ start: label, end: label });
+    },
+    [onSelectionChange],
+  );
+
+  const handleMouseMove = useCallback(
+    (state: ChartMouseState) => {
+      if (!onSelectionChange || dragStartRef.current == null) return;
+      const label = toLabelMs(state?.activeLabel);
+      if (label == null) return;
+      draggedRef.current = true;
+      onSelectionChange({ start: dragStartRef.current, end: label });
+    },
+    [onSelectionChange],
+  );
+
+  const finishDrag = useCallback(() => {
+    if (dragStartRef.current == null) return;
+    const dragged = draggedRef.current;
+    dragStartRef.current = null;
+    draggedRef.current = false;
+    // A plain click (no movement) dismisses any active selection.
+    if (!dragged) onSelectionChange?.(null);
+  }, [onSelectionChange]);
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -101,10 +155,26 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const selectionArea =
+    selection && selection.start !== selection.end
+      ? { x1: Math.min(selection.start, selection.end), x2: Math.max(selection.start, selection.end) }
+      : null;
+
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      role="img"
+      aria-label="Price over time line chart"
+      style={{ width: "100%", height: "100%", cursor: onSelectionChange ? "crosshair" : undefined }}
+    >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={onSelectionChange ? handleMouseDown : undefined}
+          onMouseMove={onSelectionChange ? handleMouseMove : undefined}
+          onMouseUp={onSelectionChange ? finishDrag : undefined}
+          onMouseLeave={onSelectionChange ? finishDrag : undefined}
+        >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -184,6 +254,17 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
+          {selectionArea ? (
+            <ReferenceArea
+              x1={selectionArea.x1}
+              x2={selectionArea.x2}
+              fill="var(--accent)"
+              fillOpacity={0.14}
+              stroke="var(--accent)"
+              strokeOpacity={0.4}
+              ifOverflow="hidden"
+            />
+          ) : null}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

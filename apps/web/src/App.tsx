@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { computeSelectionStats, type SelectionRange } from "./selectionStats";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -25,6 +26,20 @@ function formatPercentChange(data: GetPricesResponse | null) {
     isPositive: pct > 0,
     isNegative: pct < 0
   };
+}
+
+function formatSignedNumber(n: number): string {
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatSelectionRangeLabel(startMs: number, endMs: number, intraday: boolean): string {
+  const opts: Intl.DateTimeFormatOptions = intraday
+    ? { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+    : { month: "short", day: "numeric", year: "numeric" };
+  const start = new Date(startMs).toLocaleString(undefined, opts);
+  const end = new Date(endMs).toLocaleString(undefined, opts);
+  return `${start} \u2192 ${end}`;
 }
 
 const HORIZONS = [
@@ -62,7 +77,9 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<SelectionRange | null>(null);
   const requestIdRef = useRef(0);
+  const chartCardRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -117,6 +134,28 @@ export default function App() {
     return slicedDaily;
   }, [slicedDaily]);
 
+  useEffect(() => {
+    if (!selection) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelection(null);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const card = chartCardRef.current;
+      if (card && !card.contains(e.target as Node)) setSelection(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [selection]);
+
+  const selectionStats = useMemo(
+    () => computeSelectionStats(displayData?.series ?? [], selection),
+    [displayData, selection],
+  );
+
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
@@ -124,7 +163,14 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    // A selection is only meaningful for the series currently on screen.
+    setSelection(null);
     setTicker(t);
+  }
+
+  function selectHorizon(i: number) {
+    setSelection(null);
+    setHorizonIndex(i);
   }
 
   return (
@@ -174,7 +220,7 @@ export default function App() {
 
         {!error && data && displayData && (
           <>
-            <div className="card content-card chart-card--loading-context" aria-busy={loading}>
+            <div ref={chartCardRef} className="card content-card chart-card--loading-context" aria-busy={loading}>
               <div className="content-toolbar">
                 <div className="metrics-block">
                   <div className="metrics-inline">
@@ -196,11 +242,48 @@ export default function App() {
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => selectHorizon(i)}
                       >
                         {h.label}
                       </button>
                     ))}
+                  </div>
+                  <div className="selection-row" aria-live="polite">
+                    {selectionStats ? (() => {
+                      const dirClass =
+                        selectionStats.direction === "up"
+                          ? "positive"
+                          : selectionStats.direction === "down"
+                            ? "negative"
+                            : "muted";
+                      const absText = `${formatSignedNumber(selectionStats.absChange)}${currencyDisplay ? ` ${currencyDisplay}` : ""}`;
+                      const pctText =
+                        selectionStats.pctChange == null
+                          ? null
+                          : `${formatSignedNumber(selectionStats.pctChange)}%`;
+                      return (
+                        <>
+                          <span className="selection-row__label">Selection</span>
+                          <span className="selection-row__range">
+                            {formatSelectionRangeLabel(selectionStats.startMs, selectionStats.endMs, horizonIndex === 0)}
+                          </span>
+                          <span className={`metric-badge ${dirClass}`}>
+                            {pctText ? `${absText} (${pctText})` : absText}
+                          </span>
+                          <button
+                            type="button"
+                            className="selection-row__clear"
+                            onClick={() => setSelection(null)}
+                          >
+                            Clear
+                          </button>
+                        </>
+                      );
+                    })() : (
+                      <p className="selection-row__hint muted">
+                        Drag across the chart to measure net change for a range. Press Escape to clear.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -211,6 +294,8 @@ export default function App() {
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  selection={selection}
+                  onSelectionChange={setSelection}
                 />
               </div>
               {loading && (
