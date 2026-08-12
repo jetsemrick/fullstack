@@ -4,6 +4,11 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import {
+  formatSignedPercent,
+  formatSignedPrice,
+  type RangeStats,
+} from "./rangeSelection";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -34,6 +39,21 @@ const HORIZONS = [
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
 
+function formatRangeWhen(startMs: number, endMs: number): string {
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  const sameDay = new Date(startMs).toDateString() === new Date(endMs).toDateString();
+  if (sameDay) {
+    const time: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+    const day = new Date(startMs).toLocaleDateString(undefined, opts);
+    const from = new Date(startMs).toLocaleTimeString(undefined, time);
+    const to = new Date(endMs).toLocaleTimeString(undefined, time);
+    return `${day}, ${from} – ${to}`;
+  }
+  const from = new Date(startMs).toLocaleDateString(undefined, opts);
+  const to = new Date(endMs).toLocaleDateString(undefined, opts);
+  return `${from} – ${to}`;
+}
+
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
 
@@ -62,7 +82,12 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectionStats, setSelectionStats] = useState<RangeStats | null>(null);
   const requestIdRef = useRef(0);
+
+  const handleSelectionChange = useCallback((stats: RangeStats | null) => {
+    setSelectionStats(stats);
+  }, []);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -191,6 +216,34 @@ export default function App() {
                       );
                     })()}
                   </div>
+                  {selectionStats ? (
+                    <div
+                      className="range-selection"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <span className="range-selection__label">Selection</span>
+                      <span
+                        className={`metric-badge ${
+                          selectionStats.direction === "up"
+                            ? "positive"
+                            : selectionStats.direction === "down"
+                              ? "negative"
+                              : "muted"
+                        }`}
+                      >
+                        {formatSignedPrice(selectionStats.absChange, currencyDisplay)} (
+                        {formatSignedPercent(selectionStats.pctChange)})
+                      </span>
+                      <span className="range-selection__when">
+                        {formatRangeWhen(selectionStats.startT, selectionStats.endT)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="range-hint muted">
+                      Drag across the chart to measure net change. Press Escape to clear.
+                    </p>
+                  )}
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
@@ -209,8 +262,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${data.ticker}:${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onSelectionChange={handleSelectionChange}
                 />
               </div>
               {loading && (

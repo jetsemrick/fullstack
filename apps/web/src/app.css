@@ -251,6 +251,33 @@
   border-color: #f5c2c2;
 }
 
+.range-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.65rem;
+}
+
+.range-selection__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.range-selection__when {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.range-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
 .chart-container {
   padding: 2rem;
   height: 450px;
