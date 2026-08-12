@@ -111,6 +111,114 @@
   font-size: 0.75rem;
 }
 
+.watchlist {
+  margin-top: -0.5rem;
+}
+
+.watchlist__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.watchlist__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.watchlist__empty {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.watchlist__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.watchlist__chip-item {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+}
+
+.watchlist__chip {
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  padding: 0.22rem 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.watchlist__chip:hover {
+  background: var(--bg);
+}
+
+.watchlist__chip--active {
+  background: #edf5ee;
+  color: #2b703e;
+}
+
+.watchlist__remove {
+  border: none;
+  border-left: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--fg-muted);
+  padding: 0.15rem 0.4rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.watchlist__remove:hover {
+  color: #ba3b3b;
+  background: #fdf5f5;
+}
+
+.watchlist-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.watchlist-toggle:hover:not(:disabled) {
+  color: #2b703e;
+  border-color: #d1e2d3;
+  background: #edf5ee;
+}
+
+.watchlist-toggle--on {
+  color: #2b703e;
+  border-color: #d1e2d3;
+  background: #edf5ee;
+}
+
+.watchlist-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .search-form {
   display: flex;
   align-items: center;

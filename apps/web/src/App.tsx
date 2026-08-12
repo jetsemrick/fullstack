@@ -4,6 +4,12 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { Watchlist, WatchlistToggle } from "./Watchlist";
+import {
+  readWatchlist,
+  removeFromWatchlist,
+  toggleWatchlist,
+} from "./watchlistStorage";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -58,6 +64,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [watchlist, setWatchlist] = useState<string[]>(() => readWatchlist());
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,6 +134,19 @@ export default function App() {
     setTicker(t);
   }
 
+  function selectWatchlistTicker(next: string) {
+    setInputTicker(next);
+    setTicker(next);
+  }
+
+  function onToggleWatchlist() {
+    const current = data?.ticker ?? ticker;
+    setWatchlist((prev) => toggleWatchlist(prev, current));
+  }
+
+  const watchedTicker = data?.ticker ?? ticker;
+  const isWatched = watchlist.includes(watchedTicker);
+
   return (
     <div className="shell">
       <header className="header">
@@ -158,6 +178,13 @@ export default function App() {
         </form>
       </header>
 
+      <Watchlist
+        tickers={watchlist}
+        activeTicker={watchedTicker}
+        onSelect={selectWatchlistTicker}
+        onRemove={(t) => setWatchlist((prev) => removeFromWatchlist(prev, t))}
+      />
+
       <main className="main-content">
         {loading && !hasChartData && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
@@ -179,6 +206,12 @@ export default function App() {
                 <div className="metrics-block">
                   <div className="metrics-inline">
                     <h2 className="ticker-display">{data.ticker}</h2>
+                    <WatchlistToggle
+                      ticker={data.ticker}
+                      watched={isWatched}
+                      onToggle={onToggleWatchlist}
+                      disabled={loading}
+                    />
                     <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
                     {(() => {
                       const percentChange = formatPercentChange(displayData);
