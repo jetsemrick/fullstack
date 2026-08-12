@@ -13,14 +13,16 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 | Token | Role |
 |-------|------|
 | `--bg`, `--fg`, `--fg-muted` | Page background, primary text, secondary text (~60% feel—use muted for hints) |
-| `--accent`, `--accent-hover` | Primary actions, focus ring, emphasis borders |
-| `--card`, `--card-border`, `--shadow` | Elevated surfaces and separation |
-| `--radius`, `--radius-sm` | Default and smaller corner radius |
-| `--font` | Inter stack; body already sets `font-family` — inherit in components |
+| `--accent`, `--accent-hover`, `--accent-active`, `--on-accent` | Primary actions, hover/pressed, text on accent |
+| `--card`, `--card-border`, `--shadow`, `--focus-ring` | Elevated surfaces, separation, and focus glow |
+| `--radius`, `--radius-sm` | Default (cards/panels) and smaller (inputs, badges, buttons) corner radius |
+| `--success`, `--success-bg`, `--success-border` | Market up / positive states |
+| `--error`, `--error-bg`, `--error-border` | Market down / error states |
+| `--font` | Open Sans stack; body already sets `font-family` — inherit in components |
 
 ## Rules
 
-1. **Prefer CSS variables** for layout chrome: backgrounds, borders, foreground, accents. Avoid new hard-coded hex/rgb except for **meaning-specific** hues (e.g. market up/down) until those become named tokens in `:root`.
+1. **Prefer CSS variables** for layout chrome: backgrounds, borders, foreground, accents, and semantic up/down/error hues. Avoid new hard-coded hex/rgb in components; add primitives in `:root` first.
 2. **Add new primitives in `:root` first**, then wire components with `var(--…)`—do not scatter one-off palette values across TSX or CSS without a matching token when the color is reused.
 3. **Focus**: use `:focus-visible` patterns consistent with globals (accent outline)—do not remove focus outlines without an accessible replacement.
 4. **Consistency**: spacing and component layout follow existing patterns in `app.css`; match established gaps (e.g. `rem`-based grids) unless changing the shell intentionally.
@@ -39,7 +41,7 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 /* Avoid when a semantic token fits */
 .panel {
   background: #ffffff;
-  color: #2b302b;
+  color: #111111;
 }
 ```
 

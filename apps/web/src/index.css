@@ -1,13 +1,25 @@
 :root {
-  --bg: #f4f5f3;
-  --fg: #2b302b;
-  --fg-muted: #6b726b;
-  --accent: #93af93;
-  --accent-hover: #7b997b;
+  --bg: #f4f5f6;
+  --fg: #1a1e23;
+  --fg-muted: #535c6a;
+  --accent: #345d96;
+  --accent-hover: #4a77b4;
+  --accent-active: #2f4668;
   --card: #ffffff;
-  --card-border: #e2e4e0;
-  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
-  --font: "Inter", system-ui, -apple-system, sans-serif;
+  --on-accent: var(--card);
+  --card-border: #dee0e3;
+  --shadow: 0 4px 12px color-mix(in srgb, var(--fg) 5%, transparent),
+    0 1px 3px color-mix(in srgb, var(--fg) 3%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  --radius: 8px;
+  --radius-sm: 4px;
+  --font: "Open Sans", system-ui, -apple-system, sans-serif;
+  --success: #4f762a;
+  --success-bg: #eff6e8;
+  --success-border: color-mix(in srgb, var(--success) 28%, var(--success-bg));
+  --error: #b84a4a;
+  --error-bg: #ffedef;
+  --error-border: color-mix(in srgb, var(--error) 28%, var(--error-bg));
 }
 
 *,

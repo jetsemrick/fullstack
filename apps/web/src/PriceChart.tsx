@@ -159,7 +159,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             contentStyle={{
               background: "var(--card)",
               border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
+              borderRadius: "var(--radius)",
               color: "var(--fg)",
               boxShadow: "var(--shadow)",
               padding: "12px",
