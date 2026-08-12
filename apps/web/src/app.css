@@ -7,6 +7,112 @@
   gap: 2rem;
 }
 
+/* Full-width scrolling S&P ticker tape, distinct from the header MarketStrip. */
+.ticker-tape {
+  width: 100%;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.ticker-tape__viewport {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ticker-tape__track {
+  display: inline-flex;
+  width: max-content;
+  animation: ticker-scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.ticker-tape:hover .ticker-tape__track {
+  animation-play-state: paused;
+}
+
+.ticker-tape__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.5rem 1.15rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid var(--card-border);
+}
+
+.ticker-tape__symbol {
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+
+.ticker-tape__price {
+  color: var(--fg-muted);
+}
+
+.ticker-tape__pct {
+  font-weight: 500;
+}
+
+.ticker-tape__pct--up {
+  color: #2b703e;
+}
+
+.ticker-tape__pct--down {
+  color: #ba3b3b;
+}
+
+.ticker-tape__pct--muted {
+  color: var(--fg-muted);
+}
+
+.ticker-tape--fallback {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1.15rem;
+}
+
+.ticker-tape__fallback-text {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Track holds two identical groups; shifting by half loops seamlessly. */
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape__track {
+    animation: none;
+    /* Degrade to a static, horizontally scrollable strip instead of motion. */
+    flex-wrap: nowrap;
+  }
+
+  .ticker-tape__viewport {
+    overflow-x: auto;
+  }
+
+  .ticker-tape__group:nth-child(2) {
+    display: none;
+  }
+}
+
 .header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
