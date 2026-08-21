@@ -13,13 +13,13 @@ disable-model-invocation: false
 
 ## Prerequisites
 
-Run once after clone or dependency changes:
+Requires **Bun** 1.3+ and **Python** 3.11+ (`README.md`). Run once after clone or dependency changes:
 
 ```bash
 bun install
+python3 -m venv apps/api/.venv
+apps/api/.venv/bin/pip install -e "apps/api[dev]"
 ```
-
-Requires **Bun** 1.3+ (`README.md`).
 
 ## Commands (this repo)
 
@@ -34,7 +34,7 @@ From repo root (`package.json` uses `concurrently` to run `apps/api` and `apps/w
 ### Ports and routing
 
 - **Web (Vite)**: default `http://localhost:5173`
-- **API (Bun)**: default `http://localhost:3001`
+- **API (Python FastAPI)**: default `http://localhost:3001` (`bun run dev:api` → `apps/api/run.py` / uvicorn)
 - Vite proxies `/api/*` to the API—use same-origin `/api/...` from the browser.
 
 ### Optional env (API)
