@@ -70,10 +70,10 @@ The web UI includes a **Report bug** control (bottom-right) that posts to `/api/
 ## Test
 
 ```bash
-bun test
+bun run test
 ```
 
-(Runs from the repo root via `package.json` → `apps/api` pytest: Yahoo `parse_result` / quote parsing and HTTP handler validation, including mocked upstream chart and quote responses.)
+Runs pytest for the Python API (`apps/api`) and Bun tests for the web helpers (`apps/web`).
 
 ## Typecheck
 

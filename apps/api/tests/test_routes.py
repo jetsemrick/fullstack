@@ -139,3 +139,29 @@ def test_returns_200_when_v7_quote_blocked_but_v8_chart_works(
     assert body["marketState"] == "REGULAR"
     assert [row["symbol"] for row in body["indexes"]] == ["^GSPC", "^DJI", "^IXIC"]
     assert body["indexes"][0]["price"] == 100
+
+
+def test_returns_404_when_yahoo_chart_has_no_series(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def fake_get_text(url: str, params: dict[str, str] | None = None) -> tuple[int, str]:
+        return 200, json.dumps({"chart": {"result": [], "error": None}})
+
+    monkeypatch.setattr(http_client, "get_text", AsyncMock(side_effect=fake_get_text))
+    res = client.get("/api/prices", params={"ticker": "AAPL"})
+    assert res.status_code == 404
+    assert res.json()["code"] == "NOT_FOUND"
+
+
+def test_returns_502_when_yahoo_http_fails_with_parsed_points(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = json.loads((FIXTURES / "minimal-chart.json").read_text(encoding="utf-8"))
+
+    async def fake_get_text(url: str, params: dict[str, str] | None = None) -> tuple[int, str]:
+        return 500, json.dumps(fixture)
+
+    monkeypatch.setattr(http_client, "get_text", AsyncMock(side_effect=fake_get_text))
+    res = client.get("/api/prices", params={"ticker": "AAPL"})
+    assert res.status_code == 502
+    assert res.json()["code"] == "UPSTREAM"

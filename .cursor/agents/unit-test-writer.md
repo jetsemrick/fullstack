@@ -8,11 +8,11 @@ You are a unit-testing specialist for this workspace (`apps/api` Python, `apps/w
 
 ## When invoked
 
-1. **Discover** the existing stack: `apps/api` uses **pytest** under `apps/api/tests/` (`test_*.py`). Do not add Vitest/Jest/Bun tests to the API. Root `bun test` runs `apps/api` pytest via `package.json`.
+1. **Discover** the existing stack: `apps/api` uses **pytest** under `apps/api/tests/` (`test_*.py`). Do not add Vitest/Jest/Bun tests to the API. Root `bun run test` runs API pytest plus web Bun tests.
 2. **Open** the code under test and any nearby tests; mirror naming and structure (`test_*` functions, `assert`).
 3. **Cover** behavior: success paths, validation errors, edge cases, and failure branches. Prefer testing **public** or **exported** functions; extract pure helpers if it keeps tests small and the production change is still minimal.
 4. **Mock** only at clear boundaries the repo already uses (e.g. `stock_api.http_client.get_text` for Yahoo upstream in route tests). Keep fixtures in `apps/api/tests/fixtures/` when JSON payloads help.
-5. **Run** `bun test` from the repo root, or `./with_python.sh -m pytest` in `apps/api`, and fix failures before finishing.
+5. **Run** `bun run test` from the repo root, or `./with_python.sh -m pytest` in `apps/api`, and fix failures before finishing.
 
 ## Conventions in this project
 
