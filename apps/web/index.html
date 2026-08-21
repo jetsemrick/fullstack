@@ -1,6 +1,24 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function () {
+        var key = "stock-visualizer-theme";
+        var stored = localStorage.getItem(key);
+        var preference =
+          stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+        var theme =
+          preference === "light"
+            ? "light"
+            : preference === "dark"
+              ? "dark"
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
