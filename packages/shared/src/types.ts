@@ -54,3 +54,18 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** One large-cap quote on the S&P ticker tape (`/api/ticker-tape`). */
+export interface TickerTapeQuote {
+  symbol: string;
+  shortName: string;
+  /** Regular session last price when available */
+  price: number | null;
+  /** Regular session percent change vs previous close when available */
+  changePercent: number | null;
+}
+
+/** Batch quotes for the ambient ticker tape. */
+export interface TickerTapeResponse {
+  quotes: TickerTapeQuote[];
+}
