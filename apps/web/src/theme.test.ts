@@ -61,6 +61,16 @@ describe("storage helpers", () => {
     });
     expect(written[THEME_STORAGE_KEY]).toBe("light");
   });
+
+  test("writeStoredTheme ignores storage failures", () => {
+    expect(() =>
+      writeStoredTheme("dark", {
+        setItem() {
+          throw new Error("blocked");
+        },
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe("applyThemeToDocument", () => {

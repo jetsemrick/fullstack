@@ -33,7 +33,11 @@ export function writeStoredTheme(
   preference: ThemePreference,
   storage: Pick<Storage, "setItem">,
 ): void {
-  storage.setItem(THEME_STORAGE_KEY, preference);
+  try {
+    storage.setItem(THEME_STORAGE_KEY, preference);
+  } catch {
+    // Persistence is best-effort; private browsing and blocked storage throw.
+  }
 }
 
 export function applyThemeToDocument(
