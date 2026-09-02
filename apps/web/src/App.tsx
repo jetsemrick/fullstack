@@ -4,6 +4,12 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import {
+  formatSignedMoney,
+  formatSignedPercent,
+  rangeChangeStatusClass,
+  type RangeNetChange,
+} from "./chartRangeSelect";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -62,7 +68,11 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rangeChange, setRangeChange] = useState<RangeNetChange | null>(null);
   const requestIdRef = useRef(0);
+  const onRangeChange = useCallback((value: RangeNetChange | null) => {
+    setRangeChange(value);
+  }, []);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -125,6 +135,7 @@ export default function App() {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
     setTicker(t);
+    setRangeChange(null);
   }
 
   return (
@@ -190,13 +201,22 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {rangeChange ? (
+                      <span data-range-select-ui className={`metric-badge ${rangeChangeStatusClass(rangeChange.pct)}`}>
+                        Range {formatSignedMoney(rangeChange.abs)}
+                        {currencyDisplay ? ` ${currencyDisplay}` : ""} ({formatSignedPercent(rangeChange.pct)})
+                      </span>
+                    ) : null}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setHorizonIndex(i);
+                          setRangeChange(null);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -209,8 +229,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${ticker}:${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onRangeChange={onRangeChange}
                 />
               </div>
               {loading && (
