@@ -68,11 +68,9 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rangeChange, setRangeChange] = useState<RangeNetChange | null>(null);
+  /** Keyed by chart identity so a selection from a previous ticker or horizon can never render. */
+  const [rangeSelection, setRangeSelection] = useState<{ chartKey: string; value: RangeNetChange } | null>(null);
   const requestIdRef = useRef(0);
-  const onRangeChange = useCallback((value: RangeNetChange | null) => {
-    setRangeChange(value);
-  }, []);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -131,10 +129,18 @@ export default function App() {
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
 
+  const chartKey = `${ticker}:${horizonIndex}`;
+  const rangeChange = rangeSelection?.chartKey === chartKey ? rangeSelection.value : null;
+  const onRangeChange = useCallback(
+    (value: RangeNetChange | null) => {
+      setRangeSelection(value ? { chartKey, value } : null);
+    },
+    [chartKey],
+  );
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
-    if (t !== ticker) setRangeChange(null);
     setTicker(t);
   }
 
@@ -213,10 +219,7 @@ export default function App() {
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => {
-                          if (i !== horizonIndex) setRangeChange(null);
-                          setHorizonIndex(i);
-                        }}
+                        onClick={() => setHorizonIndex(i)}
                       >
                         {h.label}
                       </button>
@@ -229,7 +232,7 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
-                  key={`${ticker}:${horizonIndex}`}
+                  key={chartKey}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                   onRangeChange={onRangeChange}
