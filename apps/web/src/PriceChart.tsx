@@ -212,10 +212,10 @@ export function PriceChart({
     const last = rows.length - 1;
     if (e.key === "Enter") {
       e.preventDefault();
-      const start = kbIndex ?? Math.floor(last / 2);
-      const next = Math.min(last, start + 1);
-      setKbIndex(next);
-      applyBrush(rows[start]!.t, rows[next]!.t, true);
+      const start = Math.min(last - 1, Math.floor(last / 2));
+      const end = start + 1;
+      setKbIndex(end);
+      applyBrush(rows[start]!.t, rows[end]!.t, true);
       return;
     }
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
