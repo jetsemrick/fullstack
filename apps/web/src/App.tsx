@@ -134,8 +134,8 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    if (t !== ticker) setRangeChange(null);
     setTicker(t);
-    setRangeChange(null);
   }
 
   return (
@@ -214,8 +214,8 @@ export default function App() {
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
                         onClick={() => {
+                          if (i !== horizonIndex) setRangeChange(null);
                           setHorizonIndex(i);
-                          setRangeChange(null);
                         }}
                       >
                         {h.label}
