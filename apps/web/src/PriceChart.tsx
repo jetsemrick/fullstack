@@ -214,7 +214,7 @@ export function PriceChart({
       e.preventDefault();
       const start = kbIndex ?? Math.floor(last / 2);
       const next = Math.min(last, start + 1);
-      setKbIndex(start);
+      setKbIndex(next);
       applyBrush(rows[start]!.t, rows[next]!.t, true);
       return;
     }
