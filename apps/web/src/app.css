@@ -14,12 +14,48 @@
   gap: 1rem 1.5rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.theme-toggle__btn {
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.theme-toggle__btn:hover {
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.theme-toggle__btn[aria-checked="true"] {
+  background: var(--bg);
+  color: var(--fg);
+}
+
 @media (max-width: 640px) {
   .header {
     grid-template-columns: 1fr;
   }
 
-  .search-form {
+  .header-actions {
     justify-self: end;
   }
 }
@@ -52,7 +88,7 @@
 }
 
 .market-status--open {
-  color: #2b703e;
+  color: var(--up);
 }
 
 .market-status--closed {
@@ -93,12 +129,12 @@
 }
 
 .market-strip__pct--up {
-  color: #2b703e;
+  color: var(--up);
   font-weight: 500;
 }
 
 .market-strip__pct--down {
-  color: #ba3b3b;
+  color: var(--down);
   font-weight: 500;
 }
 
@@ -128,7 +164,7 @@
 
 .search-input-wrapper:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(147, 175, 147, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .search-input {
@@ -148,7 +184,7 @@
 .search-btn {
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 0;
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
@@ -240,15 +276,15 @@
 }
 
 .metric-badge.positive {
-  color: #2b703e;
-  background: #edf5ee;
-  border-color: #d1e2d3;
+  color: var(--up);
+  background: var(--up-bg);
+  border-color: var(--up-border);
 }
 
 .metric-badge.negative {
-  color: #ba3b3b;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
+  color: var(--down);
+  background: var(--down-bg);
+  border-color: var(--down-border);
 }
 
 .chart-container {
@@ -296,9 +332,9 @@
 
 .error-banner {
   padding: 1.5rem;
-  background: #fdf5f5;
-  border-color: #f5c2c2;
-  color: #ba3b3b;
+  background: var(--down-bg);
+  border-color: var(--down-border);
+  color: var(--down);
   font-size: 0.95rem;
   border-width: 1px;
   border-style: solid;
@@ -342,9 +378,9 @@
 }
 
 .horizon-btn.active {
-  background: #edf5ee;
-  color: #2b703e;
-  border-color: #d1e2d3;
+  background: var(--up-bg);
+  color: var(--up);
+  border-color: var(--up-border);
 }
 
 .report-bug {
@@ -464,7 +500,7 @@
   border: 1px solid transparent;
   border-radius: 0;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   padding: 0.45rem 0.9rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -488,11 +524,11 @@
 }
 
 .report-bug__status--error {
-  color: #ba3b3b;
+  color: var(--down);
 }
 
 .report-bug__status--success {
-  color: #2b703e;
+  color: var(--up);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
