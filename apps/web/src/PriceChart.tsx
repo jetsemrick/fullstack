@@ -8,8 +8,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GetPricesResponse } from "@stock/shared";
+import { netChangeForWindow, type RangeNetChange } from "./chartRangeSelect";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
 
@@ -61,11 +62,40 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function labelToMs(label: unknown): number | null {
+  if (typeof label === "number" && Number.isFinite(label)) return label;
+  if (typeof label === "string" && label !== "") {
+    const n = Number(label);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export function PriceChart({
+  data,
+  variant = "daily",
+  onRangeChange,
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  onRangeChange?: (value: RangeNetChange | null) => void;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
+  const hintId = useId();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+  const brushARef = useRef<number | null>(null);
+  const brushBRef = useRef<number | null>(null);
+
+  const [brushA, setBrushA] = useState<number | null>(null);
+  const [brushB, setBrushB] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [kbIndex, setKbIndex] = useState<number | null>(null);
+
   const fullRows = useMemo(() => chartData(data), [data]);
+
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
@@ -99,12 +129,139 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
+  const applyBrush = useCallback((a: number | null, b: number | null, emit: boolean) => {
+    brushARef.current = a;
+    brushBRef.current = b;
+    setBrushA(a);
+    setBrushB(b);
+    if (!emit) return;
+    if (a == null || b == null) {
+      onRangeChange?.(null);
+      return;
+    }
+    onRangeChange?.(netChangeForWindow(fullRows, a, b));
+  }, [fullRows, onRangeChange]);
+
+  const clearSelection = useCallback(() => {
+    draggingRef.current = false;
+    setDragging(false);
+    setKbIndex(null);
+    applyBrush(null, null, true);
+  }, [applyBrush]);
+
+  const finishDrag = useCallback(() => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+    const a = brushARef.current;
+    const b = brushBRef.current;
+    if (a == null || b == null || netChangeForWindow(fullRows, a, b) == null) {
+      applyBrush(null, null, true);
+      return;
+    }
+    applyBrush(a, b, true);
+  }, [applyBrush, fullRows]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onUp = () => finishDrag();
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [dragging, finishDrag]);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (draggingRef.current) return;
+      if (brushARef.current == null) return;
+      const el = wrapRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      if (e.target instanceof Element && e.target.closest("[data-range-select-ui]")) return;
+      clearSelection();
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [clearSelection]);
+
+  const onChartMouseDown = (state: { activeLabel?: unknown }) => {
+    const t = labelToMs(state?.activeLabel);
+    if (t == null) return;
+    draggingRef.current = true;
+    setDragging(true);
+    applyBrush(t, t, true);
+  };
+
+  const onChartMouseMove = (state: { activeLabel?: unknown }) => {
+    if (!draggingRef.current) return;
+    const t = labelToMs(state?.activeLabel);
+    if (t == null) return;
+    applyBrush(brushARef.current, t, true);
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      clearSelection();
+      return;
+    }
+    if (rows.length < 2) return;
+    const last = rows.length - 1;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const start = kbIndex ?? Math.floor(last / 2);
+      const next = Math.min(last, start + 1);
+      setKbIndex(start);
+      applyBrush(rows[start]!.t, rows[next]!.t, true);
+      return;
+    }
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const delta = e.key === "ArrowRight" ? 1 : -1;
+    const current = kbIndex ?? Math.floor(last / 2);
+    const next = Math.max(0, Math.min(last, current + delta));
+    setKbIndex(next);
+    const startT = brushARef.current ?? rows[current]!.t;
+    applyBrush(startT, rows[next]!.t, true);
+  };
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const showBrush = brushA != null && brushB != null && brushA !== brushB;
+
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={wrapRef}
+      className="price-chart"
+      role="group"
+      tabIndex={0}
+      aria-label="Price over time line chart. Drag to select a range for net change. Keyboard: Enter starts a range, arrow keys move the end, Escape clears."
+      aria-describedby={hintId}
+      onKeyDown={onKeyDown}
+    >
+      <div className="price-chart__chrome">
+        <p id={hintId} className="price-chart__hint">
+          Drag across the chart to measure net change for that range. Press Escape or click outside to clear.
+          Keyboard: focus the chart, press Enter to start a range, then Left or Right to move the end of the selection.
+        </p>
+        {showBrush && !dragging ? (
+          <button type="button" className="range-clear-btn" onClick={clearSelection}>
+            Clear range
+          </button>
+        ) : null}
+      </div>
+      <div className="price-chart__plot">
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={onChartMouseDown}
+          onMouseMove={onChartMouseMove}
+          style={{ cursor: dragging ? "ew-resize" : "crosshair", userSelect: "none" }}
+        >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -131,6 +288,17 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 ifOverflow="hidden"
               />
             </>
+          ) : null}
+          {showBrush ? (
+            <ReferenceArea
+              x1={Math.min(brushA, brushB)}
+              x2={Math.max(brushA, brushB)}
+              fill="var(--accent)"
+              fillOpacity={0.18}
+              stroke="var(--accent)"
+              strokeOpacity={0.45}
+              ifOverflow="hidden"
+            />
           ) : null}
           <XAxis
             dataKey="t"
@@ -186,6 +354,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           />
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
