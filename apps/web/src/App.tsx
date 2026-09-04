@@ -4,6 +4,14 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { Watchlist } from "./Watchlist";
+import {
+  addWatchlistTicker,
+  loadWatchlist,
+  removeWatchlistTicker,
+  saveWatchlist,
+  WATCHLIST_MAX,
+} from "./watchlistStorage";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -62,7 +70,33 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [watchlist, setWatchlist] = useState<string[]>(() =>
+    loadWatchlist(typeof window === "undefined" ? null : window.localStorage),
+  );
   const requestIdRef = useRef(0);
+
+  function persistWatchlist(next: string[]) {
+    setWatchlist(next);
+    saveWatchlist(next, typeof window === "undefined" ? null : window.localStorage);
+  }
+
+  function onSelectWatchlistTicker(next: string) {
+    setTicker(next);
+    setInputTicker(next);
+  }
+
+  function onAddCurrentToWatchlist() {
+    const current = data?.ticker;
+    if (!current) return;
+    const result = addWatchlistTicker(watchlist, current);
+    if (result.ok) persistWatchlist(result.tickers);
+  }
+
+  function onRemoveCurrentFromWatchlist() {
+    const current = data?.ticker;
+    if (!current) return;
+    persistWatchlist(removeWatchlistTicker(watchlist, current));
+  }
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -120,6 +154,9 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
+  const currentTicker = data?.ticker ?? null;
+  const currentOnWatchlist = Boolean(currentTicker && watchlist.includes(currentTicker));
+  const watchlistFull = watchlist.length >= WATCHLIST_MAX;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -158,6 +195,12 @@ export default function App() {
         </form>
       </header>
 
+      <Watchlist
+        tickers={watchlist}
+        selectedTicker={ticker}
+        onSelect={onSelectWatchlistTicker}
+      />
+
       <main className="main-content">
         {loading && !hasChartData && (
           <div className="card loading-card" aria-busy="true" aria-label="Loading chart">
@@ -179,6 +222,29 @@ export default function App() {
                 <div className="metrics-block">
                   <div className="metrics-inline">
                     <h2 className="ticker-display">{data.ticker}</h2>
+                    <button
+                      type="button"
+                      className={`watchlist-toggle${currentOnWatchlist ? " watchlist-toggle--on" : ""}`}
+                      onClick={currentOnWatchlist ? onRemoveCurrentFromWatchlist : onAddCurrentToWatchlist}
+                      disabled={!currentOnWatchlist && watchlistFull}
+                      aria-label={
+                        currentOnWatchlist
+                          ? `Remove ${data.ticker} from watchlist`
+                          : `Add ${data.ticker} to watchlist`
+                      }
+                      title={
+                        !currentOnWatchlist && watchlistFull
+                          ? `Watchlist is full (${WATCHLIST_MAX} tickers).`
+                          : undefined
+                      }
+                    >
+                      {currentOnWatchlist ? "Remove" : "Add"}
+                    </button>
+                    {!currentOnWatchlist && watchlistFull ? (
+                      <p className="watchlist__hint" role="status">
+                        Watchlist is full ({WATCHLIST_MAX} tickers).
+                      </p>
+                    ) : null}
                     <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
                     {(() => {
                       const percentChange = formatPercentChange(displayData);

@@ -1,6 +1,6 @@
 # Stock Visualizer
 
-Full stack app to visualize stock prices: **React** + **TypeScript** on the client, **Bun** on the server. The browser calls a local API which fetches from Yahoo Finance chart endpoints and returns normalized time series. Default ticker: **AAPL**.
+Full stack app to visualize stock prices: **React** + **TypeScript** on the client, **Bun** on the server. The browser calls a local API which fetches from Yahoo Finance chart endpoints and returns normalized time series. Default ticker: **AAPL**. The chart toolbar can add the loaded symbol to a **watchlist** (up to 20 tickers, stored in this browser only).
 
 ## Monorepo layout
 
