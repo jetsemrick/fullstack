@@ -162,16 +162,14 @@ export function PriceChart({
     applyBrush(a, b, true);
   }, [applyBrush, fullRows]);
 
+  const detachDragEndRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
-    if (!dragging) return;
-    const onUp = () => finishDrag();
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("pointerup", onUp);
     return () => {
-      window.removeEventListener("mouseup", onUp);
-      window.removeEventListener("pointerup", onUp);
+      detachDragEndRef.current?.();
+      detachDragEndRef.current = null;
     };
-  }, [dragging, finishDrag]);
+  }, []);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -190,9 +188,22 @@ export function PriceChart({
   const onChartMouseDown = (state: { activeLabel?: unknown }) => {
     const t = labelToMs(state?.activeLabel);
     if (t == null) return;
+    detachDragEndRef.current?.();
     draggingRef.current = true;
     setDragging(true);
     applyBrush(t, t, true);
+
+    const onUp = () => {
+      detachDragEndRef.current?.();
+      detachDragEndRef.current = null;
+      finishDrag();
+    };
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointerup", onUp);
+    detachDragEndRef.current = () => {
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointerup", onUp);
+    };
   };
 
   const onChartMouseMove = (state: { activeLabel?: unknown }) => {

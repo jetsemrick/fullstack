@@ -130,6 +130,9 @@ export default function App() {
   const hasChartData = Boolean(data && displayData);
 
   const chartKey = `${ticker}:${horizonIndex}`;
+  if (rangeSelection != null && rangeSelection.chartKey !== chartKey) {
+    setRangeSelection(null);
+  }
   const rangeChange = rangeSelection?.chartKey === chartKey ? rangeSelection.value : null;
   const onRangeChange = useCallback(
     (value: RangeNetChange | null) => {
