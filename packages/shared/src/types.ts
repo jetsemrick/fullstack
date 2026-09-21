@@ -54,3 +54,17 @@ export interface MarketContextResponse {
   marketState: string | null;
   indexes: MarketIndexQuote[];
 }
+
+/** One equity quote on `GET /api/ticker-tape`. */
+export interface TickerTapeQuote {
+  symbol: string;
+  /** Regular session last price when available */
+  price: number | null;
+  /** Regular session percent change vs previous close when available */
+  changePercent: number | null;
+}
+
+/** Batch quotes for the curated S&P ticker tape. */
+export interface TickerTapeResponse {
+  quotes: TickerTapeQuote[];
+}
