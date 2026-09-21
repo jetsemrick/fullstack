@@ -5,6 +5,8 @@
 }
 
 .ticker-tape {
+  min-width: 0;
+  overflow: hidden;
   background: var(--card);
   border-bottom: 1px solid var(--card-border);
 }
@@ -106,6 +108,7 @@
 }
 
 .shell {
+  width: 100%;
   max-width: 1000px;
   margin: 0 auto;
   padding: 1.75rem 2rem 3rem;
