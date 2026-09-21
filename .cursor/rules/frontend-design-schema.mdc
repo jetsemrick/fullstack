@@ -14,7 +14,11 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 |-------|------|
 | `--bg`, `--fg`, `--fg-muted` | Page background, primary text, secondary text (~60% feel—use muted for hints) |
 | `--accent`, `--accent-hover` | Primary actions, focus ring, emphasis borders |
-| `--card`, `--card-border`, `--shadow` | Elevated surfaces and separation |
+| `--card`, `--card-border`, `--shadow`, `--shadow-sm` | Elevated surfaces and separation |
+| `--on-accent` | Label color on accent-filled buttons |
+| `--positive`, `--positive-bg`, `--positive-border` | Gains, open market, selected horizon |
+| `--negative`, `--negative-bg`, `--negative-border` | Losses and error surfaces |
+| `--focus-ring` | Input focus halo |
 | `--radius`, `--radius-sm` | Default and smaller corner radius |
 | `--font` | Inter stack; body already sets `font-family` — inherit in components |
 
@@ -43,4 +47,4 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 }
 ```
 
-When introducing dark mode later, extend the schema with a class or `prefers-color-scheme` block on the same token names rather than branching colors inside every component.
+Dark mode overrides the same token names on `:root[data-theme="dark"]`. The blocking script in `apps/web/index.html` sets `data-theme` before paint; do not branch colors inside components.
