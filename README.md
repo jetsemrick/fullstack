@@ -1,18 +1,19 @@
 # Stock Visualizer
 
-Full stack app to visualize stock prices: **React** + **TypeScript** on the client, **Bun** on the server. The browser calls a local API which fetches from Yahoo Finance chart endpoints and returns normalized time series. Default ticker: **AAPL**.
+Full stack app to visualize stock prices: **React** + **TypeScript** on the client, **Go** on the server. The browser calls a local API which fetches from Yahoo Finance chart endpoints and returns normalized time series. Default ticker: **AAPL**.
 
 ## Monorepo layout
 
 | Path | Description |
 |------|-------------|
 | `apps/web` | Vite + React + Recharts |
-| `apps/api` | Bun HTTP API (`/api/prices`, `/api/health`, `/api/report-bug`) |
+| `apps/api` | Go HTTP API (`/api/prices`, `/api/health`, `/api/market-context`, `/api/report-bug`) |
 | `packages/shared` | Shared types and constants |
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) 1.3+
+- [Bun](https://bun.sh) 1.3+ (web app, workspaces, and root scripts)
+- [Go](https://go.dev/dl/) 1.22+ (API)
 
 ## Install
 
@@ -48,26 +49,26 @@ After data loads, use **Export CSV** to download the current series as one row p
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
 | `CORS_ORIGIN` | `http://localhost:5173` | `Access-Control-Allow-Origin` for the API |
-| `CURSOR_API_KEY` | _(none)_ | Cursor user or service-account API key for in-app **Report bug** (local SDK agent). Required for `POST /api/report-bug`. Set in the repo-root `.env` (gitignored). |
-| `CURSOR_MODEL` | `composer-2.5` | Model id passed to `@cursor/sdk` for report-bug runs |
+| `CURSOR_API_KEY` | _(none)_ | Optional. When unset, `POST /api/report-bug` returns 503. The Go API does not call the Cursor agent even if this is set. Set in the repo-root `.env` (gitignored). |
 
-Create a key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard/integrations). Put `CURSOR_API_KEY=…` in the monorepo-root `.env` (loaded by the API on startup). Never expose it to the browser.
+The API loads a repo-root `.env` on startup (gitignored) and does not override variables already set in the environment. Never commit secrets or expose them to the browser.
 
 ## API
 
 - `GET /api/health` – health check.
-- `GET /api/prices?ticker=AAPL` – normalized daily price series for a fixed **1 month** window (Yahoo `range=1mo`, `interval=1d` on the server; not configurable per request).
+- `GET /api/prices?ticker=AAPL` – normalized close series. Optional `range` and `interval` query params are allowlisted; omitted values default to Yahoo `range=max` and `interval=1d`.
 - `GET /api/market-context` – US market session state plus major index quotes.
-- `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars). Runs a local Cursor agent (`@cursor/sdk`) against the monorepo to apply the requested edit. Requires `CURSOR_API_KEY`.
+- `POST /api/report-bug` – body `{ "message": "…" }` (1–4000 chars after trim). Invalid bodies return 400. A missing `CURSOR_API_KEY` returns 503. The Go API does not run the Cursor agent; a configured key returns an error explaining that agent execution is deferred.
 
 The web UI includes a **Report bug** control (bottom-right) that posts to `/api/report-bug`.
+
 ## Test
 
 ```bash
-bun test
+bun run test
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+(Root `test` runs `go test` in `apps/api`: Yahoo chart and quote parsing plus HTTP handler validation, including mocked upstream responses.)
 
 ## Typecheck
 
@@ -83,5 +84,5 @@ bun run build
 
 ## Notes
 
-- Yahoo Finance endpoints are **unofficial**; they may change or rate-limit. The API isolates parsing in `apps/api/src/yahoo.ts`.
+- Yahoo Finance endpoints are **unofficial**; they may change or rate-limit. The API isolates parsing in `apps/api/internal/yahoo`.
 - Do not call Yahoo directly from the browser; use the API to avoid CORS and to keep a single place for validation and parsing.

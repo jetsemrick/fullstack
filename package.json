@@ -3,12 +3,12 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,magenta \"bun run --cwd apps/api dev\" \"bun run --cwd apps/web dev\"",
-    "dev:api": "bun run --cwd apps/api dev",
+    "dev": "concurrently -n api,web -c blue,magenta \"go run -C apps/api ./cmd/server\" \"bun run --cwd apps/web dev\"",
+    "dev:api": "go run -C apps/api ./cmd/server",
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
-    "test": "bun run --cwd apps/api test",
-    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck"
+    "test": "go test -C apps/api ./...",
+    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/web typecheck"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
