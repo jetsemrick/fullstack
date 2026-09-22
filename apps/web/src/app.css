@@ -623,6 +623,12 @@
     padding: 1.25rem 1rem 1.4rem;
   }
 
+  .backtest-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .backtest-field,
   .backtest-input,
   .backtest-input--volume,
   .backtest-submit {

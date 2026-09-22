@@ -76,7 +76,9 @@ export function Backtest() {
     const normalizedTicker = preview.value.ticker;
     let res: Awaited<ReturnType<typeof fetchPrices>>;
     try {
-      res = await fetchPrices({ ticker: normalizedTicker, range: "max", interval: "1d" });
+      // Yahoo `range=max` is not a daily series (it returns coarse bars). `10y` is the
+      // longest window this API serves at `interval=1d`, which weekend roll-forward needs.
+      res = await fetchPrices({ ticker: normalizedTicker, range: "10y", interval: "1d" });
     } catch (e) {
       if (requestId !== requestIdRef.current) return;
       setLoading(false);
@@ -119,11 +121,11 @@ export function Backtest() {
           Backtest
         </h2>
         <p className="backtest-hint">
-          Buy at the first daily close on or after this date. P&amp;L runs through the latest close.
+          Buy at the first daily close on or after this date, using up to 10 years of daily closes. P&amp;L runs through the latest close.
         </p>
       </div>
 
-      <form className="backtest-form" onSubmit={onSubmit}>
+      <form className="backtest-form" onSubmit={onSubmit} noValidate>
         <div className="backtest-field">
           <label className="backtest-label" htmlFor={`${formId}-ticker`}>
             Ticker

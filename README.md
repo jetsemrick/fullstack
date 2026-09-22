@@ -40,7 +40,7 @@ bun run dev:web
 
 The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
 
-The page includes a buy-at-date backtest: ticker, share volume, and trade date. Entry is the first daily close on or after that date (`range=max`, `interval=1d`); unrealized P&L uses the latest close.
+The page includes a buy-at-date backtest: ticker, share volume, and trade date. Entry is the first daily close on or after that date (`range=10y`, `interval=1d`; Yahoo’s `max` range is not daily); unrealized P&L uses the latest close.
 
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
