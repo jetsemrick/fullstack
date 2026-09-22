@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { Backtest } from "./Backtest";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -221,6 +222,7 @@ export default function App() {
             </div>
           </>
         )}
+        <Backtest />
       </main>
       <ReportBug />
     </div>

@@ -40,6 +40,8 @@ bun run dev:web
 
 The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the app uses same-origin fetches to `/api/prices`.
 
+The page includes a buy-at-date backtest: ticker, share volume, and trade date. Entry is the first daily close on or after that date (`range=max`, `interval=1d`); unrealized P&L uses the latest close.
+
 After data loads, use **Export CSV** to download the current series as one row per day (UTC date column). Broader “export by day” follow-ups are tracked in Linear as [CURSOR-21](https://linear.app/jemrick/issue/CURSOR-21/feature-export-stock-price-data-by-day).
 
 ### Environment (optional)
@@ -65,9 +67,10 @@ The web UI includes a **Report bug** control (bottom-right) that posts to `/api/
 
 ```bash
 bun test
+bun run lint
 ```
 
-(Runs from the repo root via `bun test` in `package.json` → `apps/api` tests: Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response.)
+`bun test` from the repo root runs API tests (Yahoo `parseResult` and HTTP handler validation, including a mocked upstream chart response) plus shared buy-at-date backtest tests and web chart helpers. `bun run lint` runs ESLint in `apps/web`.
 
 ## Typecheck
 
