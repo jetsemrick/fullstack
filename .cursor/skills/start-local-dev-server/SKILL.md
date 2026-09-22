@@ -1,6 +1,6 @@
 ---
 name: start-local-dev-server
-description: Starts local development servers for this monorepo using Bun and concurrently. Covers root `dev`, `dev:api`, `dev:web`, ports, and Vite proxy to the API. Use when starting the dev server, running locally, spinning up api/web together, mentioning localhost:5173 or :3001, or when verifying the Stock Visualizer app in the browser.
+description: Starts local development servers for this monorepo using Bun and concurrently. Covers root `dev`, `dev:api` (Go), `dev:web`, ports, and Vite proxy to the API. Use when starting the dev server, running locally, spinning up api/web together, mentioning localhost:5173 or :3001, or when verifying the Stock Visualizer app in the browser.
 disable-model-invocation: false
 ---
 
@@ -19,7 +19,7 @@ Run once after clone or dependency changes:
 bun install
 ```
 
-Requires **Bun** 1.3+ (`README.md`).
+Requires **Bun** 1.3+ and **Go** 1.22+ (`README.md`). The API process is `go run`.
 
 ## Commands (this repo)
 
@@ -29,12 +29,12 @@ Requires **Bun** 1.3+ (`README.md`).
 | API only | `bun run dev:api` |
 | Web only | `bun run dev:web` |
 
-From repo root (`package.json` uses `concurrently` to run `apps/api` and `apps/web`).
+From repo root (`package.json` uses `concurrently` to run `go run -C apps/api ./cmd/server` and `apps/web`).
 
 ### Ports and routing
 
 - **Web (Vite)**: default `http://localhost:5173`
-- **API (Bun)**: default `http://localhost:3001`
+- **API (Go)**: default `http://localhost:3001`
 - Vite proxies `/api/*` to the API—use same-origin `/api/...` from the browser.
 
 ### Optional env (API)
