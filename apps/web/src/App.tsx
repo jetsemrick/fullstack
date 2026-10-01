@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { filterSeriesByHorizon, seriesHasVolume } from "./priceChartData";
+import { dailyFetchRange, filterSeriesByHorizon, seriesHasVolume } from "./priceChartData";
 import { PriceChart, type ChartOverlays } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
@@ -88,7 +88,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const fetchRange = horizon.days > 1 ? "max" : horizon.range;
+    const fetchRange = dailyFetchRange(horizon.days, horizon.range);
     const cacheKey = priceCacheKey(ticker, fetchRange, horizon.interval);
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {

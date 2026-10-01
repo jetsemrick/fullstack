@@ -111,6 +111,16 @@ export function buildOverlayRows(data: GetPricesResponse): OverlayChartRow[] {
 }
 
 /**
+ * Yahoo coarsens `range=max` (often to quarterly), which is too sparse for 50/200-day
+ * SMAs. 1Y/5Y request 10y daily; Today and All Time keep their declared ranges.
+ */
+export function dailyFetchRange(horizonDays: number, declaredRange: string): string {
+  if (horizonDays <= 1) return declaredRange;
+  if (Number.isFinite(horizonDays)) return "10y";
+  return declaredRange;
+}
+
+/**
  * Keep bars whose Unix-second timestamp falls within `horizonDays` of the latest bar.
  * All Time (`Infinity`) is returned unchanged.
  */

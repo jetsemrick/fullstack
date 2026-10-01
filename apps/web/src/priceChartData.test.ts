@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildOverlayRows,
   buildPriceVolumeRows,
+  dailyFetchRange,
   downsampleRows,
   filterSeriesByHorizon,
   seriesHasVolume,
@@ -135,6 +136,18 @@ describe("filterSeriesByHorizon", () => {
   test("empty series is unchanged", () => {
     const data: GetPricesResponse = { ticker: "X", currency: "USD", lastPrice: null, series: [] };
     expect(filterSeriesByHorizon(data, 365)).toEqual(data);
+  });
+});
+
+describe("dailyFetchRange", () => {
+  test("1Y and 5Y request 10y daily so Yahoo does not coarsen the series", () => {
+    expect(dailyFetchRange(365, "1y")).toBe("10y");
+    expect(dailyFetchRange(1825, "5y")).toBe("10y");
+  });
+
+  test("Today and All Time keep their declared ranges", () => {
+    expect(dailyFetchRange(1, "1d")).toBe("1d");
+    expect(dailyFetchRange(Infinity, "max")).toBe("max");
   });
 });
 
