@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildOverlayRows,
   buildPriceVolumeRows,
   downsampleRows,
   filterSeriesByHorizon,
   seriesHasVolume,
+  simpleMovingAverage,
   formatVolumeAxis,
   formatVolumeTooltip,
 } from "./priceChartData";
@@ -133,5 +135,55 @@ describe("filterSeriesByHorizon", () => {
   test("empty series is unchanged", () => {
     const data: GetPricesResponse = { ticker: "X", currency: "USD", lastPrice: null, series: [] };
     expect(filterSeriesByHorizon(data, 365)).toEqual(data);
+  });
+});
+
+describe("simpleMovingAverage", () => {
+  test("first window-1 points are null, then the mean of each window", () => {
+    expect(simpleMovingAverage([1, 2, 3, 4, 5], 3)).toEqual([null, null, 2, 3, 4]);
+  });
+
+  test("series shorter than the window is all null", () => {
+    expect(simpleMovingAverage([10, 20, 30], 50)).toEqual([null, null, null]);
+    expect(simpleMovingAverage([1, 2], 200)).toEqual([null, null]);
+  });
+
+  test("window of 1 equals the input series", () => {
+    expect(simpleMovingAverage([4, 8, 15], 1)).toEqual([4, 8, 15]);
+  });
+
+  test("empty series stays empty", () => {
+    expect(simpleMovingAverage([], 50)).toEqual([]);
+  });
+
+  test("invalid windows yield nulls", () => {
+    expect(simpleMovingAverage([1, 2, 3], 0)).toEqual([null, null, null]);
+    expect(simpleMovingAverage([1, 2, 3], -5)).toEqual([null, null, null]);
+    expect(simpleMovingAverage([1, 2, 3], 2.5)).toEqual([null, null, null]);
+  });
+
+  test("a non-finite value nulls every window that includes it", () => {
+    expect(simpleMovingAverage([1, Number.NaN, 3], 2)).toEqual([null, null, null]);
+  });
+});
+
+describe("buildOverlayRows", () => {
+  test("reuses volume mapping and leaves SMA 50/200 null until the window fills", () => {
+    const series: PricePoint[] = Array.from({ length: 50 }, (_, i) => ({
+      timestamp: 1_800_000_000 + i * DAY,
+      close: 2,
+      volume: i === 0 ? 1_000 : null,
+    }));
+    const rows = buildOverlayRows({
+      ticker: "X",
+      currency: "USD",
+      lastPrice: 2,
+      series,
+    });
+    expect(rows).toHaveLength(50);
+    expect(rows[0]).toMatchObject({ volume: 1_000, volumeBar: 1_000, sma50: null, sma200: null });
+    expect(rows[48]?.sma50).toBeNull();
+    expect(rows[49]?.sma50).toBe(2);
+    expect(rows.every((row) => row.sma200 === null)).toBe(true);
   });
 });

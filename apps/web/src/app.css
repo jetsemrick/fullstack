@@ -1,3 +1,9 @@
+:root {
+  --sma-50: #3d6f8f;
+  --sma-200: #c17a2e;
+  --volume-bar: #9aa39a;
+}
+
 .shell {
   max-width: 1000px;
   margin: 0 auto;
@@ -315,11 +321,128 @@
   border: 0;
 }
 
+.toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
+  width: 100%;
+}
+
 .horizon-buttons {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.overlay-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.overlay-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-right: 0.15rem;
+}
+
+.overlay-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--fg-muted);
+  border-radius: 0;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.overlay-btn:hover:enabled {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+.overlay-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.overlay-btn--sma50.active {
+  color: var(--sma-50);
+  border-color: color-mix(in srgb, var(--sma-50) 45%, var(--card-border));
+  background: color-mix(in srgb, var(--sma-50) 12%, var(--card));
+}
+
+.overlay-btn--sma200.active {
+  color: var(--sma-200);
+  border-color: color-mix(in srgb, var(--sma-200) 45%, var(--card-border));
+  background: color-mix(in srgb, var(--sma-200) 12%, var(--card));
+}
+
+.overlay-btn--volume.active {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--volume-bar) 55%, var(--card-border));
+  background: color-mix(in srgb, var(--volume-bar) 18%, var(--card));
+}
+
+.overlay-legend {
+  padding: 0 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.overlay-legend p {
+  margin: 0;
+}
+
+.overlay-legend strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.chart-tooltip {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chart-tooltip__when {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+
+.chart-tooltip__sma50 {
+  color: var(--sma-50);
+}
+
+.chart-tooltip__sma200 {
+  color: var(--sma-200);
+}
+
+.chart-tooltip__volume {
+  color: var(--fg-muted);
 }
 
 .horizon-btn {

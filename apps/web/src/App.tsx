@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { filterSeriesByHorizon } from "./priceChartData";
-import { PriceChart } from "./PriceChart";
+import { filterSeriesByHorizon, seriesHasVolume } from "./priceChartData";
+import { PriceChart, type ChartOverlays } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -36,7 +36,32 @@ const HORIZONS = [
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
+const OVERLAY_STORAGE_KEY = "stock-visualizer.overlays";
+const DEFAULT_OVERLAYS: ChartOverlays = { sma50: false, sma200: false, volume: false };
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
+
+function readOverlayToggles(): ChartOverlays {
+  try {
+    const raw = localStorage.getItem(OVERLAY_STORAGE_KEY);
+    if (!raw) return DEFAULT_OVERLAYS;
+    const parsed = JSON.parse(raw) as Partial<ChartOverlays>;
+    return {
+      sma50: parsed.sma50 === true,
+      sma200: parsed.sma200 === true,
+      volume: parsed.volume === true,
+    };
+  } catch {
+    return DEFAULT_OVERLAYS;
+  }
+}
+
+function writeOverlayToggles(next: ChartOverlays) {
+  try {
+    localStorage.setItem(OVERLAY_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // private mode / quota — toggles still work for the session
+  }
+}
 
 function priceCacheKey(ticker: string, range: string, interval: string): string {
   return `${ticker}:${range}:${interval}`;
@@ -51,7 +76,12 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [overlays, setOverlays] = useState<ChartOverlays>(readOverlayToggles);
   const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    writeOverlayToggles(overlays);
+  }, [overlays]);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -109,6 +139,13 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
+  const isDailyHorizon = horizonIndex !== 0;
+  const hasVolume = Boolean(data && seriesHasVolume(data.series));
+  const anyOverlayOn = Boolean(overlays.sma50 || overlays.sma200 || overlays.volume);
+
+  function toggleOverlay(key: keyof ChartOverlays) {
+    setOverlays((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -180,16 +217,49 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
+                  <div className="toolbar-controls">
+                    <div className="horizon-buttons">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    {isDailyHorizon ? (
+                      <div className="overlay-toggles" role="group" aria-label="Chart overlays">
+                        <span className="overlay-label">Overlays</span>
+                        <button
+                          type="button"
+                          className={`overlay-btn overlay-btn--sma50 ${overlays.sma50 ? "active" : ""}`}
+                          aria-pressed={Boolean(overlays.sma50)}
+                          onClick={() => toggleOverlay("sma50")}
+                        >
+                          SMA 50
+                        </button>
+                        <button
+                          type="button"
+                          className={`overlay-btn overlay-btn--sma200 ${overlays.sma200 ? "active" : ""}`}
+                          aria-pressed={Boolean(overlays.sma200)}
+                          onClick={() => toggleOverlay("sma200")}
+                        >
+                          SMA 200
+                        </button>
+                        <button
+                          type="button"
+                          className={`overlay-btn overlay-btn--volume ${overlays.volume ? "active" : ""}`}
+                          aria-pressed={Boolean(overlays.volume)}
+                          aria-disabled={!hasVolume}
+                          disabled={!hasVolume}
+                          onClick={() => toggleOverlay("volume")}
+                        >
+                          Volume
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -199,9 +269,38 @@ export default function App() {
               >
                 <PriceChart
                   data={displayData}
+                  overlaySource={isDailyHorizon ? data : undefined}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  overlays={overlays}
                 />
               </div>
+              {isDailyHorizon && anyOverlayOn ? (
+                <aside className="overlay-legend" aria-label="Overlay legend">
+                  {overlays.sma50 ? (
+                    <p>
+                      <strong>SMA 50</strong> is the average closing price over the last 50 trading days.
+                      It tracks the medium-term trend.
+                    </p>
+                  ) : null}
+                  {overlays.sma200 ? (
+                    <p>
+                      <strong>SMA 200</strong> is the average close over the last 200 trading days.
+                      Price staying above this line is often read as a long-term uptrend.
+                    </p>
+                  ) : null}
+                  {overlays.volume ? (
+                    <p>
+                      <strong>Volume</strong> is how many shares traded that day. Heavier volume can
+                      confirm that a price move has conviction behind it.
+                    </p>
+                  ) : null}
+                  <p>
+                    A <strong>golden cross</strong> is the 50-day average crossing above the 200-day
+                    average (often treated as bullish). A <strong>death cross</strong> is the 50-day
+                    crossing below the 200-day (often treated as bearish).
+                  </p>
+                </aside>
+              ) : null}
               {loading && (
                 <div className="chart-loading-overlay" role="status">
                   Loading latest data...

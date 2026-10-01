@@ -16,6 +16,11 @@ export type ChartRow = {
   price: number;
 };
 
+export type OverlayChartRow = PriceVolumeRow & {
+  sma50: number | null;
+  sma200: number | null;
+};
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
@@ -29,10 +34,10 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
   }));
 }
 
-export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
+export function downsampleRows<T extends ChartRow>(rows: T[], maxRows: number): T[] {
   if (rows.length <= maxRows) return rows;
 
-  const result: ChartRow[] = [rows[0]!];
+  const result: T[] = [rows[0]!];
   const bucketCount = maxRows - 2;
   const bucketSize = (rows.length - 2) / bucketCount;
 
@@ -73,6 +78,36 @@ export function formatVolumeAxis(n: number): string {
 export function formatVolumeTooltip(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+/** Simple moving average; the first `window - 1` values (and any incomplete window) are null. */
+export function simpleMovingAverage(values: readonly number[], window: number): Array<number | null> {
+  if (!Number.isInteger(window) || window < 1) {
+    return values.map(() => null);
+  }
+  return values.map((_, index) => {
+    if (index < window - 1) return null;
+    let sum = 0;
+    for (let i = index - window + 1; i <= index; i++) {
+      const value = values[i];
+      if (value == null || !Number.isFinite(value)) return null;
+      sum += value;
+    }
+    return sum / window;
+  });
+}
+
+/** Attach volume helpers and 50/200-day SMAs computed on the full close series. */
+export function buildOverlayRows(data: GetPricesResponse): OverlayChartRow[] {
+  const rows = buildPriceVolumeRows(data);
+  const closes = data.series.map((p) => p.close);
+  const sma50 = simpleMovingAverage(closes, 50);
+  const sma200 = simpleMovingAverage(closes, 200);
+  return rows.map((row, i) => ({
+    ...row,
+    sma50: sma50[i] ?? null,
+    sma200: sma200[i] ?? null,
+  }));
 }
 
 /**

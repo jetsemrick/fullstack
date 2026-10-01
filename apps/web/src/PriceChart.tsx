@@ -1,7 +1,9 @@
 import {
   Area,
+  Bar,
   CartesianGrid,
   ComposedChart,
+  Line,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
@@ -11,15 +13,16 @@ import {
 import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import {
+  buildOverlayRows,
+  buildPriceVolumeRows,
+  downsampleRows,
+  formatVolumeTooltip,
+  type OverlayChartRow,
+  type PriceVolumeRow,
+} from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
-
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -61,11 +64,92 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function sliceRowsToSeries<T extends { t: number }>(rows: T[], data: GetPricesResponse): T[] {
+  const start = data.series[0]?.timestamp;
+  const end = data.series[data.series.length - 1]?.timestamp;
+  if (start == null || end == null) return rows;
+  const startMs = start * 1000;
+  const endMs = end * 1000;
+  return rows.filter((row) => row.t >= startMs && row.t <= endMs);
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export type ChartOverlays = {
+  sma50?: boolean;
+  sma200?: boolean;
+  volume?: boolean;
+};
+
+type ChartPoint = OverlayChartRow | PriceVolumeRow;
+
+function ChartTooltip({
+  active,
+  payload,
+  variant,
+  spanDays,
+  showSma50,
+  showSma200,
+  showVolume,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{ payload?: ChartPoint }>;
+  variant: PriceChartVariant;
+  spanDays: number;
+  showSma50: boolean;
+  showSma200: boolean;
+  showVolume: boolean;
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  if (!row) return null;
+  const smaRow = row as OverlayChartRow;
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip__when">{formatTooltipWhen(row.t, variant, spanDays)}</div>
+      <div>Close {formatPrice(row.price)}</div>
+      {showSma50 ? (
+        <div className="chart-tooltip__sma50">
+          SMA 50 {smaRow.sma50 == null ? "—" : formatPrice(smaRow.sma50)}
+        </div>
+      ) : null}
+      {showSma200 ? (
+        <div className="chart-tooltip__sma200">
+          SMA 200 {smaRow.sma200 == null ? "—" : formatPrice(smaRow.sma200)}
+        </div>
+      ) : null}
+      {showVolume ? <div className="chart-tooltip__volume">Volume {formatVolumeTooltip(row.volume)}</div> : null}
+    </div>
+  );
+}
+
+export function PriceChart({
+  data,
+  overlaySource,
+  variant = "daily",
+  overlays,
+}: {
+  data: GetPricesResponse;
+  /** Full daily series used to compute SMAs before the visible window is sliced. */
+  overlaySource?: GetPricesResponse;
+  variant?: PriceChartVariant;
+  overlays?: ChartOverlays;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
-  const fullRows = useMemo(() => chartData(data), [data]);
+  const showSma50 = variant === "daily" && Boolean(overlays?.sma50);
+  const showSma200 = variant === "daily" && Boolean(overlays?.sma200);
+  const showVolume = variant === "daily" && Boolean(overlays?.volume);
+
+  const fullRows = useMemo(() => {
+    const source = overlaySource ?? data;
+    if (variant === "intraday") {
+      const rows = buildPriceVolumeRows(source);
+      return source === data ? rows : sliceRowsToSeries(rows, data);
+    }
+    const rows = buildOverlayRows(source);
+    return source === data ? rows : sliceRowsToSeries(rows, data);
+  }, [data, overlaySource, variant]);
+
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
@@ -98,6 +182,14 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
+
+  const volumeCeiling = useMemo(() => {
+    let max = 0;
+    for (const row of rows) {
+      if (row.volumeBar > max) max = row.volumeBar;
+    }
+    return max > 0 ? max * 4 : 1;
+  }, [rows]);
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
@@ -146,6 +238,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dy={10}
           />
           <YAxis
+            yAxisId="price"
             dataKey="price"
             domain={["auto", "auto"]}
             width={60}
@@ -155,25 +248,34 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             tickFormatter={(v: number) => formatPrice(v)}
             dx={-10}
           />
+          {showVolume ? (
+            <YAxis yAxisId="volume" orientation="right" domain={[0, volumeCeiling]} hide width={0} />
+          ) : null}
           <Tooltip
-            contentStyle={{
-              background: "var(--card)",
-              border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
-              color: "var(--fg)",
-              boxShadow: "var(--shadow)",
-              padding: "12px",
-            }}
-            labelFormatter={(_, payload) => {
-              const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
-              }
-              return "";
-            }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            content={(props) => (
+              <ChartTooltip
+                active={props.active}
+                payload={props.payload as ReadonlyArray<{ payload?: ChartPoint }> | undefined}
+                variant={variant}
+                spanDays={spanDays}
+                showSma50={showSma50}
+                showSma200={showSma200}
+                showVolume={showVolume}
+              />
+            )}
           />
+          {showVolume ? (
+            <Bar
+              yAxisId="volume"
+              dataKey="volumeBar"
+              name="Volume"
+              fill="var(--volume-bar)"
+              fillOpacity={0.45}
+              isAnimationActive={false}
+            />
+          ) : null}
           <Area
+            yAxisId="price"
             type="linear"
             dataKey="price"
             stroke="var(--accent)"
@@ -184,6 +286,32 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
+          {showSma50 ? (
+            <Line
+              yAxisId="price"
+              type="linear"
+              dataKey="sma50"
+              name="SMA 50"
+              stroke="var(--sma-50)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          ) : null}
+          {showSma200 ? (
+            <Line
+              yAxisId="price"
+              type="linear"
+              dataKey="sma200"
+              name="SMA 200"
+              stroke="var(--sma-200)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          ) : null}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
