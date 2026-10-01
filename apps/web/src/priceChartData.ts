@@ -80,6 +80,19 @@ export function formatVolumeTooltip(v: number | null): string {
   return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
+export const OVERLAY_LEGEND = {
+  sma50: "SMA 50: average closing price over the last 50 trading days. Tracks the medium-term trend.",
+  sma200: "SMA 200: average closing price over the last 200 trading days. Price above it is often read as a long-term uptrend.",
+  volume: "Volume: shares traded each day. Heavy volume can confirm a move.",
+  crosses:
+    "Golden cross: SMA 50 crosses above SMA 200, often read as bullish. Death cross: SMA 50 crosses below SMA 200, often read as bearish.",
+} as const;
+
+/** Golden/death-cross copy is only relevant when both averages are visible. */
+export function shouldShowCrossNote(overlays: { sma50?: boolean; sma200?: boolean }): boolean {
+  return overlays.sma50 === true && overlays.sma200 === true;
+}
+
 /** Simple moving average; the first `window - 1` values (and any incomplete window) are null. */
 export function simpleMovingAverage(values: readonly number[], window: number): Array<number | null> {
   if (!Number.isInteger(window) || window < 1) {

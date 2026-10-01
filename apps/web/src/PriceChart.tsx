@@ -17,6 +17,7 @@ import {
   buildOverlayRows,
   buildPriceVolumeRows,
   downsampleRows,
+  formatVolumeAxis,
   formatVolumeTooltip,
   type OverlayChartRow,
   type PriceVolumeRow,
@@ -183,137 +184,188 @@ export function PriceChart({
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
-  const volumeCeiling = useMemo(() => {
+  const maxVolume = useMemo(() => {
     let max = 0;
     for (const row of rows) {
       if (row.volumeBar > max) max = row.volumeBar;
     }
-    return max > 0 ? max * 4 : 1;
+    return max;
   }, [rows]);
+  const volumeDomainMax = maxVolume > 0 ? maxVolume : 1;
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const chartMargin = { top: 10, right: 36, left: 0, bottom: 0 };
+  const xAxis = (
+    <XAxis
+      dataKey="t"
+      type="number"
+      domain={xDomain}
+      scale="time"
+      ticks={variant === "intraday" ? intradayTicks : undefined}
+      tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+      tickLine={false}
+      axisLine={false}
+      tickFormatter={tickFormatter}
+      minTickGap={variant === "intraday" ? 0 : 32}
+      dy={10}
+    />
+  );
+
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
-          {variant === "intraday" && sessionLayout ? (
-            <>
-              <ReferenceArea
-                x1={sessionLayout.preMarket[0]}
-                x2={sessionLayout.preMarket[1]}
-                fill="var(--fg-muted)"
-                fillOpacity={0.08}
-                strokeOpacity={0}
-                ifOverflow="hidden"
-              />
-              <ReferenceArea
-                x1={sessionLayout.afterHours[0]}
-                x2={sessionLayout.afterHours[1]}
-                fill="var(--fg-muted)"
-                fillOpacity={0.08}
-                strokeOpacity={0}
-                ifOverflow="hidden"
-              />
-            </>
-          ) : null}
-          <XAxis
-            dataKey="t"
-            type="number"
-            domain={xDomain}
-            scale="time"
-            ticks={variant === "intraday" ? intradayTicks : undefined}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={tickFormatter}
-            minTickGap={variant === "intraday" ? 0 : 32}
-            dy={10}
-          />
-          <YAxis
-            yAxisId="price"
-            dataKey="price"
-            domain={["auto", "auto"]}
-            width={60}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
-            dx={-10}
-          />
-          {showVolume ? (
-            <YAxis yAxisId="volume" orientation="right" domain={[0, volumeCeiling]} hide width={0} />
-          ) : null}
-          <Tooltip
-            content={(props) => (
-              <ChartTooltip
-                active={props.active}
-                payload={props.payload as ReadonlyArray<{ payload?: ChartPoint }> | undefined}
-                variant={variant}
-                spanDays={spanDays}
-                showSma50={showSma50}
-                showSma200={showSma200}
-                showVolume={showVolume}
-              />
+    <div
+      className={`price-chart${showVolume ? " price-chart--with-volume" : ""}`}
+      role="img"
+      aria-label="Price over time line chart"
+    >
+      <div className="price-chart__price">
+        <ResponsiveContainer width="100%" height="100%" minHeight={showVolume ? 240 : 320}>
+          <ComposedChart syncId="stock-chart" data={rows} margin={chartMargin}>
+            <defs>
+              <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+            {variant === "intraday" && sessionLayout ? (
+              <>
+                <ReferenceArea
+                  x1={sessionLayout.preMarket[0]}
+                  x2={sessionLayout.preMarket[1]}
+                  fill="var(--fg-muted)"
+                  fillOpacity={0.08}
+                  strokeOpacity={0}
+                  ifOverflow="hidden"
+                />
+                <ReferenceArea
+                  x1={sessionLayout.afterHours[0]}
+                  x2={sessionLayout.afterHours[1]}
+                  fill="var(--fg-muted)"
+                  fillOpacity={0.08}
+                  strokeOpacity={0}
+                  ifOverflow="hidden"
+                />
+              </>
+            ) : null}
+            {showVolume ? (
+              <XAxis dataKey="t" type="number" domain={xDomain} scale="time" hide />
+            ) : (
+              xAxis
             )}
-          />
-          {showVolume ? (
-            <Bar
-              yAxisId="volume"
-              dataKey="volumeBar"
-              name="Volume"
-              fill="var(--volume-bar)"
-              fillOpacity={0.45}
-              isAnimationActive={false}
+            <YAxis
+              yAxisId="price"
+              dataKey="price"
+              domain={["auto", "auto"]}
+              width={60}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatPrice(v)}
+              dx={-10}
             />
-          ) : null}
-          <Area
-            yAxisId="price"
-            type="linear"
-            dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
-            fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
-            dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
-            isAnimationActive={false}
-          />
-          {showSma50 ? (
-            <Line
+            <Tooltip
+              content={(props) => (
+                <ChartTooltip
+                  active={props.active}
+                  payload={props.payload as ReadonlyArray<{ payload?: ChartPoint }> | undefined}
+                  variant={variant}
+                  spanDays={spanDays}
+                  showSma50={showSma50}
+                  showSma200={showSma200}
+                  showVolume={false}
+                />
+              )}
+            />
+            <Area
               yAxisId="price"
               type="linear"
-              dataKey="sma50"
-              name="SMA 50"
-              stroke="var(--sma-50)"
-              strokeWidth={2}
+              dataKey="price"
+              stroke="var(--accent)"
+              strokeWidth={3}
+              fill={`url(#${fillGradientId})`}
+              baseValue="dataMin"
               dot={false}
-              connectNulls={false}
+              activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
               isAnimationActive={false}
             />
-          ) : null}
-          {showSma200 ? (
-            <Line
-              yAxisId="price"
-              type="linear"
-              dataKey="sma200"
-              name="SMA 200"
-              stroke="var(--sma-200)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-          ) : null}
-        </ComposedChart>
-      </ResponsiveContainer>
+            {showSma50 ? (
+              <Line
+                yAxisId="price"
+                type="linear"
+                dataKey="sma50"
+                name="SMA 50"
+                stroke="var(--sma-50)"
+                strokeWidth={1.5}
+                strokeOpacity={0.85}
+                dot={false}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            ) : null}
+            {showSma200 ? (
+              <Line
+                yAxisId="price"
+                type="linear"
+                dataKey="sma200"
+                name="SMA 200"
+                stroke="var(--sma-200)"
+                strokeWidth={1.5}
+                strokeOpacity={0.85}
+                dot={false}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            ) : null}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      {showVolume ? (
+        <>
+          <div className="price-chart__gap" aria-hidden="true" />
+          <div className="price-chart__volume">
+            <div className="price-chart__volume-max">{formatVolumeAxis(maxVolume)}</div>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart syncId="stock-chart" data={rows} margin={{ ...chartMargin, top: 4 }}>
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={xDomain}
+                  scale="time"
+                  tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={tickFormatter}
+                  minTickGap={32}
+                  dy={10}
+                />
+                <YAxis yAxisId="volume" domain={[0, volumeDomainMax]} width={60} hide />
+                <Tooltip
+                  content={(props) => (
+                    <ChartTooltip
+                      active={props.active}
+                      payload={props.payload as ReadonlyArray<{ payload?: ChartPoint }> | undefined}
+                      variant={variant}
+                      spanDays={spanDays}
+                      showSma50={false}
+                      showSma200={false}
+                      showVolume
+                    />
+                  )}
+                />
+                <Bar
+                  yAxisId="volume"
+                  dataKey="volumeBar"
+                  name="Volume"
+                  fill="var(--volume-bar)"
+                  fillOpacity={0.72}
+                  isAnimationActive={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

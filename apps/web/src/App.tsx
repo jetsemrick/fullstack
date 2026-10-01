@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { dailyFetchRange, filterSeriesByHorizon, seriesHasVolume } from "./priceChartData";
+import {
+  dailyFetchRange,
+  filterSeriesByHorizon,
+  OVERLAY_LEGEND,
+  seriesHasVolume,
+  shouldShowCrossNote,
+} from "./priceChartData";
 import { PriceChart, type ChartOverlays } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
@@ -230,41 +236,47 @@ export default function App() {
                       ))}
                     </div>
                     {isDailyHorizon ? (
-                      <div className="overlay-toggles" role="group" aria-label="Chart overlays">
-                        <span className="overlay-label">Overlays</span>
-                        <button
-                          type="button"
-                          className={`overlay-btn overlay-btn--sma50 ${overlays.sma50 ? "active" : ""}`}
-                          aria-pressed={Boolean(overlays.sma50)}
-                          onClick={() => toggleOverlay("sma50")}
-                        >
-                          SMA 50
-                        </button>
-                        <button
-                          type="button"
-                          className={`overlay-btn overlay-btn--sma200 ${overlays.sma200 ? "active" : ""}`}
-                          aria-pressed={Boolean(overlays.sma200)}
-                          onClick={() => toggleOverlay("sma200")}
-                        >
-                          SMA 200
-                        </button>
-                        <button
-                          type="button"
-                          className={`overlay-btn overlay-btn--volume ${overlays.volume ? "active" : ""}`}
-                          aria-pressed={Boolean(overlays.volume)}
-                          aria-disabled={!hasVolume}
-                          disabled={!hasVolume}
-                          onClick={() => toggleOverlay("volume")}
-                        >
-                          Volume
-                        </button>
-                      </div>
+                      <>
+                        <span className="toolbar-divider" aria-hidden="true" />
+                        <div className="overlay-toggles" role="group" aria-label="Chart overlays">
+                          <span className="overlay-label">Overlays</span>
+                          <button
+                            type="button"
+                            className={`overlay-btn overlay-btn--sma50 ${overlays.sma50 ? "active" : ""}`}
+                            aria-pressed={Boolean(overlays.sma50)}
+                            onClick={() => toggleOverlay("sma50")}
+                          >
+                            <span className="overlay-swatch overlay-swatch--line" aria-hidden="true" />
+                            SMA 50
+                          </button>
+                          <button
+                            type="button"
+                            className={`overlay-btn overlay-btn--sma200 ${overlays.sma200 ? "active" : ""}`}
+                            aria-pressed={Boolean(overlays.sma200)}
+                            onClick={() => toggleOverlay("sma200")}
+                          >
+                            <span className="overlay-swatch overlay-swatch--line" aria-hidden="true" />
+                            SMA 200
+                          </button>
+                          <button
+                            type="button"
+                            className={`overlay-btn overlay-btn--volume ${overlays.volume ? "active" : ""}`}
+                            aria-pressed={Boolean(overlays.volume)}
+                            aria-disabled={!hasVolume}
+                            disabled={!hasVolume}
+                            onClick={() => toggleOverlay("volume")}
+                          >
+                            <span className="overlay-swatch overlay-swatch--bar" aria-hidden="true" />
+                            Volume
+                          </button>
+                        </div>
+                      </>
                     ) : null}
                   </div>
                 </div>
               </div>
               <div
-                className="chart-container"
+                className={`chart-container${overlays.volume ? " chart-container--with-volume" : ""}`}
                 aria-label="Price chart"
               >
                 <PriceChart
@@ -278,27 +290,42 @@ export default function App() {
                 <aside className="overlay-legend" aria-label="Overlay legend">
                   {overlays.sma50 ? (
                     <p>
-                      <strong>SMA 50</strong> is the average closing price over the last 50 trading days.
-                      It tracks the medium-term trend.
+                      <span className="legend-swatch legend-swatch--line legend-swatch--sma50" aria-hidden="true" />
+                      <span>
+                        <strong>SMA 50:</strong>
+                        {OVERLAY_LEGEND.sma50.slice("SMA 50:".length)}
+                      </span>
                     </p>
                   ) : null}
                   {overlays.sma200 ? (
                     <p>
-                      <strong>SMA 200</strong> is the average close over the last 200 trading days.
-                      Price staying above this line is often read as a long-term uptrend.
+                      <span className="legend-swatch legend-swatch--line legend-swatch--sma200" aria-hidden="true" />
+                      <span>
+                        <strong>SMA 200:</strong>
+                        {OVERLAY_LEGEND.sma200.slice("SMA 200:".length)}
+                      </span>
                     </p>
                   ) : null}
                   {overlays.volume ? (
                     <p>
-                      <strong>Volume</strong> is how many shares traded that day. Heavier volume can
-                      confirm that a price move has conviction behind it.
+                      <span className="legend-swatch legend-swatch--bar" aria-hidden="true" />
+                      <span>
+                        <strong>Volume:</strong>
+                        {OVERLAY_LEGEND.volume.slice("Volume:".length)}
+                      </span>
                     </p>
                   ) : null}
-                  <p>
-                    A <strong>golden cross</strong> is the 50-day average crossing above the 200-day
-                    average (often treated as bullish). A <strong>death cross</strong> is the 50-day
-                    crossing below the 200-day (often treated as bearish).
-                  </p>
+                  {shouldShowCrossNote(overlays) ? (
+                    <p>
+                      <span className="legend-swatch legend-swatch--cross" aria-hidden="true" />
+                      <span>
+                        <strong>Golden cross:</strong>
+                        {OVERLAY_LEGEND.crosses.slice("Golden cross:".length, OVERLAY_LEGEND.crosses.indexOf("Death cross:"))}
+                        <strong>Death cross:</strong>
+                        {OVERLAY_LEGEND.crosses.slice(OVERLAY_LEGEND.crosses.indexOf("Death cross:") + "Death cross:".length)}
+                      </span>
+                    </p>
+                  ) : null}
                 </aside>
               ) : null}
               {loading && (

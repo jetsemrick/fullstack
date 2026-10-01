@@ -5,7 +5,9 @@ import {
   dailyFetchRange,
   downsampleRows,
   filterSeriesByHorizon,
+  OVERLAY_LEGEND,
   seriesHasVolume,
+  shouldShowCrossNote,
   simpleMovingAverage,
   formatVolumeAxis,
   formatVolumeTooltip,
@@ -148,6 +150,34 @@ describe("dailyFetchRange", () => {
   test("Today and All Time keep their declared ranges", () => {
     expect(dailyFetchRange(1, "1d")).toBe("1d");
     expect(dailyFetchRange(Infinity, "max")).toBe("max");
+  });
+});
+
+describe("shouldShowCrossNote", () => {
+  test("only when both SMA 50 and SMA 200 are on", () => {
+    expect(shouldShowCrossNote({ sma50: true, sma200: true })).toBe(true);
+    expect(shouldShowCrossNote({ sma50: true, sma200: true, volume: true })).toBe(true);
+    expect(shouldShowCrossNote({ sma50: true, sma200: false, volume: true })).toBe(false);
+    expect(shouldShowCrossNote({ sma50: false, sma200: true })).toBe(false);
+    expect(shouldShowCrossNote({ volume: true })).toBe(false);
+    expect(shouldShowCrossNote({})).toBe(false);
+  });
+});
+
+describe("OVERLAY_LEGEND", () => {
+  test("uses the approved plain-language copy", () => {
+    expect(OVERLAY_LEGEND.sma50).toBe(
+      "SMA 50: average closing price over the last 50 trading days. Tracks the medium-term trend.",
+    );
+    expect(OVERLAY_LEGEND.sma200).toBe(
+      "SMA 200: average closing price over the last 200 trading days. Price above it is often read as a long-term uptrend.",
+    );
+    expect(OVERLAY_LEGEND.volume).toBe(
+      "Volume: shares traded each day. Heavy volume can confirm a move.",
+    );
+    expect(OVERLAY_LEGEND.crosses).toBe(
+      "Golden cross: SMA 50 crosses above SMA 200, often read as bullish. Death cross: SMA 50 crosses below SMA 200, often read as bearish.",
+    );
   });
 });
 

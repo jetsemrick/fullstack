@@ -1,7 +1,7 @@
 :root {
-  --sma-50: #3d6f8f;
-  --sma-200: #c17a2e;
-  --volume-bar: #9aa39a;
+  --sma-50: #3f5f6b;
+  --sma-200: #a8742f;
+  --volume-bar: #6a7d6c;
 }
 
 .shell {
@@ -263,6 +263,50 @@
   width: 100%;
 }
 
+.chart-container--with-volume {
+  height: 520px;
+}
+
+.price-chart {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+}
+
+.price-chart__price {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.price-chart--with-volume .price-chart__price {
+  flex: 1 1 78%;
+}
+
+.price-chart__gap {
+  flex: 0 0 0.55rem;
+}
+
+.price-chart__volume {
+  flex: 0 0 20%;
+  min-height: 72px;
+  position: relative;
+}
+
+.price-chart__volume-max {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  z-index: 1;
+  width: 36px;
+  text-align: right;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  line-height: 1;
+}
+
 .chart-loading-overlay {
   position: absolute;
   right: 1.5rem;
@@ -325,7 +369,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.65rem 1.25rem;
+  gap: 0.75rem 1.5rem;
   width: 100%;
 }
 
@@ -334,6 +378,13 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.35rem;
+  background: var(--card-border);
 }
 
 .overlay-toggles {
@@ -353,6 +404,9 @@
 }
 
 .overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   background: transparent;
   border: 1px solid var(--card-border);
   color: var(--fg-muted);
@@ -376,22 +430,39 @@
   cursor: not-allowed;
 }
 
-.overlay-btn--sma50.active {
-  color: var(--sma-50);
-  border-color: color-mix(in srgb, var(--sma-50) 45%, var(--card-border));
-  background: color-mix(in srgb, var(--sma-50) 12%, var(--card));
+.overlay-btn.active {
+  color: var(--overlay-active);
+  border-color: color-mix(in srgb, var(--overlay-active) 45%, var(--card-border));
+  background: color-mix(in srgb, var(--overlay-active) 12%, var(--card));
 }
 
-.overlay-btn--sma200.active {
-  color: var(--sma-200);
-  border-color: color-mix(in srgb, var(--sma-200) 45%, var(--card-border));
-  background: color-mix(in srgb, var(--sma-200) 12%, var(--card));
+.overlay-btn--sma50 {
+  --overlay-active: var(--sma-50);
 }
 
-.overlay-btn--volume.active {
-  color: var(--fg);
-  border-color: color-mix(in srgb, var(--volume-bar) 55%, var(--card-border));
-  background: color-mix(in srgb, var(--volume-bar) 18%, var(--card));
+.overlay-btn--sma200 {
+  --overlay-active: var(--sma-200);
+}
+
+.overlay-btn--volume {
+  --overlay-active: var(--volume-bar);
+}
+
+.overlay-swatch {
+  flex: 0 0 auto;
+}
+
+.overlay-swatch--line {
+  width: 0.9rem;
+  height: 1.5px;
+  background: var(--overlay-active, var(--fg-muted));
+  opacity: 0.85;
+}
+
+.overlay-swatch--bar {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--overlay-active, var(--volume-bar));
 }
 
 .overlay-legend {
@@ -406,11 +477,52 @@
 
 .overlay-legend p {
   margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
 }
 
 .overlay-legend strong {
   color: var(--fg);
   font-weight: 600;
+}
+
+.legend-swatch {
+  flex: 0 0 auto;
+  margin-top: 0.45em;
+}
+
+.legend-swatch--line {
+  width: 0.9rem;
+  height: 1.5px;
+}
+
+.legend-swatch--sma50 {
+  background: var(--sma-50);
+  opacity: 0.85;
+}
+
+.legend-swatch--sma200 {
+  background: var(--sma-200);
+  opacity: 0.85;
+}
+
+.legend-swatch--bar {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.28em;
+  background: var(--volume-bar);
+}
+
+.legend-swatch--cross {
+  display: inline-flex;
+  width: 0.9rem;
+  height: 0.55rem;
+  margin-top: 0.3em;
+  background:
+    linear-gradient(var(--sma-50), var(--sma-50)) 0 20% / 100% 1.5px no-repeat,
+    linear-gradient(var(--sma-200), var(--sma-200)) 0 80% / 100% 1.5px no-repeat;
+  opacity: 0.85;
 }
 
 .chart-tooltip {
