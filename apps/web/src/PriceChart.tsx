@@ -16,6 +16,7 @@ import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket"
 import {
   buildOverlayRows,
   buildPriceVolumeRows,
+  calendarAxisTicks,
   downsampleRows,
   formatVolumeAxis,
   formatVolumeTooltip,
@@ -181,8 +182,14 @@ export function PriceChart({
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
+    if (rows.length > 0) return [rows[0].t, rows[rows.length - 1].t];
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
+
+  const dailyTicks = useMemo(() => {
+    if (variant !== "daily" || rows.length < 2) return undefined;
+    return calendarAxisTicks(rows[0]!.t, rows[rows.length - 1]!.t);
+  }, [variant, rows]);
 
   const maxVolume = useMemo(() => {
     let max = 0;
@@ -195,19 +202,19 @@ export function PriceChart({
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
-  const chartMargin = { top: 10, right: 36, left: 0, bottom: 0 };
+  const chartMargin = { top: 10, right: 36, left: 0, bottom: showVolume ? 18 : 0 };
   const xAxis = (
     <XAxis
       dataKey="t"
       type="number"
       domain={xDomain}
       scale="time"
-      ticks={variant === "intraday" ? intradayTicks : undefined}
+      ticks={variant === "intraday" ? intradayTicks : dailyTicks}
       tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
       tickLine={false}
       axisLine={false}
       tickFormatter={tickFormatter}
-      minTickGap={variant === "intraday" ? 0 : 32}
+      minTickGap={variant === "intraday" ? 0 : 24}
       dy={10}
     />
   );
@@ -249,7 +256,7 @@ export function PriceChart({
               </>
             ) : null}
             {showVolume ? (
-              <XAxis dataKey="t" type="number" domain={xDomain} scale="time" hide />
+              <XAxis dataKey="t" type="number" domain={xDomain} scale="time" ticks={dailyTicks} hide />
             ) : (
               xAxis
             )}
@@ -257,6 +264,7 @@ export function PriceChart({
               yAxisId="price"
               dataKey="price"
               domain={["auto", "auto"]}
+              interval="preserveStartEnd"
               width={60}
               tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
               tickLine={false}
@@ -332,11 +340,12 @@ export function PriceChart({
                   type="number"
                   domain={xDomain}
                   scale="time"
+                  ticks={dailyTicks}
                   tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={tickFormatter}
-                  minTickGap={32}
+                  minTickGap={24}
                   dy={10}
                 />
                 <YAxis yAxisId="volume" domain={[0, volumeDomainMax]} width={60} hide />

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildOverlayRows,
   buildPriceVolumeRows,
+  calendarAxisTicks,
   dailyFetchRange,
   downsampleRows,
   filterSeriesByHorizon,
@@ -150,6 +151,59 @@ describe("dailyFetchRange", () => {
   test("Today and All Time keep their declared ranges", () => {
     expect(dailyFetchRange(1, "1d")).toBe("1d");
     expect(dailyFetchRange(Infinity, "max")).toBe("max");
+  });
+});
+
+describe("calendarAxisTicks", () => {
+  const stamp = (year: number, monthIndex: number, day = 1) => new Date(year, monthIndex, day).getTime();
+  const labels = (ticks: number[]) =>
+    ticks.map((t) => {
+      const d = new Date(t);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    });
+
+  test("5Y uses even 6-month Jan/Jul marks", () => {
+    expect(labels(calendarAxisTicks(stamp(2021, 9, 1), stamp(2026, 8, 30)))).toEqual([
+      "2022-01",
+      "2022-07",
+      "2023-01",
+      "2023-07",
+      "2024-01",
+      "2024-07",
+      "2025-01",
+      "2025-07",
+      "2026-01",
+      "2026-07",
+    ]);
+  });
+
+  test("1Y uses even 2-month marks", () => {
+    expect(labels(calendarAxisTicks(stamp(2025, 9, 1), stamp(2026, 8, 30)))).toEqual([
+      "2025-11",
+      "2026-01",
+      "2026-03",
+      "2026-05",
+      "2026-07",
+      "2026-09",
+    ]);
+  });
+
+  test("multi-decade All Time uses 5-year January marks", () => {
+    expect(labels(calendarAxisTicks(stamp(1984, 11, 12), stamp(2026, 8, 30)))).toEqual([
+      "1985-01",
+      "1990-01",
+      "1995-01",
+      "2000-01",
+      "2005-01",
+      "2010-01",
+      "2015-01",
+      "2020-01",
+      "2025-01",
+    ]);
+  });
+
+  test("empty when the window is invalid", () => {
+    expect(calendarAxisTicks(stamp(2026, 0, 1), stamp(2025, 0, 1))).toEqual([]);
   });
 });
 

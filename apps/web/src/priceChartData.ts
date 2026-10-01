@@ -2,6 +2,7 @@ import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 /** PricePoint.timestamp is Unix seconds (see packages/shared). */
 const SECONDS_PER_DAY = 86_400;
+const MS_PER_DAY = 86_400_000;
 
 export type PriceVolumeRow = {
   t: number;
@@ -78,6 +79,53 @@ export function formatVolumeAxis(n: number): string {
 export function formatVolumeTooltip(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function addMonths(year: number, month: number, count: number): { year: number; month: number } {
+  const total = year * 12 + month + count;
+  return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
+}
+
+/**
+ * Even calendar ticks for a daily chart so labels stay aligned across overlay views.
+ * 1Y → every 2 months; 5Y → every 6 months (Jan/Jul); longer spans → 2- or 5-year marks.
+ */
+export function calendarAxisTicks(startMs: number, endMs: number): number[] {
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
+  const spanDays = (endMs - startMs) / MS_PER_DAY;
+  const stepMonths = spanDays > 365 * 12 ? 60 : spanDays > 365 * 6 ? 24 : spanDays > 400 ? 6 : spanDays > 90 ? 2 : 1;
+
+  const start = new Date(startMs);
+  const ticks: number[] = [];
+
+  if (stepMonths >= 12) {
+    const stepYears = stepMonths / 12;
+    let year = start.getFullYear();
+    if (new Date(year, 0, 1).getTime() < startMs) year += 1;
+    const rem = year % stepYears;
+    if (rem !== 0) year += stepYears - rem;
+    while (new Date(year, 0, 1).getTime() <= endMs) {
+      ticks.push(new Date(year, 0, 1).getTime());
+      year += stepYears;
+      if (ticks.length > 48) break;
+    }
+    return ticks;
+  }
+
+  let year = start.getFullYear();
+  let month = start.getMonth() - (start.getMonth() % stepMonths);
+  let cursor = new Date(year, month, 1);
+  if (cursor.getTime() < startMs) {
+    const next = addMonths(cursor.getFullYear(), cursor.getMonth(), stepMonths);
+    cursor = new Date(next.year, next.month, 1);
+  }
+  while (cursor.getTime() <= endMs) {
+    ticks.push(cursor.getTime());
+    const next = addMonths(cursor.getFullYear(), cursor.getMonth(), stepMonths);
+    cursor = new Date(next.year, next.month, 1);
+    if (ticks.length > 48) break;
+  }
+  return ticks;
 }
 
 export const OVERLAY_LEGEND = {
