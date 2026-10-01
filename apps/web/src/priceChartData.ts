@@ -1,5 +1,9 @@
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
+/** PricePoint.timestamp is Unix seconds (see packages/shared). */
+const SECONDS_PER_DAY = 86_400;
+const MS_PER_DAY = 86_400_000;
+
 export type PriceVolumeRow = {
   t: number;
   price: number;
@@ -11,6 +15,11 @@ export type PriceVolumeRow = {
 export type ChartRow = {
   t: number;
   price: number;
+};
+
+export type OverlayChartRow = PriceVolumeRow & {
+  sma50: number | null;
+  sma200: number | null;
 };
 
 export function seriesHasVolume(series: PricePoint[]): boolean {
@@ -26,10 +35,10 @@ export function buildPriceVolumeRows(data: GetPricesResponse): PriceVolumeRow[] 
   }));
 }
 
-export function downsampleRows(rows: ChartRow[], maxRows: number): ChartRow[] {
+export function downsampleRows<T extends ChartRow>(rows: T[], maxRows: number): T[] {
   if (rows.length <= maxRows) return rows;
 
-  const result: ChartRow[] = [rows[0]!];
+  const result: T[] = [rows[0]!];
   const bucketCount = maxRows - 2;
   const bucketSize = (rows.length - 2) / bucketCount;
 
@@ -70,4 +79,120 @@ export function formatVolumeAxis(n: number): string {
 export function formatVolumeTooltip(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function addMonths(year: number, month: number, count: number): { year: number; month: number } {
+  const total = year * 12 + month + count;
+  return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
+}
+
+/**
+ * Even calendar ticks for a daily chart so labels stay aligned across overlay views.
+ * 1Y → every 2 months; 5Y → every 6 months (Jan/Jul); longer spans → 2- or 5-year marks.
+ */
+export function calendarAxisTicks(startMs: number, endMs: number): number[] {
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
+  const spanDays = (endMs - startMs) / MS_PER_DAY;
+  const stepMonths = spanDays > 365 * 12 ? 60 : spanDays > 365 * 6 ? 24 : spanDays > 400 ? 6 : spanDays > 90 ? 2 : 1;
+
+  const start = new Date(startMs);
+  const ticks: number[] = [];
+
+  if (stepMonths >= 12) {
+    const stepYears = stepMonths / 12;
+    let year = start.getFullYear();
+    if (new Date(year, 0, 1).getTime() < startMs) year += 1;
+    const rem = year % stepYears;
+    if (rem !== 0) year += stepYears - rem;
+    while (new Date(year, 0, 1).getTime() <= endMs) {
+      ticks.push(new Date(year, 0, 1).getTime());
+      year += stepYears;
+      if (ticks.length > 48) break;
+    }
+    return ticks;
+  }
+
+  let year = start.getFullYear();
+  let month = start.getMonth() - (start.getMonth() % stepMonths);
+  let cursor = new Date(year, month, 1);
+  if (cursor.getTime() < startMs) {
+    const next = addMonths(cursor.getFullYear(), cursor.getMonth(), stepMonths);
+    cursor = new Date(next.year, next.month, 1);
+  }
+  while (cursor.getTime() <= endMs) {
+    ticks.push(cursor.getTime());
+    const next = addMonths(cursor.getFullYear(), cursor.getMonth(), stepMonths);
+    cursor = new Date(next.year, next.month, 1);
+    if (ticks.length > 48) break;
+  }
+  return ticks;
+}
+
+export const OVERLAY_LEGEND = {
+  sma50: "SMA 50: average closing price over the last 50 trading days. Tracks the medium-term trend.",
+  sma200: "SMA 200: average closing price over the last 200 trading days. Price above it is often read as a long-term uptrend.",
+  volume: "Volume: shares traded each day. Heavy volume can confirm a move.",
+  crosses:
+    "Golden cross: SMA 50 crosses above SMA 200, often read as bullish. Death cross: SMA 50 crosses below SMA 200, often read as bearish.",
+} as const;
+
+/** Golden/death-cross copy is only relevant when both averages are visible. */
+export function shouldShowCrossNote(overlays: { sma50?: boolean; sma200?: boolean }): boolean {
+  return overlays.sma50 === true && overlays.sma200 === true;
+}
+
+/** Simple moving average; the first `window - 1` values (and any incomplete window) are null. */
+export function simpleMovingAverage(values: readonly number[], window: number): Array<number | null> {
+  if (!Number.isInteger(window) || window < 1) {
+    return values.map(() => null);
+  }
+  return values.map((_, index) => {
+    if (index < window - 1) return null;
+    let sum = 0;
+    for (let i = index - window + 1; i <= index; i++) {
+      const value = values[i];
+      if (value == null || !Number.isFinite(value)) return null;
+      sum += value;
+    }
+    return sum / window;
+  });
+}
+
+/** Attach volume helpers and 50/200-day SMAs computed on the full close series. */
+export function buildOverlayRows(data: GetPricesResponse): OverlayChartRow[] {
+  const rows = buildPriceVolumeRows(data);
+  const closes = data.series.map((p) => p.close);
+  const sma50 = simpleMovingAverage(closes, 50);
+  const sma200 = simpleMovingAverage(closes, 200);
+  return rows.map((row, i) => ({
+    ...row,
+    sma50: sma50[i] ?? null,
+    sma200: sma200[i] ?? null,
+  }));
+}
+
+/**
+ * Yahoo coarsens `range=max` (often to quarterly), which is too sparse for 50/200-day
+ * SMAs. 1Y/5Y request 10y daily; Today and All Time keep their declared ranges.
+ */
+export function dailyFetchRange(horizonDays: number, declaredRange: string): string {
+  if (horizonDays <= 1) return declaredRange;
+  if (Number.isFinite(horizonDays)) return "10y";
+  return declaredRange;
+}
+
+/**
+ * Keep bars whose Unix-second timestamp falls within `horizonDays` of the latest bar.
+ * All Time (`Infinity`) is returned unchanged.
+ */
+export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (!Number.isFinite(horizonDays)) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (latestTimestamp == null) return data;
+  const cutoff = latestTimestamp - horizonDays * SECONDS_PER_DAY;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
 }

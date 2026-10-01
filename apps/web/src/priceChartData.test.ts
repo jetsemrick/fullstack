@@ -1,6 +1,32 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildOverlayRows,
+  buildPriceVolumeRows,
+  calendarAxisTicks,
+  dailyFetchRange,
+  downsampleRows,
+  filterSeriesByHorizon,
+  OVERLAY_LEGEND,
+  seriesHasVolume,
+  shouldShowCrossNote,
+  simpleMovingAverage,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
+
+const DAY = 86_400;
+
+function pricesAt(offsetsDays: number[], latest = 1_800_000_000): GetPricesResponse {
+  const series: PricePoint[] = offsetsDays
+    .map((daysAgo, i) => ({
+      timestamp: latest - daysAgo * DAY,
+      close: i + 1,
+      volume: null,
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  return { ticker: "X", currency: "USD", lastPrice: series.at(-1)?.close ?? null, series };
+}
 
 describe("seriesHasVolume", () => {
   test("false when empty", () => {
@@ -73,5 +99,188 @@ describe("downsampleRows", () => {
     expect(sampled).toContainEqual(rows[5]);
     expect(sampled).toContainEqual(rows[14]);
     expect(sampled.length).toBeLessThan(rows.length);
+  });
+});
+
+describe("filterSeriesByHorizon", () => {
+  test("1Y keeps only bars within 365 seconds-based days of the latest timestamp", () => {
+    const data = pricesAt([3650, 400, 365, 100, 0]);
+    const sliced = filterSeriesByHorizon(data, 365);
+    expect(sliced.series.map((p) => p.timestamp)).toEqual([
+      data.series[2]!.timestamp,
+      data.series[3]!.timestamp,
+      data.series[4]!.timestamp,
+    ]);
+  });
+
+  test("5Y keeps a wider window than 1Y and still drops older history", () => {
+    const data = pricesAt([4000, 2000, 1825, 200, 0]);
+    const oneYear = filterSeriesByHorizon(data, 365);
+    const fiveYear = filterSeriesByHorizon(data, 1825);
+    expect(oneYear.series.map((p) => p.close)).toEqual([4, 5]);
+    expect(fiveYear.series.map((p) => p.close)).toEqual([3, 4, 5]);
+  });
+
+  test("All Time (Infinity) returns the full series", () => {
+    const data = pricesAt([4000, 2000, 100, 0]);
+    const all = filterSeriesByHorizon(data, Infinity);
+    expect(all.series).toEqual(data.series);
+    expect(all).toBe(data);
+  });
+
+  test("does not treat timestamps as milliseconds (regression #144)", () => {
+    const latest = 1_800_000_000;
+    const data = pricesAt([4000, 0], latest);
+    const sliced = filterSeriesByHorizon(data, 365);
+    expect(sliced.series).toHaveLength(1);
+    expect(sliced.series[0]!.timestamp).toBe(latest);
+  });
+
+  test("empty series is unchanged", () => {
+    const data: GetPricesResponse = { ticker: "X", currency: "USD", lastPrice: null, series: [] };
+    expect(filterSeriesByHorizon(data, 365)).toEqual(data);
+  });
+});
+
+describe("dailyFetchRange", () => {
+  test("1Y and 5Y request 10y daily so Yahoo does not coarsen the series", () => {
+    expect(dailyFetchRange(365, "1y")).toBe("10y");
+    expect(dailyFetchRange(1825, "5y")).toBe("10y");
+  });
+
+  test("Today and All Time keep their declared ranges", () => {
+    expect(dailyFetchRange(1, "1d")).toBe("1d");
+    expect(dailyFetchRange(Infinity, "max")).toBe("max");
+  });
+});
+
+describe("calendarAxisTicks", () => {
+  const stamp = (year: number, monthIndex: number, day = 1) => new Date(year, monthIndex, day).getTime();
+  const labels = (ticks: number[]) =>
+    ticks.map((t) => {
+      const d = new Date(t);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    });
+
+  test("5Y uses even 6-month Jan/Jul marks", () => {
+    expect(labels(calendarAxisTicks(stamp(2021, 9, 1), stamp(2026, 8, 30)))).toEqual([
+      "2022-01",
+      "2022-07",
+      "2023-01",
+      "2023-07",
+      "2024-01",
+      "2024-07",
+      "2025-01",
+      "2025-07",
+      "2026-01",
+      "2026-07",
+    ]);
+  });
+
+  test("1Y uses even 2-month marks", () => {
+    expect(labels(calendarAxisTicks(stamp(2025, 9, 1), stamp(2026, 8, 30)))).toEqual([
+      "2025-11",
+      "2026-01",
+      "2026-03",
+      "2026-05",
+      "2026-07",
+      "2026-09",
+    ]);
+  });
+
+  test("multi-decade All Time uses 5-year January marks", () => {
+    expect(labels(calendarAxisTicks(stamp(1984, 11, 12), stamp(2026, 8, 30)))).toEqual([
+      "1985-01",
+      "1990-01",
+      "1995-01",
+      "2000-01",
+      "2005-01",
+      "2010-01",
+      "2015-01",
+      "2020-01",
+      "2025-01",
+    ]);
+  });
+
+  test("empty when the window is invalid", () => {
+    expect(calendarAxisTicks(stamp(2026, 0, 1), stamp(2025, 0, 1))).toEqual([]);
+  });
+});
+
+describe("shouldShowCrossNote", () => {
+  test("only when both SMA 50 and SMA 200 are on", () => {
+    expect(shouldShowCrossNote({ sma50: true, sma200: true })).toBe(true);
+    expect(shouldShowCrossNote({ sma50: true, sma200: true, volume: true })).toBe(true);
+    expect(shouldShowCrossNote({ sma50: true, sma200: false, volume: true })).toBe(false);
+    expect(shouldShowCrossNote({ sma50: false, sma200: true })).toBe(false);
+    expect(shouldShowCrossNote({ volume: true })).toBe(false);
+    expect(shouldShowCrossNote({})).toBe(false);
+  });
+});
+
+describe("OVERLAY_LEGEND", () => {
+  test("uses the approved plain-language copy", () => {
+    expect(OVERLAY_LEGEND.sma50).toBe(
+      "SMA 50: average closing price over the last 50 trading days. Tracks the medium-term trend.",
+    );
+    expect(OVERLAY_LEGEND.sma200).toBe(
+      "SMA 200: average closing price over the last 200 trading days. Price above it is often read as a long-term uptrend.",
+    );
+    expect(OVERLAY_LEGEND.volume).toBe(
+      "Volume: shares traded each day. Heavy volume can confirm a move.",
+    );
+    expect(OVERLAY_LEGEND.crosses).toBe(
+      "Golden cross: SMA 50 crosses above SMA 200, often read as bullish. Death cross: SMA 50 crosses below SMA 200, often read as bearish.",
+    );
+  });
+});
+
+describe("simpleMovingAverage", () => {
+  test("first window-1 points are null, then the mean of each window", () => {
+    expect(simpleMovingAverage([1, 2, 3, 4, 5], 3)).toEqual([null, null, 2, 3, 4]);
+  });
+
+  test("series shorter than the window is all null", () => {
+    expect(simpleMovingAverage([10, 20, 30], 50)).toEqual([null, null, null]);
+    expect(simpleMovingAverage([1, 2], 200)).toEqual([null, null]);
+  });
+
+  test("window of 1 equals the input series", () => {
+    expect(simpleMovingAverage([4, 8, 15], 1)).toEqual([4, 8, 15]);
+  });
+
+  test("empty series stays empty", () => {
+    expect(simpleMovingAverage([], 50)).toEqual([]);
+  });
+
+  test("invalid windows yield nulls", () => {
+    expect(simpleMovingAverage([1, 2, 3], 0)).toEqual([null, null, null]);
+    expect(simpleMovingAverage([1, 2, 3], -5)).toEqual([null, null, null]);
+    expect(simpleMovingAverage([1, 2, 3], 2.5)).toEqual([null, null, null]);
+  });
+
+  test("a non-finite value nulls every window that includes it", () => {
+    expect(simpleMovingAverage([1, Number.NaN, 3], 2)).toEqual([null, null, null]);
+  });
+});
+
+describe("buildOverlayRows", () => {
+  test("reuses volume mapping and leaves SMA 50/200 null until the window fills", () => {
+    const series: PricePoint[] = Array.from({ length: 50 }, (_, i) => ({
+      timestamp: 1_800_000_000 + i * DAY,
+      close: 2,
+      volume: i === 0 ? 1_000 : null,
+    }));
+    const rows = buildOverlayRows({
+      ticker: "X",
+      currency: "USD",
+      lastPrice: 2,
+      series,
+    });
+    expect(rows).toHaveLength(50);
+    expect(rows[0]).toMatchObject({ volume: 1_000, volumeBar: 1_000, sma50: null, sma200: null });
+    expect(rows[48]?.sma50).toBeNull();
+    expect(rows[49]?.sma50).toBe(2);
+    expect(rows.every((row) => row.sma200 === null)).toBe(true);
   });
 });

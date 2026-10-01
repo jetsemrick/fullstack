@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { PriceChart } from "./PriceChart";
+import {
+  dailyFetchRange,
+  filterSeriesByHorizon,
+  OVERLAY_LEGEND,
+  seriesHasVolume,
+  shouldShowCrossNote,
+} from "./priceChartData";
+import { PriceChart, type ChartOverlays } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -35,22 +42,35 @@ const HORIZONS = [
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
+const OVERLAY_STORAGE_KEY = "stock-visualizer.overlays";
+const DEFAULT_OVERLAYS: ChartOverlays = { sma50: false, sma200: false, volume: false };
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
+
+function readOverlayToggles(): ChartOverlays {
+  try {
+    const raw = localStorage.getItem(OVERLAY_STORAGE_KEY);
+    if (!raw) return DEFAULT_OVERLAYS;
+    const parsed = JSON.parse(raw) as Partial<ChartOverlays>;
+    return {
+      sma50: parsed.sma50 === true,
+      sma200: parsed.sma200 === true,
+      volume: parsed.volume === true,
+    };
+  } catch {
+    return DEFAULT_OVERLAYS;
+  }
+}
+
+function writeOverlayToggles(next: ChartOverlays) {
+  try {
+    localStorage.setItem(OVERLAY_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // private mode / quota — toggles still work for the session
+  }
+}
 
 function priceCacheKey(ticker: string, range: string, interval: string): string {
   return `${ticker}:${range}:${interval}`;
-}
-
-function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
-  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
-  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
-  return {
-    ...data,
-    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
-  };
 }
 
 export default function App() {
@@ -62,14 +82,19 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [overlays, setOverlays] = useState<ChartOverlays>(readOverlayToggles);
   const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    writeOverlayToggles(overlays);
+  }, [overlays]);
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const fetchRange = horizon.days > 1 ? "max" : horizon.range;
+    const fetchRange = dailyFetchRange(horizon.days, horizon.range);
     const cacheKey = priceCacheKey(ticker, fetchRange, horizon.interval);
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {
@@ -120,6 +145,13 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
+  const isDailyHorizon = horizonIndex !== 0;
+  const hasVolume = Boolean(data && seriesHasVolume(data.series));
+  const anyOverlayOn = Boolean(overlays.sma50 || overlays.sma200 || overlays.volume);
+
+  function toggleOverlay(key: keyof ChartOverlays) {
+    setOverlays((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -191,28 +223,111 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
+                  <div className="toolbar-controls">
+                    <div className="horizon-buttons">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    {isDailyHorizon ? (
+                      <>
+                        <span className="toolbar-divider" aria-hidden="true" />
+                        <div className="overlay-toggles" role="group" aria-label="Chart overlays">
+                          <span className="overlay-label">Overlays</span>
+                          <button
+                            type="button"
+                            className={`overlay-btn overlay-btn--sma50 ${overlays.sma50 ? "active" : ""}`}
+                            aria-pressed={Boolean(overlays.sma50)}
+                            onClick={() => toggleOverlay("sma50")}
+                          >
+                            <span className="overlay-swatch overlay-swatch--line" aria-hidden="true" />
+                            SMA 50
+                          </button>
+                          <button
+                            type="button"
+                            className={`overlay-btn overlay-btn--sma200 ${overlays.sma200 ? "active" : ""}`}
+                            aria-pressed={Boolean(overlays.sma200)}
+                            onClick={() => toggleOverlay("sma200")}
+                          >
+                            <span className="overlay-swatch overlay-swatch--line" aria-hidden="true" />
+                            SMA 200
+                          </button>
+                          <button
+                            type="button"
+                            className={`overlay-btn overlay-btn--volume ${overlays.volume ? "active" : ""}`}
+                            aria-pressed={Boolean(overlays.volume)}
+                            aria-disabled={!hasVolume}
+                            disabled={!hasVolume}
+                            onClick={() => toggleOverlay("volume")}
+                          >
+                            <span className="overlay-swatch overlay-swatch--bar" aria-hidden="true" />
+                            Volume
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </div>
               <div
-                className="chart-container"
+                className={`chart-container${overlays.volume ? " chart-container--with-volume" : ""}`}
                 aria-label="Price chart"
               >
                 <PriceChart
                   data={displayData}
+                  overlaySource={isDailyHorizon ? data : undefined}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  overlays={overlays}
                 />
               </div>
+              {isDailyHorizon && anyOverlayOn ? (
+                <aside className="overlay-legend" aria-label="Overlay legend">
+                  {overlays.sma50 ? (
+                    <p>
+                      <span className="legend-swatch legend-swatch--line legend-swatch--sma50" aria-hidden="true" />
+                      <span>
+                        <strong>SMA 50:</strong>
+                        {OVERLAY_LEGEND.sma50.slice("SMA 50:".length)}
+                      </span>
+                    </p>
+                  ) : null}
+                  {overlays.sma200 ? (
+                    <p>
+                      <span className="legend-swatch legend-swatch--line legend-swatch--sma200" aria-hidden="true" />
+                      <span>
+                        <strong>SMA 200:</strong>
+                        {OVERLAY_LEGEND.sma200.slice("SMA 200:".length)}
+                      </span>
+                    </p>
+                  ) : null}
+                  {overlays.volume ? (
+                    <p>
+                      <span className="legend-swatch legend-swatch--bar" aria-hidden="true" />
+                      <span>
+                        <strong>Volume:</strong>
+                        {OVERLAY_LEGEND.volume.slice("Volume:".length)}
+                      </span>
+                    </p>
+                  ) : null}
+                  {shouldShowCrossNote(overlays) ? (
+                    <p>
+                      <span className="legend-swatch legend-swatch--cross" aria-hidden="true" />
+                      <span>
+                        <strong>Golden cross:</strong>
+                        {OVERLAY_LEGEND.crosses.slice("Golden cross:".length, OVERLAY_LEGEND.crosses.indexOf("Death cross:"))}
+                        <strong>Death cross:</strong>
+                        {OVERLAY_LEGEND.crosses.slice(OVERLAY_LEGEND.crosses.indexOf("Death cross:") + "Death cross:".length)}
+                      </span>
+                    </p>
+                  ) : null}
+                </aside>
+              ) : null}
               {loading && (
                 <div className="chart-loading-overlay" role="status">
                   Loading latest data...

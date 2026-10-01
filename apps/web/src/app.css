@@ -1,3 +1,9 @@
+:root {
+  --sma-50: #3f5f6b;
+  --sma-200: #a8742f;
+  --volume-bar: #6a7d6c;
+}
+
 .shell {
   max-width: 1000px;
   margin: 0 auto;
@@ -257,6 +263,55 @@
   width: 100%;
 }
 
+.chart-container--with-volume {
+  height: 520px;
+}
+
+.price-chart {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+}
+
+.price-chart__price {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.price-chart__price .recharts-surface,
+.price-chart__price .recharts-wrapper {
+  overflow: visible;
+}
+
+.price-chart--with-volume .price-chart__price {
+  flex: 1 1 78%;
+}
+
+.price-chart__gap {
+  flex: 0 0 0.55rem;
+}
+
+.price-chart__volume {
+  flex: 0 0 20%;
+  min-height: 72px;
+  position: relative;
+}
+
+.price-chart__volume-max {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  z-index: 1;
+  width: 36px;
+  text-align: right;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  line-height: 1;
+}
+
 .chart-loading-overlay {
   position: absolute;
   right: 1.5rem;
@@ -315,11 +370,196 @@
   border: 0;
 }
 
+.toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  width: 100%;
+}
+
 .horizon-buttons {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.35rem;
+  background: var(--card-border);
+}
+
+.overlay-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.overlay-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-right: 0.15rem;
+}
+
+.overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--fg-muted);
+  border-radius: 0;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.overlay-btn:hover:enabled {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+.overlay-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.overlay-btn.active {
+  color: var(--overlay-active);
+  border-color: color-mix(in srgb, var(--overlay-active) 45%, var(--card-border));
+  background: color-mix(in srgb, var(--overlay-active) 12%, var(--card));
+}
+
+.overlay-btn--sma50 {
+  --overlay-active: var(--sma-50);
+}
+
+.overlay-btn--sma200 {
+  --overlay-active: var(--sma-200);
+}
+
+.overlay-btn--volume {
+  --overlay-active: var(--volume-bar);
+}
+
+.overlay-swatch {
+  flex: 0 0 auto;
+}
+
+.overlay-swatch--line {
+  width: 0.9rem;
+  height: 1.5px;
+  background: var(--overlay-active, var(--fg-muted));
+  opacity: 0.85;
+}
+
+.overlay-swatch--bar {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--overlay-active, var(--volume-bar));
+}
+
+.overlay-legend {
+  padding: 0 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.overlay-legend p {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.overlay-legend strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.legend-swatch {
+  flex: 0 0 auto;
+  margin-top: 0.45em;
+}
+
+.legend-swatch--line {
+  width: 0.9rem;
+  height: 1.5px;
+}
+
+.legend-swatch--sma50 {
+  background: var(--sma-50);
+  opacity: 0.85;
+}
+
+.legend-swatch--sma200 {
+  background: var(--sma-200);
+  opacity: 0.85;
+}
+
+.legend-swatch--bar {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.28em;
+  background: var(--volume-bar);
+}
+
+.legend-swatch--cross {
+  display: inline-flex;
+  width: 0.9rem;
+  height: 0.55rem;
+  margin-top: 0.3em;
+  background:
+    linear-gradient(var(--sma-50), var(--sma-50)) 0 20% / 100% 1.5px no-repeat,
+    linear-gradient(var(--sma-200), var(--sma-200)) 0 80% / 100% 1.5px no-repeat;
+  opacity: 0.85;
+}
+
+.chart-tooltip {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chart-tooltip__when {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+
+.chart-tooltip__sma50 {
+  color: var(--sma-50);
+}
+
+.chart-tooltip__sma200 {
+  color: var(--sma-200);
+}
+
+.chart-tooltip__volume {
+  color: var(--fg-muted);
 }
 
 .horizon-btn {
