@@ -1,5 +1,8 @@
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
+/** PricePoint.timestamp is Unix seconds (see packages/shared). */
+const SECONDS_PER_DAY = 86_400;
+
 export type PriceVolumeRow = {
   t: number;
   price: number;
@@ -70,4 +73,20 @@ export function formatVolumeAxis(n: number): string {
 export function formatVolumeTooltip(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+/**
+ * Keep bars whose Unix-second timestamp falls within `horizonDays` of the latest bar.
+ * All Time (`Infinity`) is returned unchanged.
+ */
+export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
+  if (!Number.isFinite(horizonDays)) return data;
+  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
+  if (latestTimestamp == null) return data;
+  const cutoff = latestTimestamp - horizonDays * SECONDS_PER_DAY;
+  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
+  return {
+    ...data,
+    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
+  };
 }
