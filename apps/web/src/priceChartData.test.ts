@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPriceVolumeRows, downsampleRows, seriesHasVolume, formatVolumeAxis, formatVolumeTooltip } from "./priceChartData";
+import {
+  buildPriceVolumeRows,
+  computeRangeChange,
+  downsampleRows,
+  seriesHasVolume,
+  formatVolumeAxis,
+  formatVolumeTooltip,
+} from "./priceChartData";
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
 
 describe("seriesHasVolume", () => {
@@ -56,6 +63,50 @@ describe("formatVolumeTooltip", () => {
   });
   test("includes digits for finite values", () => {
     expect(formatVolumeTooltip(1_234_567)).toMatch(/1.*234.*567/);
+  });
+});
+
+describe("computeRangeChange", () => {
+  const rows = [
+    { t: 1000, price: 100 },
+    { t: 2000, price: 110 },
+    { t: 3000, price: 105 },
+    { t: 4000, price: 120 },
+  ];
+
+  test("forward drag uses first and last close in window", () => {
+    const r = computeRangeChange(rows, 1000, 4000);
+    expect(r).not.toBeNull();
+    expect(r!.startPrice).toBe(100);
+    expect(r!.endPrice).toBe(120);
+    expect(r!.diff).toBe(20);
+    expect(r!.pct).toBe(20);
+  });
+
+  test("reversed drag same as forward", () => {
+    expect(computeRangeChange(rows, 4000, 1000)).toEqual(computeRangeChange(rows, 1000, 4000));
+  });
+
+  test("fewer than two points returns null", () => {
+    expect(computeRangeChange(rows, 1000, 1000)).toBeNull();
+    expect(computeRangeChange([{ t: 1, price: 1 }], 0, 10)).toBeNull();
+  });
+
+  test("flat change", () => {
+    const r = computeRangeChange(rows, 1000, 2000);
+    expect(r!.diff).toBe(10);
+    expect(r!.pct).toBe(10);
+  });
+
+  test("zero start price returns null", () => {
+    expect(computeRangeChange([{ t: 1, price: 0 }, { t: 2, price: 1 }], 1, 2)).toBeNull();
+  });
+
+  test("includes points at range edges only", () => {
+    const r = computeRangeChange(rows, 2000, 3000);
+    expect(r!.startPrice).toBe(110);
+    expect(r!.endPrice).toBe(105);
+    expect(r!.diff).toBe(-5);
   });
 });
 

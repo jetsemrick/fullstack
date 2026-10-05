@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { PriceChart } from "./PriceChart";
+import { PriceChart, type RangeChange } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -10,6 +10,29 @@ function formatLast(v: number | null, currency: string | null) {
   if (v == null) return "—";
   const cur = currency ? ` ${currency}` : "";
   return `${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
+}
+
+function formatRangeSpanLabel(range: RangeChange, intraday: boolean): string {
+  if (intraday) {
+    const fmt = (ms: number) =>
+      new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `${fmt(range.startT)} to ${fmt(range.endT)}`;
+  }
+  const fmt = (ms: number) =>
+    new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${fmt(range.startT)} to ${fmt(range.endT)}`;
+}
+
+function formatRangeBadge(range: RangeChange): { text: string; isPositive: boolean; isNegative: boolean } {
+  const sign = range.diff > 0 ? "+" : range.diff < 0 ? "" : "";
+  const pctSign = range.pct > 0 ? "+" : "";
+  const diffText = `${sign}${range.diff.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const pctText = `${pctSign}${range.pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return {
+    text: `${diffText} (${pctText})`,
+    isPositive: range.diff > 0,
+    isNegative: range.diff < 0,
+  };
 }
 
 function formatPercentChange(data: GetPricesResponse | null) {
@@ -62,6 +85,7 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rangeSelection, setRangeSelection] = useState<RangeChange | null>(null);
   const requestIdRef = useRef(0);
 
   const load = useCallback(async (signal: AbortSignal) => {
@@ -124,6 +148,7 @@ export default function App() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
+    setRangeSelection(null);
     setTicker(t);
   }
 
@@ -190,13 +215,27 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {rangeSelection ? (() => {
+                      const badge = formatRangeBadge(rangeSelection);
+                      const statusClass = badge.isPositive ? "positive" : badge.isNegative ? "negative" : "muted";
+                      const intraday = horizonIndex === 0;
+                      return (
+                        <span className="range-stat" aria-live="polite">
+                          <span className={`metric-badge ${statusClass}`}>{badge.text}</span>
+                          <span className="range-label">{formatRangeSpanLabel(rangeSelection, intraday)}</span>
+                        </span>
+                      );
+                    })() : null}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          setRangeSelection(null);
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -209,8 +248,10 @@ export default function App() {
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${data.ticker}-${horizonIndex}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onSelectionChange={setRangeSelection}
                 />
               </div>
               {loading && (

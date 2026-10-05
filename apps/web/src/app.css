@@ -255,6 +255,26 @@
   padding: 2rem;
   height: 450px;
   width: 100%;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.price-chart-wrap {
+  cursor: crosshair;
+  user-select: none;
+}
+
+.range-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.range-label {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-weight: 500;
 }
 
 .chart-loading-overlay {

@@ -13,6 +13,36 @@ export type ChartRow = {
   price: number;
 };
 
+export type RangeChange = {
+  startT: number;
+  endT: number;
+  startPrice: number;
+  endPrice: number;
+  diff: number;
+  pct: number;
+};
+
+/** Net change from first to last close within [tA, tB] (inclusive), in time order. */
+export function computeRangeChange(rows: ChartRow[], tA: number, tB: number): RangeChange | null {
+  const lo = Math.min(tA, tB);
+  const hi = Math.max(tA, tB);
+  const inRange = rows.filter((r) => r.t >= lo && r.t <= hi);
+  if (inRange.length < 2) return null;
+  const start = inRange[0]!;
+  const end = inRange[inRange.length - 1]!;
+  if (start.price === 0) return null;
+  const diff = end.price - start.price;
+  const pct = (diff / start.price) * 100;
+  return {
+    startT: start.t,
+    endT: end.t,
+    startPrice: start.price,
+    endPrice: end.price,
+    diff,
+    pct,
+  };
+}
+
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);
 }
