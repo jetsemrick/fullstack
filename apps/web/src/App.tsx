@@ -67,8 +67,15 @@ export default function App() {
   const [selectionClearToken, setSelectionClearToken] = useState(0);
   const requestIdRef = useRef(0);
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const rangeBadgeRef = useRef(rangeBadge);
+
+  useEffect(() => {
+    rangeBadgeRef.current = rangeBadge;
+  }, [rangeBadge]);
 
   const clearChartSelection = useCallback(() => {
+    if (rangeBadgeRef.current == null) return;
+    rangeBadgeRef.current = null;
     setRangeBadge(null);
     setSelectionClearToken((n) => n + 1);
   }, []);

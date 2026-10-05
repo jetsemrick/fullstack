@@ -134,12 +134,16 @@ export function PriceChart({
 
   const commitSpan = useCallback(
     (startMs: number, endMs: number) => {
-      const span = { startMs, endMs };
-      setCommittedSpan(span);
       setDragAnchor(null);
       setDragCurrent(null);
       draggingRef.current = false;
       const result = rangeNetChange(fullRows, startMs, endMs);
+      if (!result) {
+        setCommittedSpan(null);
+        onRangeSelect?.(null);
+        return;
+      }
+      setCommittedSpan({ startMs, endMs });
       onRangeSelect?.(result);
     },
     [fullRows, onRangeSelect],
