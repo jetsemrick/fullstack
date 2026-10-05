@@ -4,6 +4,7 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { formatRangeBadge } from "./rangeNetChange";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -62,7 +63,26 @@ export default function App() {
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rangeBadge, setRangeBadge] = useState<{ text: string; status: string } | null>(null);
+  const [selectionClearToken, setSelectionClearToken] = useState(0);
   const requestIdRef = useRef(0);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  const clearChartSelection = useCallback(() => {
+    setRangeBadge(null);
+    setSelectionClearToken((n) => n + 1);
+  }, []);
+
+  const onRangeSelect = useCallback(
+    (result: { dollar: number; percent: number } | null) => {
+      if (!result) {
+        setRangeBadge(null);
+        return;
+      }
+      setRangeBadge(formatRangeBadge(result.dollar, result.percent));
+    },
+    [],
+  );
 
   const load = useCallback(async (signal: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -107,6 +127,23 @@ export default function App() {
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") clearChartSelection();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const container = chartContainerRef.current;
+      if (!container) return;
+      if (!container.contains(e.target as Node)) clearChartSelection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [clearChartSelection]);
+
   const slicedDaily = useMemo(() => {
     if (!data) return null;
     return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
@@ -123,6 +160,7 @@ export default function App() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
+    clearChartSelection();
     const t = inputTicker.trim().toUpperCase() || DEFAULT_TICKER;
     setTicker(t);
   }
@@ -190,13 +228,24 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {rangeBadge ? (
+                      <span
+                        className={`metric-badge ${rangeBadge.status}`}
+                        aria-live="polite"
+                      >
+                        {rangeBadge.text}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
                       <button
                         key={h.label}
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        onClick={() => {
+                          clearChartSelection();
+                          setHorizonIndex(i);
+                        }}
                       >
                         {h.label}
                       </button>
@@ -205,12 +254,15 @@ export default function App() {
                 </div>
               </div>
               <div
+                ref={chartContainerRef}
                 className="chart-container"
                 aria-label="Price chart"
               >
                 <PriceChart
+                  key={`${data.ticker}-${horizonIndex}-${selectionClearToken}`}
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  onRangeSelect={onRangeSelect}
                 />
               </div>
               {loading && (

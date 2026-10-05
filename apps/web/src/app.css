@@ -257,6 +257,11 @@
   width: 100%;
 }
 
+.price-chart {
+  cursor: crosshair;
+  touch-action: none;
+}
+
 .chart-loading-overlay {
   position: absolute;
   right: 1.5rem;
