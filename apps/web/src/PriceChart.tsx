@@ -8,10 +8,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import { rangeNetChange, type RangeNetChangeResult } from "./rangeNetChange";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -61,9 +62,28 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function labelToMs(label: unknown): number | null {
+  if (typeof label === "number" && Number.isFinite(label)) return label;
+  if (typeof label === "string" && label !== "") {
+    const n = Number(label);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+type TimeSpan = { startMs: number; endMs: number };
+
+export function PriceChart({
+  data,
+  variant = "daily",
+  onRangeSelect,
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  onRangeSelect?: (result: RangeNetChangeResult | null) => void;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
@@ -71,6 +91,13 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
   }, [fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+
+  const [dragAnchor, setDragAnchor] = useState<number | null>(null);
+  const [dragCurrent, setDragCurrent] = useState<number | null>(null);
+  const [committedSpan, setCommittedSpan] = useState<TimeSpan | null>(null);
+  const draggingRef = useRef(false);
+  const dragAnchorRef = useRef<number | null>(null);
+  const dragCurrentRef = useRef<number | null>(null);
 
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
@@ -92,19 +119,111 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     if (variant === "intraday" && sessionLayout && rows.length > 0) {
       const dataStart = rows[0].t;
       const dataEnd = rows[rows.length - 1].t;
-      // Anchor left to first bar so pre-market domain padding does not leave empty chart space.
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
+  const activeSpan = useMemo((): TimeSpan | null => {
+    if (dragAnchor != null && dragCurrent != null) {
+      return { startMs: dragAnchor, endMs: dragCurrent };
+    }
+    return committedSpan;
+  }, [dragAnchor, dragCurrent, committedSpan]);
+
+  const commitSpan = useCallback(
+    (startMs: number, endMs: number) => {
+      setDragAnchor(null);
+      setDragCurrent(null);
+      draggingRef.current = false;
+      const result = rangeNetChange(fullRows, startMs, endMs);
+      if (!result) {
+        setCommittedSpan(null);
+        onRangeSelect?.(null);
+        return;
+      }
+      setCommittedSpan({ startMs, endMs });
+      onRangeSelect?.(result);
+    },
+    [fullRows, onRangeSelect],
+  );
+
+  const updateDragFromEvent = useCallback((activeLabel: unknown) => {
+    const ms = labelToMs(activeLabel);
+    if (ms == null) return;
+    dragCurrentRef.current = ms;
+    setDragCurrent(ms);
+  }, []);
+
+  const onChartMouseDown = useCallback(
+    (state: { activeLabel?: unknown }) => {
+      const ms = labelToMs(state?.activeLabel);
+      if (ms == null) return;
+      draggingRef.current = true;
+      dragAnchorRef.current = ms;
+      dragCurrentRef.current = ms;
+      setDragAnchor(ms);
+      setDragCurrent(ms);
+      setCommittedSpan(null);
+      onRangeSelect?.(null);
+    },
+    [onRangeSelect],
+  );
+
+  const onChartMouseMove = useCallback(
+    (state: { activeLabel?: unknown }) => {
+      if (!draggingRef.current) return;
+      updateDragFromEvent(state?.activeLabel);
+    },
+    [updateDragFromEvent],
+  );
+
+  const finishDrag = useCallback(() => {
+    const start = dragAnchorRef.current;
+    const end = dragCurrentRef.current;
+    if (!draggingRef.current || start == null || end == null) {
+      draggingRef.current = false;
+      return;
+    }
+    commitSpan(start, end);
+  }, [commitSpan]);
+
+  useEffect(() => {
+    const onWindowPointerUp = () => {
+      if (draggingRef.current) finishDrag();
+    };
+    window.addEventListener("mouseup", onWindowPointerUp);
+    window.addEventListener("touchend", onWindowPointerUp);
+    return () => {
+      window.removeEventListener("mouseup", onWindowPointerUp);
+      window.removeEventListener("touchend", onWindowPointerUp);
+    };
+  }, [finishDrag]);
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
+  const selectionX1 = activeSpan ? Math.min(activeSpan.startMs, activeSpan.endMs) : null;
+  const selectionX2 = activeSpan ? Math.max(activeSpan.startMs, activeSpan.endMs) : null;
+
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      className="price-chart"
+      role="group"
+      aria-label="Price over time line chart"
+      style={{ width: "100%", height: "100%" }}
+    >
+      <p className="sr-only">
+        Drag horizontally across the chart to select a time range and view net price change for that selection.
+      </p>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={onChartMouseDown}
+          onMouseMove={onChartMouseMove}
+          onMouseUp={finishDrag}
+        >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -131,6 +250,17 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 ifOverflow="hidden"
               />
             </>
+          ) : null}
+          {selectionX1 != null && selectionX2 != null ? (
+            <ReferenceArea
+              x1={selectionX1}
+              x2={selectionX2}
+              fill="var(--accent)"
+              fillOpacity={0.12}
+              stroke="var(--accent)"
+              strokeOpacity={0.45}
+              ifOverflow="hidden"
+            />
           ) : null}
           <XAxis
             dataKey="t"
