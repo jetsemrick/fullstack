@@ -19,7 +19,7 @@ function formatRangeSpanLabel(range: RangeChange, intraday: boolean): string {
     return `${fmt(range.startT)} to ${fmt(range.endT)}`;
   }
   const fmt = (ms: number) =>
-    new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return `${fmt(range.startT)} to ${fmt(range.endT)}`;
 }
 
