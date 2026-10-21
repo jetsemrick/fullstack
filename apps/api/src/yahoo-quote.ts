@@ -1,5 +1,5 @@
-import type { MarketIndexQuote } from "@stock/shared";
-import { MAJOR_INDEX_SYMBOLS } from "@stock/shared";
+import type { MarketIndexQuote, TickerTapeQuote } from "@stock/shared";
+import { MAJOR_INDEX_SYMBOLS, TICKER_TAPE_SYMBOLS } from "@stock/shared";
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -216,6 +216,76 @@ async function fetchMajorIndexQuotesViaV7(): Promise<YahooQuoteAggregate> {
     return { ...parsed, errorMessage: parsed.errorMessage ?? `HTTP ${res.status}` };
   }
   return parsed;
+}
+
+const YAHOO_UA = { "User-Agent": "Mozilla/5.0 (compatible; StockVisualizer/1.0)" };
+
+function orderTapeQuotes(rows: TickerTapeQuote[], symbols: readonly string[]): TickerTapeQuote[] {
+  const bySymbol = new Map(rows.map((row) => [row.symbol, row]));
+  const ordered: TickerTapeQuote[] = [];
+  for (const symbol of symbols) {
+    const row = bySymbol.get(symbol);
+    if (row) ordered.push(row);
+  }
+  return ordered;
+}
+
+/** v7 batch quote for an explicit symbol list. Does not call Yahoo with client-supplied symbols. */
+async function fetchQuotesViaV7(symbols: readonly string[]): Promise<{ errorMessage: string | null; quotes: TickerTapeQuote[] }> {
+  const url = new URL(YAHOO_QUOTE_URL);
+  url.searchParams.set("symbols", symbols.join(","));
+  const res = await fetch(url, { headers: YAHOO_UA });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    return { errorMessage: `Invalid response (${res.status})`, quotes: [] };
+  }
+  const parsed = parseQuoteResponse(json);
+  if (!res.ok || parsed.errorMessage) {
+    return { errorMessage: parsed.errorMessage ?? `HTTP ${res.status}`, quotes: [] };
+  }
+  const quotes = orderTapeQuotes(
+    parsed.indexes.map((row) => ({ symbol: row.symbol, price: row.price, changePercent: row.changePercent })),
+    symbols,
+  );
+  if (quotes.length === 0) {
+    return { errorMessage: "No ticker quotes parsed", quotes: [] };
+  }
+  return { errorMessage: null, quotes };
+}
+
+/** Parallel v8 chart meta when the batched v7 quote is blocked. */
+async function fetchQuotesViaChart(symbols: readonly string[]): Promise<TickerTapeQuote[]> {
+  const tasks = symbols.map(async (symbol) => {
+    const url = new URL(`${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}`);
+    url.searchParams.set("range", "1d");
+    url.searchParams.set("interval", "1d");
+    const res = await fetch(url, { headers: YAHOO_UA });
+    const text = await res.text();
+    let json: unknown;
+    try {
+      json = JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
+    const row = parseIndexFromChartBody(json);
+    if (!row || !res.ok) return null;
+    return { symbol: row.symbol, price: row.price, changePercent: row.changePercent };
+  });
+  const rows = (await Promise.all(tasks)).filter((row): row is TickerTapeQuote => row !== null);
+  return orderTapeQuotes(rows, symbols);
+}
+
+/** Curated S&P tape: one batched v7 call, then per-symbol chart fallback. */
+export async function fetchTickerTapeQuotes(): Promise<{ errorMessage: string | null; quotes: TickerTapeQuote[] }> {
+  const symbols = TICKER_TAPE_SYMBOLS;
+  const v7 = await fetchQuotesViaV7(symbols);
+  if (!v7.errorMessage && v7.quotes.length > 0) return v7;
+  const viaChart = await fetchQuotesViaChart(symbols);
+  if (viaChart.length > 0) return { errorMessage: null, quotes: viaChart };
+  return { errorMessage: v7.errorMessage ?? "No ticker quotes", quotes: [] };
 }
 
 /** v7 aggregate quote is often blocked; fall back to v8 chart meta per symbol (same pathway as `/api/prices`). */
