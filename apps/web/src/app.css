@@ -104,6 +104,8 @@
 
   .ticker-tape__seq {
     flex-wrap: wrap;
+    flex-shrink: 1;
+    max-width: 100%;
   }
 }
 
