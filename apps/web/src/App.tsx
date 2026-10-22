@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
-import { PriceChart } from "./PriceChart";
+import { PriceChart, type PriceChartVariant } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import type { ChartTimeRange } from "./chartRangeBrush";
+import { formatRangeNetChange, rangeChangeTone, rangeNetChange } from "./rangeNetChange";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -25,6 +27,21 @@ function formatPercentChange(data: GetPricesResponse | null) {
     isPositive: pct > 0,
     isNegative: pct < 0
   };
+}
+
+function formatRangeLabel(range: ChartTimeRange, variant: PriceChartVariant): string {
+  const start = new Date(range.startMs);
+  const end = new Date(range.endMs);
+  if (variant === "intraday") {
+    const opts: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+    return `${start.toLocaleTimeString(undefined, opts)} – ${end.toLocaleTimeString(undefined, opts)}`;
+  }
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const startOpts: Intl.DateTimeFormatOptions = sameYear
+    ? { month: "short", day: "numeric" }
+    : { month: "short", day: "numeric", year: "numeric" };
+  const endOpts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  return `${start.toLocaleDateString(undefined, startOpts)} – ${end.toLocaleDateString(undefined, endOpts)}`;
 }
 
 const HORIZONS = [
@@ -120,6 +137,43 @@ export default function App() {
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
+  const chartVariant: PriceChartVariant = horizonIndex === 0 ? "intraday" : "daily";
+
+  // Selection is keyed by ticker + horizon so it is implicitly dropped when either changes.
+  const selectionKey = `${ticker}:${horizonIndex}`;
+  const [rangeSelection, setRangeSelection] = useState<{ key: string; range: ChartTimeRange } | null>(null);
+  const activeSelection = rangeSelection && rangeSelection.key === selectionKey ? rangeSelection.range : null;
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectionChange = useCallback(
+    (range: ChartTimeRange | null) => {
+      setRangeSelection(range ? { key: selectionKey, range } : null);
+    },
+    [selectionKey],
+  );
+
+  useEffect(() => {
+    if (!activeSelection) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRangeSelection(null);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const container = chartContainerRef.current;
+      if (container && e.target instanceof Node && container.contains(e.target)) return;
+      setRangeSelection(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [activeSelection]);
+
+  const rangeStats = useMemo(() => {
+    if (!activeSelection || !displayData) return null;
+    return rangeNetChange(displayData.series, activeSelection.startMs, activeSelection.endMs);
+  }, [activeSelection, displayData]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -190,6 +244,26 @@ export default function App() {
                         </span>
                       );
                     })()}
+                    {activeSelection && (
+                      <span
+                        className={`metric-badge range-badge ${rangeStats ? rangeChangeTone(rangeStats) : "muted"}`}
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <span className="range-badge__label">{formatRangeLabel(activeSelection, chartVariant)}</span>
+                        <span className="range-badge__value">
+                          {rangeStats ? formatRangeNetChange(rangeStats, currencyDisplay) : "Select a wider range"}
+                        </span>
+                        <button
+                          type="button"
+                          className="range-badge__clear"
+                          aria-label="Clear range selection"
+                          onClick={() => setRangeSelection(null)}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
                   </div>
                   <div className="horizon-buttons">
                     {HORIZONS.map((h, i) => (
@@ -205,12 +279,15 @@ export default function App() {
                 </div>
               </div>
               <div
+                ref={chartContainerRef}
                 className="chart-container"
                 aria-label="Price chart"
               >
                 <PriceChart
                   data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  variant={chartVariant}
+                  selection={activeSelection}
+                  onSelectionChange={handleSelectionChange}
                 />
               </div>
               {loading && (

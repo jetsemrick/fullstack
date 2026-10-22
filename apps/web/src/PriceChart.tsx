@@ -8,10 +8,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
+import type { CategoricalChartState } from "recharts/types/chart/types";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import {
+  chartXToMs,
+  normalizeTimeRange,
+  resolveXDomainMs,
+  type ChartTimeRange,
+} from "./chartRangeBrush";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -63,8 +70,25 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export type PriceChartProps = {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  /** Committed drag selection, owned by the parent so it can be cleared on ticker/horizon change. */
+  selection?: ChartTimeRange | null;
+  /** Called with the normalized range on drag end, or `null` when a click/empty drag clears it. */
+  onSelectionChange?: (range: ChartTimeRange | null) => void;
+};
+
+type DragState = { startMs: number; currentMs: number };
+
+/**
+ * Range selection is pointer-driven (click-drag across the plot). Keyboard users can
+ * clear a selection with Escape or the "Clear range" button in the toolbar; creating a
+ * selection via keyboard is a documented follow-up (see SI-33).
+ */
+export function PriceChart({ data, variant = "daily", selection = null, onSelectionChange }: PriceChartProps) {
   const fillGradientId = useId().replace(/:/g, "");
+  const [drag, setDrag] = useState<DragState | null>(null);
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -99,12 +123,76 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
+  /** Epoch ms under the pointer: snap to the nearest bar, else map pixels across the x-domain. */
+  const pointerMs = useCallback(
+    (state: CategoricalChartState | undefined): number | null => {
+      if (!state) return null;
+      const label: unknown = state.activeLabel;
+      if (typeof label === "number" && Number.isFinite(label)) return label;
+      if (typeof state.chartX !== "number" || !state.offset) return null;
+      const [minMs, maxMs] = resolveXDomainMs(xDomain, rows);
+      return chartXToMs(state.chartX - (state.offset.left ?? 0), state.offset.width ?? 0, minMs, maxMs);
+    },
+    [xDomain, rows],
+  );
+
+  const commitDrag = useCallback(
+    (current: DragState | null) => {
+      setDrag(null);
+      if (!current) return;
+      if (current.startMs === current.currentMs) {
+        onSelectionChange?.(null);
+        return;
+      }
+      onSelectionChange?.(normalizeTimeRange(current.startMs, current.currentMs));
+    },
+    [onSelectionChange],
+  );
+
+  const handleMouseDown = useCallback(
+    (state: CategoricalChartState) => {
+      const ms = pointerMs(state);
+      if (ms == null) return;
+      onSelectionChange?.(null);
+      setDrag({ startMs: ms, currentMs: ms });
+    },
+    [pointerMs, onSelectionChange],
+  );
+
+  const handleMouseMove = useCallback(
+    (state: CategoricalChartState) => {
+      if (!drag) return;
+      const ms = pointerMs(state);
+      if (ms == null) return;
+      setDrag((prev) => (prev && prev.currentMs !== ms ? { ...prev, currentMs: ms } : prev));
+    },
+    [drag, pointerMs],
+  );
+
+  const handleMouseUp = useCallback(() => commitDrag(drag), [commitDrag, drag]);
+
+  const highlight: ChartTimeRange | null = drag
+    ? normalizeTimeRange(drag.startMs, drag.currentMs)
+    : selection;
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      role="img"
+      aria-label="Price over time line chart. Drag horizontally across the chart to measure net change over a range."
+      className={`price-chart${drag ? " price-chart--dragging" : ""}`}
+      style={{ width: "100%", height: "100%" }}
+    >
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart
+          data={rows}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -131,6 +219,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
                 ifOverflow="hidden"
               />
             </>
+          ) : null}
+          {highlight && highlight.startMs !== highlight.endMs ? (
+            <ReferenceArea
+              x1={highlight.startMs}
+              x2={highlight.endMs}
+              fill="var(--accent)"
+              fillOpacity={0.16}
+              stroke="var(--accent)"
+              strokeOpacity={0.6}
+              strokeWidth={1}
+              ifOverflow="hidden"
+            />
           ) : null}
           <XAxis
             dataKey="t"
