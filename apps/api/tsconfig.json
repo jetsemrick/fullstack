@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": "src",
+    "rootDir": "agent",
     "types": ["bun"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["agent/**/*.ts"]
 }
