@@ -1,3 +1,133 @@
+.app {
+  min-height: 100%;
+}
+
+.ticker-tape {
+  position: relative;
+  width: 100%;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  color: var(--fg);
+}
+
+.ticker-tape__fallback {
+  margin: 0;
+  padding: 0.35rem 0.75rem 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.ticker-tape__viewport {
+  overflow: hidden;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.ticker-tape__track {
+  display: flex;
+  width: max-content;
+  animation: ticker-tape-marquee 55s linear infinite;
+}
+
+.ticker-tape__group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.ticker-tape__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ticker-tape__symbol {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ticker-tape__price {
+  font-variant-numeric: tabular-nums;
+  min-width: 5.5rem;
+  text-align: right;
+}
+
+.ticker-tape__pct {
+  font-variant-numeric: tabular-nums;
+  min-width: 4.25rem;
+  font-weight: 500;
+}
+
+.ticker-tape__pct--up {
+  color: #2b703e;
+}
+
+.ticker-tape__pct--down {
+  color: #ba3b3b;
+}
+
+.ticker-tape__pct--muted {
+  color: var(--fg-muted);
+}
+
+/* Static list is the accessible copy. The marquee is decorative. */
+.ticker-tape__list {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.ticker-tape__list > li {
+  flex-shrink: 0;
+}
+
+@keyframes ticker-tape-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape__viewport {
+    display: none;
+  }
+
+  .ticker-tape__track {
+    animation: none;
+    transform: none;
+  }
+
+  .ticker-tape__list {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    overflow-x: auto;
+    clip: auto;
+    min-height: 2.25rem;
+    align-items: center;
+  }
+}
+
 .shell {
   max-width: 1000px;
   margin: 0 auto;
