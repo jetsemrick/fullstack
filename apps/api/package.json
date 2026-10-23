@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "test": "bun test",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "go run ./cmd/api",
+    "start": "go run ./cmd/api",
+    "build": "go build -o bin/api ./cmd/api",
+    "test": "go test ./...",
+    "typecheck": "go vet ./... && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.23",
