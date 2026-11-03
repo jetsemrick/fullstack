@@ -4,6 +4,7 @@ import {
   downsampleRows,
   filterSeriesByHorizon,
   seriesHasVolume,
+  sessionStartIndices,
   formatVolumeAxis,
   formatVolumeTooltip,
 } from "./priceChartData";
@@ -53,6 +54,21 @@ describe("filterSeriesByHorizon", () => {
   test("returns data unchanged for an empty series", () => {
     const empty = { ...data, series: [] };
     expect(filterSeriesByHorizon(empty, 365)).toBe(empty);
+  });
+});
+
+describe("sessionStartIndices", () => {
+  test("marks the first bar of each New York day", () => {
+    const t = (s: string) => Date.parse(s);
+    const rows = [
+      { t: t("2026-10-30T13:30:00Z") },
+      { t: t("2026-10-30T19:45:00Z") },
+      // 01:00Z on Nov 3 is still Nov 2 in New York.
+      { t: t("2026-11-02T14:30:00Z") },
+      { t: t("2026-11-03T01:00:00Z") },
+      { t: t("2026-11-03T14:30:00Z") },
+    ];
+    expect(sessionStartIndices(rows)).toEqual([0, 2, 4]);
   });
 });
 

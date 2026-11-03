@@ -1,4 +1,5 @@
 import type { GetPricesResponse, PricePoint } from "@stock/shared";
+import { easternDayKey } from "./usMarket";
 
 export type PriceVolumeRow = {
   t: number;
@@ -26,6 +27,18 @@ export function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: numb
     ...data,
     series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
   };
+}
+
+/** Indices of the first bar of each New York trading day, for ticks on an index (gap-free) x-axis. */
+export function sessionStartIndices(rows: { t: number }[]): number[] {
+  const out: number[] = [];
+  let prev: string | undefined;
+  rows.forEach((r, i) => {
+    const key = easternDayKey(r.t);
+    if (key !== prev) out.push(i);
+    prev = key;
+  });
+  return out;
 }
 
 export function seriesHasVolume(series: PricePoint[]): boolean {

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
-import { filterSeriesByHorizon } from "./priceChartData";
+import { RangeControl } from "./RangeControl";
+import { RANGES, percentChange, sliceForRange } from "./ranges";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -13,13 +14,8 @@ function formatLast(v: number | null, currency: string | null) {
   return `${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
 }
 
-function formatPercentChange(data: GetPricesResponse | null) {
-  if (!data || !data.series || data.series.length < 2) return null;
-  const first = data.series[0].close;
-  const last = data.series[data.series.length - 1].close;
-  if (!first) return null;
-  const diff = last - first;
-  const pct = (diff / first) * 100;
+function formatPercentChange(pct: number | null) {
+  if (pct == null || !Number.isFinite(pct)) return null;
   const sign = pct > 0 ? "+" : "";
   return {
     text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
@@ -27,13 +23,6 @@ function formatPercentChange(data: GetPricesResponse | null) {
     isNegative: pct < 0
   };
 }
-
-const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
-];
 
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
@@ -46,9 +35,11 @@ export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
-  const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [rangeIndex, setRangeIndex] = useState<number>(0);
 
-  const [data, setData] = useState<GetPricesResponse | null>(null);
+  // The range a response was loaded for, so the previous chart stays consistent while a new range loads.
+  const [loaded, setLoaded] = useState<{ data: GetPricesResponse; rangeIndex: number } | null>(null);
+  const data = loaded?.data ?? null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -57,20 +48,18 @@ export default function App() {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
-    const horizon = HORIZONS[horizonIndex];
-    // Yahoo coarsens `max` to roughly quarterly bars even at interval=1d, so each horizon fetches its own range.
-    const fetchRange = horizon.range;
-    const cacheKey = priceCacheKey(ticker, fetchRange, horizon.interval);
+    const { range, interval } = RANGES[rangeIndex]!.fetch;
+    const cacheKey = priceCacheKey(ticker, range, interval);
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {
-      setData(cached.data);
+      setLoaded({ data: cached.data, rangeIndex });
       setLoading(false);
       return;
     }
 
     let res: Awaited<ReturnType<typeof fetchPrices>>;
     try {
-      res = await fetchPrices({ ticker, range: fetchRange, interval: horizon.interval, signal });
+      res = await fetchPrices({ ticker, range, interval, signal });
     } catch (e) {
       if (signal.aborted) return;
       if (requestId !== requestIdRef.current) return;
@@ -81,13 +70,13 @@ export default function App() {
     if (signal.aborted || requestId !== requestIdRef.current) return;
     setLoading(false);
     if (!res.ok) {
-      setData(null);
+      setLoaded(null);
       setError(res.error.error ?? "Request failed");
       return;
     }
     priceCache.set(cacheKey, { data: res.data, fetchedAt: Date.now() });
-    setData(res.data);
-  }, [ticker, horizonIndex]);
+    setLoaded({ data: res.data, rangeIndex });
+  }, [ticker, rangeIndex]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -97,15 +86,12 @@ export default function App() {
     return () => controller.abort();
   }, [load]);
 
-  const slicedDaily = useMemo(() => {
-    if (!data) return null;
-    return filterSeriesByHorizon(data, HORIZONS[horizonIndex].days);
-  }, [data, horizonIndex]);
-
-  const displayData = useMemo(() => {
-    if (!slicedDaily) return null;
-    return slicedDaily;
-  }, [slicedDaily]);
+  const slice = useMemo(() => {
+    if (!loaded) return null;
+    return sliceForRange(loaded.data, RANGES[loaded.rangeIndex]!);
+  }, [loaded]);
+  const displayData = slice?.data ?? null;
+  const chartVariant = loaded ? RANGES[loaded.rangeIndex]!.chart : "daily";
 
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
@@ -171,27 +157,17 @@ export default function App() {
                     <h2 className="ticker-display">{data.ticker}</h2>
                     <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
                     {(() => {
-                      const percentChange = formatPercentChange(displayData);
-                      if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
+                      const change = formatPercentChange(slice ? percentChange(slice) : null);
+                      if (!change) return null;
+                      const statusClass = change.isPositive ? "positive" : change.isNegative ? "negative" : "muted";
                       return (
                         <span className={`metric-badge ${statusClass}`}>
-                          {percentChange.text}
+                          {change.text}
                         </span>
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
-                  </div>
+                  <RangeControl options={RANGES} selectedIndex={rangeIndex} onSelect={setRangeIndex} />
                 </div>
               </div>
               <div
@@ -200,7 +176,7 @@ export default function App() {
               >
                 <PriceChart
                   data={displayData}
-                  variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  variant={chartVariant}
                 />
               </div>
               {loading && (

@@ -10,13 +10,20 @@ import {
 } from "recharts";
 import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
-import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import {
+  formatEasternDay,
+  formatEasternDayTime,
+  hourlySessionTicksUtcMs,
+  intradaySessionLayoutUtcMs,
+} from "./usMarket";
+import { downsampleRows, sessionStartIndices } from "./priceChartData";
+import type { ChartVariant } from "./ranges";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
 const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
+  data.series.map((p, i) => ({
+    i,
     t: p.timestamp * 1000,
     price: p.close,
   }));
@@ -44,7 +51,7 @@ function formatIntradayAxisTick(ms: number): string {
 
 function formatTooltipWhen(
   ms: number,
-  variant: "daily" | "intraday",
+  variant: ChartVariant,
   spanDays: number,
 ): string {
   const d = new Date(ms);
@@ -61,22 +68,27 @@ function formatPrice(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export type PriceChartVariant = "daily" | "intraday";
+export type PriceChartVariant = ChartVariant;
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
   const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
-    if (variant === "intraday") return fullRows;
-    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
+    if (variant !== "daily") return fullRows;
+    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS).map((r, i) => ({ ...r, i }));
   }, [fullRows, variant]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
+  // Multi-day intraday bars plot by index so overnight and weekend gaps collapse instead of drawing flat lines.
+  const isMultiday = variant === "multiday";
+  const multidayTicks = useMemo(() => (isMultiday ? sessionStartIndices(rows) : undefined), [isMultiday, rows]);
 
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
-    variant === "intraday"
-      ? (ms: number) => formatIntradayAxisTick(ms)
-      : (ms: number) => formatDailyAxisTick(ms, spanDays);
+    isMultiday
+      ? (i: number) => (rows[i] ? formatEasternDay(rows[i].t) : "")
+      : variant === "intraday"
+        ? (ms: number) => formatIntradayAxisTick(ms)
+        : (ms: number) => formatDailyAxisTick(ms, spanDays);
 
   const sessionLayout = useMemo(() => {
     if (variant !== "intraday" || anchorMs <= 0) return undefined;
@@ -96,8 +108,9 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       return [dataStart, Math.max(dataEnd, sessionLayout.rth[1])];
     }
     if (variant === "intraday" && sessionLayout) return [sessionLayout.rth[0], sessionLayout.rth[1]];
+    if (isMultiday) return [0, Math.max(rows.length - 1, 0)];
     return ["dataMin", "dataMax"];
-  }, [variant, sessionLayout, rows]);
+  }, [variant, sessionLayout, rows, isMultiday]);
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
@@ -133,16 +146,16 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             </>
           ) : null}
           <XAxis
-            dataKey="t"
+            dataKey={isMultiday ? "i" : "t"}
             type="number"
             domain={xDomain}
-            scale="time"
-            ticks={variant === "intraday" ? intradayTicks : undefined}
+            scale={isMultiday ? "linear" : "time"}
+            ticks={variant === "intraday" ? intradayTicks : isMultiday ? multidayTicks : undefined}
             tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
             tickLine={false}
             axisLine={false}
             tickFormatter={tickFormatter}
-            minTickGap={variant === "intraday" ? 0 : 32}
+            minTickGap={variant === "daily" ? 32 : 0}
             dy={10}
           />
           <YAxis
@@ -167,6 +180,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             labelFormatter={(_, payload) => {
               const t = (payload?.[0]?.payload as { t?: number })?.t;
               if (typeof t === "number") {
+                if (isMultiday) return formatEasternDayTime(t);
                 return formatTooltipWhen(t, variant, spanDays);
               }
               return "";

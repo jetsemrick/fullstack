@@ -315,36 +315,67 @@
   border: 0;
 }
 
-.horizon-buttons {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+/* Padding leaves room for the focus ring and the 44px touch target inside the scroll clip. */
+.range-scroller {
+  position: relative;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 6px 4px;
+  margin: -6px -4px;
 }
 
-.horizon-btn {
+.range-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.range-control {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--fg-strong) 4%, transparent);
+}
+
+.range-segment {
+  position: relative;
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
   background: transparent;
-  border: 1px solid var(--card-border);
   color: var(--fg-muted);
-  border-radius: 0;
-  padding: 0.22rem 0.55rem;
-  font-size: 0.8125rem;
+  font-family: "Geist", Arial, sans-serif;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.horizon-btn:hover {
-  background: var(--bg);
+.range-segment:hover {
+  background: color-mix(in srgb, var(--fg-strong) 8%, transparent);
   color: var(--fg);
-  border-color: var(--fg-muted);
 }
 
-.horizon-btn.active {
-  background: #edf5ee;
-  color: #2b703e;
-  border-color: #d1e2d3;
+.range-segment[aria-checked="true"] {
+  background: var(--fg-strong);
+  color: var(--bg);
+}
+
+.range-segment:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .range-segment::before {
+    content: "";
+    position: absolute;
+    inset: -6px 0;
+  }
 }
 
 .report-bug {
