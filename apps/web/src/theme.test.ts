@@ -155,22 +155,29 @@ describe("theme boot script", () => {
 });
 
 describe("SpaceXSI light tokens", () => {
-  test("light :root uses the v2 muted / up / down inks", async () => {
+  test("light :root uses the final muted / event-div / up / down inks", async () => {
     const css = await Bun.file(new URL("./index.css", import.meta.url)).text();
     const root = css.slice(css.indexOf(":root"), css.indexOf("html.dark"));
-    expect(root).toMatch(/--fg-muted:\s*#676a6f/);
+    expect(root).toMatch(/--fg-muted:\s*#5f6368/);
+    expect(root).toMatch(/--event-div:\s*#b84300/);
     expect(root).toMatch(/--up:\s*#137638/);
     expect(root).toMatch(/--down:\s*#b81e1e/);
+    expect(root).not.toMatch(/--fg-muted:\s*#676a6f/);
     expect(root).not.toMatch(/--fg-muted:\s*#3c4553/);
+    expect(root).not.toMatch(/--fg-muted:\s*#7d8187/);
+    expect(root).not.toContain("--muted-fg");
     expect(root).not.toMatch(/--up:\s*#15803d/);
     expect(root).not.toMatch(/--down:\s*#dc2626/);
   });
 
-  test("dark values stay on fog / #4ade80 / #e66565", async () => {
+  test("dark muted is #9a9ea5, not fog, and event-div is sunset", async () => {
     const css = await Bun.file(new URL("./index.css", import.meta.url)).text();
     const dark = css.slice(css.indexOf("html.dark"), css.indexOf("@media"));
-    expect(dark).toMatch(/--fg-muted:\s*#7d8187/);
+    expect(dark).toMatch(/--fg-muted:\s*#9a9ea5/);
+    expect(dark).toMatch(/--event-div:\s*#ff6308/);
     expect(dark).toMatch(/--up:\s*#4ade80/);
     expect(dark).toMatch(/--down:\s*#e66565/);
+    expect(dark).not.toMatch(/--fg-muted:\s*#7d8187/);
+    expect(dark).not.toContain("--muted-fg");
   });
 });

@@ -5,8 +5,8 @@
   --card-border: #d5d9e2;
   --fg: #0a0a0a;
   --fg-strong: #0a0a0a;
-  /* Light muted copy is #676a6f (5.4:1), not fog: fog is 3.9:1 on white and only OK at >=18px. */
-  --fg-muted: #676a6f;
+  /* Small muted copy. Fog #7d8187 is only for icons / >=18px text (`--fg-subtle` if needed). */
+  --fg-muted: #5f6368;
   --accent: #ff6308;
   --accent-hover: #ffd085;
   --accent-fg: var(--fg-strong);
@@ -14,7 +14,7 @@
   --up: #137638;
   --down: #b81e1e;
   --info: #9cb8dd;
-  --event-div: var(--accent);
+  --event-div: #b84300;
   --event-split: var(--fg-strong);
   --shadow: none;
   --shadow-sm: none;
@@ -31,7 +31,7 @@ html.dark {
   --card-border: #1f2228;
   --fg: #d5d9e2;
   --fg-strong: #ffffff;
-  --fg-muted: #7d8187;
+  --fg-muted: #9a9ea5;
   --accent: #ff6308;
   --accent-hover: #ffd085;
   --accent-fg: var(--fg-strong);
@@ -39,7 +39,7 @@ html.dark {
   --up: #4ade80;
   --down: #e66565;
   --info: #9cb8dd;
-  --event-div: var(--accent);
+  --event-div: #ff6308;
   --event-split: var(--info);
   --shadow: none;
   --shadow-sm: none;
@@ -53,7 +53,7 @@ html.dark {
     --card-border: #1f2228;
     --fg: #d5d9e2;
     --fg-strong: #ffffff;
-    --fg-muted: #7d8187;
+    --fg-muted: #9a9ea5;
     --accent: #ff6308;
     --accent-hover: #ffd085;
     --accent-fg: var(--fg-strong);
@@ -61,7 +61,7 @@ html.dark {
     --up: #4ade80;
     --down: #e66565;
     --info: #9cb8dd;
-    --event-div: var(--accent);
+    --event-div: #ff6308;
     --event-split: var(--info);
     --shadow: none;
     --shadow-sm: none;

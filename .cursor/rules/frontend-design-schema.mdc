@@ -13,13 +13,14 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 | Token | Role |
 |-------|------|
 | `--bg`, `--card`, `--card-border` | Page, elevated surface, separation (borders, not shadows) |
-| `--fg`, `--fg-strong`, `--fg-muted` | Body text, headings/selected, secondary text |
+| `--fg`, `--fg-strong`, `--fg-muted` | Body text, headings/selected, small secondary text (`#5f6368` / `#9a9ea5`) |
+| `--fg-subtle` | Fog `#7d8187` — add only if an icon or ≥18px label needs it. Do not add `--muted-fg`. |
 | `--accent`, `--accent-hover` | Sunset / dawn — small highlights only (not light-mode text) |
 | `--accent-fg` | Reserved; do not place sunset behind text in light mode |
 | `--focus` | 2px outline, 2px offset (`#0a0a0a` / `#ffffff`) |
 | `--up`, `--down` | Market gains / losses |
 | `--info` | Breeze — split markers in dark |
-| `--event-div`, `--event-split` | Dividend fill (sunset); split stroke (`--fg-strong` light, `--info` dark) |
+| `--event-div`, `--event-split` | Dividend (`#b84300` / `#ff6308`); split stroke (`--fg-strong` light, `--info` dark) |
 | `--shadow`, `--shadow-sm` | Always `none` — separate surfaces with borders |
 | `--radius`, `--radius-pill` | 0.5rem cards/dropdowns; 9999px buttons, segments, chips |
 | `--font`, `--font-mono` | Geist Sans / Arial; Geist Mono + tabular nums for prices, axes, tickers |
@@ -29,7 +30,7 @@ Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file
 1. **Prefer CSS variables** for layout chrome. Avoid new hard-coded hex/rgb except meaning-specific hues until those become named tokens.
 2. **Add new primitives in `:root` first**, then wire `var(--…)`.
 3. **Focus**: `:focus-visible` is `2px solid var(--focus)` with `2px` offset.
-4. **Contrast**: light-mode small muted text uses `#676a6f` (5.4:1), not fog `#7d8187`. Sunset is never used for text in light mode. Focus is `2px solid var(--focus)` with a `2px` offset (`#0a0a0a` / `#ffffff`), never `--accent`.
+4. **Contrast**: small muted text is `--fg-muted` (`#5f6368` / `#9a9ea5`). Fog `#7d8187` is only for icons and text ≥18px (`--fg-subtle` if that needs a token). Sunset is never used for text in light mode. Focus is `2px solid var(--focus)` with a `2px` offset (`#0a0a0a` / `#ffffff`), never `--accent`.
 5. **Type**: weights 400 and 500, plus 600 for the price heading. Controls 13px. Geist Mono + `tabular-nums` on prices, axes, tickers.
 6. **Chart**: gridlines `--card-border`; axis text `--fg-muted` in Geist Mono.
 
