@@ -58,6 +58,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [showEvents, setShowEvents] = useState(false);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,16 +192,30 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
+                  <div className="chart-controls">
+                    <div className="horizon-buttons">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="view-options">
                       <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        type="button"
+                        className="toggle-chip"
+                        aria-pressed={showEvents}
+                        aria-label="Events: dividend and split markers"
+                        onClick={() => setShowEvents((v) => !v)}
                       >
-                        {h.label}
+                        <span className="toggle-chip__dot" aria-hidden="true" />
+                        Events
                       </button>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -211,8 +226,21 @@ export default function App() {
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  showEvents={showEvents}
                 />
               </div>
+              {showEvents && (
+                <div className="event-legend">
+                  <span className="event-legend__item">
+                    <span className="event-swatch event-swatch--dividend" aria-hidden="true" />
+                    Dividend
+                  </span>
+                  <span className="event-legend__item">
+                    <span className="event-swatch event-swatch--split" aria-hidden="true" />
+                    Split
+                  </span>
+                </div>
+              )}
               {loading && (
                 <div className="chart-loading-overlay" role="status">
                   Loading latest data...

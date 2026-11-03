@@ -8,12 +8,35 @@ export interface PricePoint {
   volume: number | null;
 }
 
+/** Cash dividend paid per share. */
+export interface DividendEvent {
+  /** Unix seconds */
+  timestamp: number;
+  /** Per-share amount in the series currency */
+  amount: number;
+}
+
+/** Stock split, e.g. 4-for-1 is numerator 4, denominator 1. */
+export interface SplitEvent {
+  /** Unix seconds */
+  timestamp: number;
+  numerator: number;
+  denominator: number;
+}
+
+/** Corporate actions within the requested range; arrays are empty when there are none. */
+export interface PriceEvents {
+  dividends: DividendEvent[];
+  splits: SplitEvent[];
+}
+
 export interface GetPricesResponse {
   ticker: string;
   currency: string | null;
   /** Most recent last price from metadata when available */
   lastPrice: number | null;
   series: PricePoint[];
+  events: PriceEvents;
 }
 
 export interface ApiErrorBody {

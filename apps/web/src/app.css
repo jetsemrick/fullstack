@@ -514,3 +514,196 @@
   word-break: break-word;
   color: var(--fg);
 }
+
+.chart-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.view-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .view-options {
+    flex-basis: 100%;
+  }
+}
+
+.toggle-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Extends the hit area to 44px tall without changing the visual size. */
+.toggle-chip::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+.toggle-chip:hover {
+  background: color-mix(in srgb, var(--fg-strong) 8%, transparent);
+}
+
+.toggle-chip[aria-pressed="true"] {
+  border-color: var(--fg-strong);
+  color: var(--fg-strong);
+}
+
+.toggle-chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.toggle-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+}
+
+.toggle-chip[aria-pressed="true"] .toggle-chip__dot {
+  background: var(--accent);
+}
+
+.price-chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.event-marker {
+  outline: none;
+}
+
+.event-marker__hit {
+  fill: transparent;
+}
+
+.event-marker__ring {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+}
+
+.event-marker:focus-visible .event-marker__ring {
+  stroke: var(--focus);
+}
+
+.event-marker__dividend {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 1;
+}
+
+.event-marker__split {
+  fill: var(--bg);
+  stroke: var(--fg-strong);
+  stroke-width: 1.5;
+}
+
+.dark .event-marker__split {
+  stroke: var(--info);
+}
+
+.event-marker__count {
+  fill: var(--fg);
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-tooltip {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, calc(-100% - 14px));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.event-tooltip--start {
+  transform: translate(-12px, calc(-100% - 14px));
+}
+
+.event-tooltip--end {
+  transform: translate(calc(-100% + 12px), calc(-100% - 14px));
+}
+
+.event-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-swatch {
+  flex: none;
+  width: 6px;
+  height: 6px;
+}
+
+.event-swatch--dividend {
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--bg);
+}
+
+/* 4.24px square rotated 45deg spans the same 6px as the SVG diamond. */
+.event-swatch--split {
+  width: 4.25px;
+  height: 4.25px;
+  margin: 0 0.875px;
+  border: 1.5px solid var(--fg-strong);
+  transform: rotate(45deg);
+}
+
+.dark .event-swatch--split {
+  border-color: var(--info);
+}
+
+.event-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 2rem 1rem;
+  margin-top: -1rem;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.event-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

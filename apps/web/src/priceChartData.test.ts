@@ -32,6 +32,7 @@ describe("buildPriceVolumeRows", () => {
         { timestamp: 1000, close: 1.5, volume: 100 },
         { timestamp: 2000, close: 2, volume: null },
       ],
+      events: { dividends: [], splits: [] },
     };
     const rows = buildPriceVolumeRows(data);
     expect(rows).toEqual([

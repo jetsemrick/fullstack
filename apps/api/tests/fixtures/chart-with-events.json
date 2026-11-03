@@ -1,0 +1,38 @@
+{
+  "chart": {
+    "result": [
+      {
+        "meta": {
+          "currency": "USD",
+          "symbol": "AAPL",
+          "regularMarketPrice": 129.04
+        },
+        "timestamp": [1597152600, 1598880600, 1604932200],
+        "events": {
+          "dividends": {
+            "1604932200": { "amount": 0.205, "date": 1604932200 },
+            "1597152600": { "amount": 0.205, "date": 1597152600 },
+            "bad": { "amount": "n/a", "date": 1600000000 }
+          },
+          "splits": {
+            "1598880600": {
+              "date": 1598880600,
+              "numerator": 4.0,
+              "denominator": 1.0,
+              "splitRatio": "4:1"
+            }
+          }
+        },
+        "indicators": {
+          "quote": [
+            {
+              "close": [113.49, 129.04, 116.32],
+              "volume": [212403600, 225702700, 154515300]
+            }
+          ]
+        }
+      }
+    ],
+    "error": null
+  }
+}

@@ -8,6 +8,16 @@
   --card-border: #e2e4e0;
   --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
   --font: "Inter", system-ui, -apple-system, sans-serif;
+  --fg-strong: #0a0a0a;
+  --info: #9cb8dd;
+  --focus: #0a0a0a;
+  --radius: 0.5rem;
+  --radius-pill: 9999px;
+}
+
+.dark {
+  --fg-strong: #ffffff;
+  --focus: #ffffff;
 }
 
 *,

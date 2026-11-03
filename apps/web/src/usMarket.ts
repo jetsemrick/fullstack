@@ -1,4 +1,4 @@
-const EASTERN = "America/New_York";
+export const EASTERN = "America/New_York";
 
 /** Calendar components (year, month, day) as numbers in Eastern for an instant */
 function easternCalendarParts(ms: number): { y: number; mo: number; dy: number } {

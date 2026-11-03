@@ -2,16 +2,19 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  Customized,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import { visibleChartEvents } from "./chartEvents";
+import { EventMarkerLayer, EventMarkerTooltip, type ActiveMarker } from "./EventMarkers";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -63,7 +66,21 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export function PriceChart({
+  data,
+  variant = "daily",
+  showEvents = false,
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  showEvents?: boolean;
+}) {
+  const [activeMarker, setActiveMarker] = useState<ActiveMarker | null>(null);
+  const [markerSource, setMarkerSource] = useState({ data, showEvents });
+  if (markerSource.data !== data || markerSource.showEvents !== showEvents) {
+    setMarkerSource({ data, showEvents });
+    setActiveMarker(null);
+  }
   const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
@@ -99,10 +116,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
     return ["dataMin", "dataMax"];
   }, [variant, sessionLayout, rows]);
 
+  const chartEvents = useMemo(() => {
+    if (!showEvents || rows.length === 0) return [];
+    const start = typeof xDomain[0] === "number" ? xDomain[0] : rows[0]!.t;
+    const end = typeof xDomain[1] === "number" ? xDomain[1] : rows[rows.length - 1]!.t;
+    return visibleChartEvents(data.events, [start, end], data.currency);
+  }, [showEvents, rows, xDomain, data.events, data.currency]);
+  const markerActive = showEvents && activeMarker !== null;
+
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div className="price-chart" role="group" aria-label="Price over time line chart">
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -156,6 +181,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dx={-10}
           />
           <Tooltip
+            active={markerActive ? false : undefined}
             contentStyle={{
               background: "var(--card)",
               border: `1px solid var(--card-border)`,
@@ -184,8 +210,19 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
           />
+          {showEvents ? (
+            <Customized component={<EventMarkerLayer events={chartEvents} onActiveChange={setActiveMarker} />} />
+          ) : null}
         </ComposedChart>
       </ResponsiveContainer>
+      {markerActive ? <EventMarkerTooltip active={activeMarker} /> : null}
+      {showEvents ? (
+        <p className="sr-only" aria-live="polite">
+          {chartEvents.length === 0
+            ? "No dividends or splits in this range."
+            : `${chartEvents.length} dividend and split ${chartEvents.length === 1 ? "event" : "events"} shown on the time axis.`}
+        </p>
+      ) : null}
     </div>
   );
 }
