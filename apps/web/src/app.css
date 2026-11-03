@@ -213,7 +213,7 @@
   font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--fg-strong);
+  color: var(--fg);
 }
 
 .typeahead-name {
@@ -222,11 +222,13 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-weight: 400;
   color: var(--fg-muted);
 }
 
-.typeahead-name .typeahead-match {
+.typeahead-match {
   font-weight: 500;
+  color: var(--fg-strong);
 }
 
 .typeahead-message {
