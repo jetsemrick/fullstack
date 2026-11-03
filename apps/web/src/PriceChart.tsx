@@ -8,13 +8,34 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useSyncExternalStore } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
-import { MARKET_TZ_LABEL, formatDailyAxisTick, formatIntradayAxisTick, formatTooltipWhen } from "./chartTimeFormat";
+import {
+  MARKET_TZ_LABEL,
+  compactSessionTicks,
+  formatDailyAxisTick,
+  formatIntradayAxisTick,
+  formatTooltipWhen,
+} from "./chartTimeFormat";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
+/** Short intraday labels below 480px; below 420px four short labels still crowd, so keep three. */
+const NARROW_QUERY = "(max-width: 479px)";
+const NARROWEST_QUERY = "(max-width: 419px)";
+
+function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
+}
 
 const chartData = (data: GetPricesResponse) =>
   data.series.map((p) => ({
@@ -35,6 +56,8 @@ export type PriceChartVariant = "daily" | "intraday";
 
 export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
   const fillGradientId = useId().replace(/:/g, "");
+  const narrow = useMediaQuery(NARROW_QUERY);
+  const narrowest = useMediaQuery(NARROWEST_QUERY);
   const fullRows = useMemo(() => chartData(data), [data]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
@@ -45,7 +68,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   const spanDays = spanCalendarDays(rows);
   const tickFormatter =
     variant === "intraday"
-      ? (ms: number) => formatIntradayAxisTick(ms)
+      ? (ms: number) => formatIntradayAxisTick(ms, undefined, narrow)
       : (ms: number) => formatDailyAxisTick(ms, spanDays);
 
   const sessionLayout = useMemo(() => {
@@ -55,8 +78,10 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
 
   const intradayTicks = useMemo(() => {
     if (!sessionLayout) return undefined;
-    return hourlySessionTicksUtcMs(sessionLayout.rth[0], sessionLayout.rth[1]);
-  }, [sessionLayout]);
+    const hourly = hourlySessionTicksUtcMs(sessionLayout.rth[0], sessionLayout.rth[1]);
+    if (!narrow) return hourly;
+    return compactSessionTicks(hourly, narrowest ? 3 : 2);
+  }, [sessionLayout, narrow, narrowest]);
 
   const xDomain = useMemo((): [number, number] | [string, string] => {
     if (variant === "intraday" && sessionLayout && rows.length > 0) {
@@ -78,7 +103,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
       aria-label={variant === "intraday" ? "Price over time line chart, times in Eastern Time" : "Price over time line chart"}
       style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-        <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ComposedChart data={rows} margin={{ top: 10, right: 32, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -116,7 +141,8 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             tickLine={false}
             axisLine={false}
             tickFormatter={tickFormatter}
-            minTickGap={variant === "intraday" ? 0 : 32}
+            minTickGap={variant === "intraday" ? 16 : 32}
+            interval={variant === "intraday" ? "preserveStartEnd" : "preserveEnd"}
             dy={10}
             height={variant === "intraday" ? 52 : 30}
             label={

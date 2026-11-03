@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { formatDailyAxisTick, formatIntradayAxisTick, formatTooltipWhen } from "./chartTimeFormat";
+import { compactSessionTicks, formatDailyAxisTick, formatIntradayAxisTick, formatTooltipWhen } from "./chartTimeFormat";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 
 const ORIGINAL_TZ = process.env.TZ;
@@ -34,6 +34,17 @@ describe.each(VIEWER_ZONES)("viewer timezone %s", (zone) => {
       "3:00 PM",
       "4:00 PM",
     ]);
+  });
+
+  test("narrow Today axis uses short New York labels (four, or three on the narrowest screens)", () => {
+    process.env.TZ = zone;
+    for (const anchor of [NOV_3_1030_ET, JUL_1_1000_ET]) {
+      const layout = intradaySessionLayoutUtcMs(anchor)!;
+      const ticks = compactSessionTicks(hourlySessionTicksUtcMs(layout.rth[0], layout.rth[1]));
+      expect(ticks.map((ms) => formatIntradayAxisTick(ms, "en-US", true))).toEqual(["10 AM", "12 PM", "2 PM", "4 PM"]);
+      const three = compactSessionTicks(hourlySessionTicksUtcMs(layout.rth[0], layout.rth[1]), 3);
+      expect(three.map((ms) => formatIntradayAxisTick(ms, "en-US", true))).toEqual(["10 AM", "1 PM", "4 PM"]);
+    }
   });
 
   test("intraday axis tick uses New York time across DST", () => {

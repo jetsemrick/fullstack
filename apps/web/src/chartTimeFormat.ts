@@ -15,8 +15,21 @@ export function formatDailyAxisTick(ms: number, spanDays: number, locale?: strin
   return d.toLocaleDateString(locale, { timeZone: EASTERN, month: "short", day: "numeric" });
 }
 
-export function formatIntradayAxisTick(ms: number, locale?: string): string {
-  return new Date(ms).toLocaleTimeString(locale, { timeZone: EASTERN, hour: "numeric", minute: "2-digit" });
+/** Intraday x-axis label; `compact` drops minutes ("10 AM") for narrow screens, where ticks fall on the hour. */
+export function formatIntradayAxisTick(ms: number, locale?: string, compact = false): string {
+  return new Date(ms).toLocaleTimeString(
+    locale,
+    compact ? { timeZone: EASTERN, hour: "numeric" } : { timeZone: EASTERN, hour: "numeric", minute: "2-digit" },
+  );
+}
+
+/**
+ * Thins hourly session ticks (10:00–16:00 ET) for narrow charts: every 2nd hour gives 10, 12, 2, 4;
+ * every 3rd gives 10, 1, 4.
+ */
+export function compactSessionTicks(ticks: number[], everyHours: 2 | 3 = 2): number[] {
+  const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: EASTERN, hour: "numeric", hourCycle: "h23" });
+  return ticks.filter((ms) => (Number(hourFmt.format(ms)) - 10) % everyHours === 0);
 }
 
 export function formatTooltipWhen(
