@@ -426,10 +426,14 @@
 }
 
 .horizon-buttons {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-wrap: nowrap;
+  gap: 0.125rem;
+  max-width: 100%;
+  padding: 0.1875rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--fg-strong) 4%, transparent);
 }
 
 .horizon-btn {
@@ -437,10 +441,12 @@
   border: 1px solid transparent;
   color: var(--fg-muted);
   border-radius: var(--radius-pill);
-  padding: 0.22rem 0.55rem;
+  padding: 0.3rem 0.75rem;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
 }
 
