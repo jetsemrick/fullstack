@@ -38,6 +38,23 @@ export interface ReportBugResponse {
   error?: string;
 }
 
+export type SearchResultType = "EQUITY" | "ETF" | "INDEX";
+
+/** One typeahead suggestion from `/api/search`. */
+export interface SearchResult {
+  symbol: string;
+  name: string;
+  type: SearchResultType;
+  /** Display exchange name, e.g. `NASDAQ` */
+  exchange: string | null;
+}
+
+/** Success body for `GET /api/search?q=`. At most `SEARCH_MAX_RESULTS` results. */
+export interface SearchResponse {
+  query: string;
+  results: SearchResult[];
+}
+
 /** One major index quote returned from `/api/market-context`. */
 export interface MarketIndexQuote {
   symbol: string;

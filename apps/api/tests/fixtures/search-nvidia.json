@@ -1,0 +1,52 @@
+{
+  "quotes": [
+    {
+      "symbol": "NVDA",
+      "shortname": "NVIDIA Corporation",
+      "longname": "NVIDIA Corporation",
+      "quoteType": "EQUITY",
+      "exchDisp": "NASDAQ"
+    },
+    {
+      "symbol": "SNVDA=F",
+      "shortname": "NVIDIA Corp Single Stock future",
+      "longname": "NVIDIA Corp Single Stock futures",
+      "quoteType": "FUTURE",
+      "exchDisp": "Chicago Mercantile Exchange"
+    },
+    {
+      "symbol": "XNVDA=F",
+      "shortname": "Micro NVIDIA Corp Stock Futures",
+      "quoteType": "FUTURE",
+      "exchDisp": "Chicago Mercantile Exchange"
+    },
+    {
+      "symbol": "NVDX",
+      "shortname": "T-Rex 2X Long NVIDIA Daily Targ",
+      "quoteType": "ETF",
+      "exchDisp": "BATS Trading"
+    },
+    {
+      "symbol": "NVDA.TO",
+      "shortname": "NVIDIA CDR (CAD HEDGED)",
+      "longname": "NVIDIA Corporation",
+      "quoteType": "EQUITY",
+      "exchDisp": "Toronto"
+    },
+    {
+      "symbol": "NVD.DE",
+      "shortname": "NVIDIA CORP.                  R",
+      "longname": "NVIDIA Corporation",
+      "quoteType": "EQUITY",
+      "exchDisp": "XETRA"
+    },
+    {
+      "symbol": "NVDQ",
+      "shortname": "T-Rex 2X Inverse NVIDIA Daily T",
+      "quoteType": "ETF",
+      "exchDisp": "BATS Trading"
+    }
+  ],
+  "news": [],
+  "count": 7
+}
