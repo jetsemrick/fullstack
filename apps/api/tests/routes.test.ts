@@ -95,6 +95,21 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.series[0].close).toBe(198.1);
   });
 
+  test("returns adjClose on daily series points", async () => {
+    const fixturePath = join(import.meta.dir, "fixtures", "daily-adjclose-chart.json");
+    const textFixture = await readFile(fixturePath, "utf-8");
+    globalThis.fetch = mock(() =>
+      Promise.resolve(new Response(textFixture, { status: 200, headers: { "content-type": "application/json" } })),
+    ) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=KO&range=5y&interval=1d"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { lastPrice: number; series: { close: number; adjClose: number | null }[] };
+    expect(body.lastPrice).toBe(62.4);
+    expect(body.series[0]).toMatchObject({ close: 60.0, adjClose: 59.55 });
+    expect(body.series[3]).toMatchObject({ close: 62.4, adjClose: null });
+  });
+
   test("returns 200 and market context when Yahoo quote JSON is valid", async () => {
     const quotePath = join(import.meta.dir, "fixtures", "minimal-quote.json");
     const quoteFixture = await readFile(quotePath, "utf-8");

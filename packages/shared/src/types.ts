@@ -2,11 +2,19 @@
 export interface PricePoint {
   /** Unix seconds */
   timestamp: number;
-  /** Adjusted or regular close, depending on source */
+  /** Traded close (split-adjusted by Yahoo, not dividend-adjusted) */
   close: number;
+  /**
+   * Split- and dividend-adjusted close, for total return. Only daily-or-longer intervals carry it;
+   * intraday points (and bars Yahoo leaves blank) are `null`.
+   */
+  adjClose: number | null;
   /** Optional per-bar volume */
   volume: number | null;
 }
+
+/** Which close the chart plots: traded price, or dividend-adjusted (total return). */
+export type ReturnMode = "price" | "total";
 
 export interface GetPricesResponse {
   ticker: string;

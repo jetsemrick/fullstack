@@ -1,4 +1,4 @@
-import type { GetPricesResponse, PricePoint } from "@stock/shared";
+import type { GetPricesResponse, PricePoint, ReturnMode } from "@stock/shared";
 
 export type PriceVolumeRow = {
   t: number;
@@ -12,6 +12,42 @@ export type ChartRow = {
   t: number;
   price: number;
 };
+
+export const RETURN_MODE_LABEL: Record<ReturnMode, string> = {
+  price: "Price",
+  total: "Total return",
+};
+
+export function seriesHasAdjClose(series: PricePoint[]): boolean {
+  return series.some((p) => p.adjClose != null);
+}
+
+/**
+ * Points plotted for a mode. Total return uses dividend-adjusted closes and drops bars without one,
+ * so a series never mixes adjusted and unadjusted values.
+ */
+export function modeSeries(series: PricePoint[], mode: ReturnMode): { timestamp: number; value: number }[] {
+  if (mode === "price") return series.map((p) => ({ timestamp: p.timestamp, value: p.close }));
+  const out: { timestamp: number; value: number }[] = [];
+  for (const p of series) {
+    if (p.adjClose != null) out.push({ timestamp: p.timestamp, value: p.adjClose });
+  }
+  return out;
+}
+
+export function buildChartRows(data: GetPricesResponse, mode: ReturnMode): ChartRow[] {
+  return modeSeries(data.series, mode).map((p) => ({ t: p.timestamp * 1000, price: p.value }));
+}
+
+/** Percent change from the first to the last plotted point, or null when it can't be computed. */
+export function percentChange(series: PricePoint[], mode: ReturnMode): number | null {
+  const points = modeSeries(series, mode);
+  if (points.length < 2) return null;
+  const first = points[0]!.value;
+  const last = points[points.length - 1]!.value;
+  if (!first) return null;
+  return ((last - first) / first) * 100;
+}
 
 export function seriesHasVolume(series: PricePoint[]): boolean {
   return series.some((p) => p.volume != null);

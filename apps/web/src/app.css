@@ -347,6 +347,139 @@
   border-color: #d1e2d3;
 }
 
+.metric-badge__mode {
+  margin-left: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.view-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.view-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--fg-strong) 4%, transparent);
+}
+
+.segment {
+  position: relative;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: "Geist", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.segment:not([aria-checked="true"]):not([aria-disabled="true"]):hover {
+  background: color-mix(in srgb, var(--fg-strong) 8%, transparent);
+}
+
+.segment[aria-checked="true"] {
+  background: var(--fg-strong);
+  color: var(--bg);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.segmented[aria-disabled="true"] {
+  opacity: 0.55;
+}
+
+.segment[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .segment::before {
+    content: "";
+    position: absolute;
+    inset: -6px 0;
+  }
+}
+
+.view-control__hint {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--fg);
+  font-family: "Geist", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.view-control:hover .view-control__hint,
+.view-control:focus-within .view-control__hint {
+  visibility: visible;
+  opacity: 1;
+}
+
+@media (max-width: 720px) {
+  .chart-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .horizon-buttons {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .horizon-buttons::-webkit-scrollbar {
+    display: none;
+  }
+
+  .horizon-btn {
+    flex: 0 0 auto;
+  }
+
+  .view-control__hint {
+    right: auto;
+    left: 0;
+  }
+}
+
 .report-bug {
   position: fixed;
   right: 1.25rem;

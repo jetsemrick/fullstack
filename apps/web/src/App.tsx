@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
-import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
+import { DEFAULT_TICKER, type GetPricesResponse, type ReturnMode } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { ReturnModeControl } from "./ReturnModeControl";
+import { percentChange, RETURN_MODE_LABEL, seriesHasAdjClose } from "./priceChartData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -12,13 +14,10 @@ function formatLast(v: number | null, currency: string | null) {
   return `${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cur}`;
 }
 
-function formatPercentChange(data: GetPricesResponse | null) {
-  if (!data || !data.series || data.series.length < 2) return null;
-  const first = data.series[0].close;
-  const last = data.series[data.series.length - 1].close;
-  if (!first) return null;
-  const diff = last - first;
-  const pct = (diff / first) * 100;
+function formatPercentChange(data: GetPricesResponse | null, mode: ReturnMode) {
+  if (!data || !data.series) return null;
+  const pct = percentChange(data.series, mode);
+  if (pct === null) return null;
   const sign = pct > 0 ? "+" : "";
   return {
     text: `${sign}${pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
@@ -33,6 +32,10 @@ const HORIZONS = [
   { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
   { label: "All Time", days: Infinity, range: "max", interval: "1d" }
 ];
+
+const INTRADAY_TOTAL_RETURN_REASON =
+  "Total return uses daily dividend-adjusted closes. Intraday ranges show price only.";
+const NO_ADJCLOSE_REASON = "Dividend-adjusted closes aren't available for this ticker.";
 
 const PRICE_CACHE_TTL_MS = 60_000;
 const priceCache = new Map<string, { data: GetPricesResponse; fetchedAt: number }>();
@@ -58,6 +61,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [returnMode, setReturnMode] = useState<ReturnMode>("price");
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,6 +121,15 @@ export default function App() {
     return slicedDaily;
   }, [slicedDaily]);
 
+  const isIntraday = HORIZONS[horizonIndex].interval !== "1d";
+  const totalReturnDisabledReason = isIntraday
+    ? INTRADAY_TOTAL_RETURN_REASON
+    : displayData && !seriesHasAdjClose(displayData.series)
+      ? NO_ADJCLOSE_REASON
+      : null;
+  const effectiveMode: ReturnMode = totalReturnDisabledReason ? "price" : returnMode;
+
+  // Headline always shows the real traded price, regardless of return mode.
   const lastPriceDisplay = displayData?.lastPrice ?? data?.lastPrice ?? null;
   const currencyDisplay = displayData?.currency ?? data?.currency ?? null;
   const hasChartData = Boolean(data && displayData);
@@ -181,26 +194,36 @@ export default function App() {
                     <h2 className="ticker-display">{data.ticker}</h2>
                     <span className="metric-badge">{formatLast(lastPriceDisplay, currencyDisplay)}</span>
                     {(() => {
-                      const percentChange = formatPercentChange(displayData);
-                      if (!percentChange) return null;
-                      const statusClass = percentChange.isPositive ? "positive" : percentChange.isNegative ? "negative" : "muted";
+                      const change = formatPercentChange(displayData, effectiveMode);
+                      if (!change) return null;
+                      const statusClass = change.isPositive ? "positive" : change.isNegative ? "negative" : "muted";
                       return (
                         <span className={`metric-badge ${statusClass}`}>
-                          {percentChange.text}
+                          {change.text}
+                          <span className="metric-badge__mode">{RETURN_MODE_LABEL[effectiveMode]}</span>
                         </span>
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
+                  <div className="chart-toolbar">
+                    <div className="horizon-buttons">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="view-options">
+                      <ReturnModeControl
+                        value={effectiveMode}
+                        onChange={setReturnMode}
+                        disabledReason={totalReturnDisabledReason}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -211,6 +234,7 @@ export default function App() {
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  mode={effectiveMode}
                 />
               </div>
               {loading && (
