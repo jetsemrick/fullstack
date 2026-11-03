@@ -642,7 +642,11 @@
   stroke-width: 1.5;
 }
 
-.dark .event-marker__tick {
+.dark .event-marker__split {
+  stroke: var(--info);
+}
+
+.event-marker__tick {
   fill: var(--event-div);
 }
 
@@ -660,10 +664,6 @@
 
 .event-track:focus-visible + .event-track__ring {
   stroke: var(--focus);
-}
-
-.event-marker__split {
-  stroke: var(--info);
 }
 
 .event-marker__count {
