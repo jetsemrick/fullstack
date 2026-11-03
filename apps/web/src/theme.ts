@@ -4,8 +4,10 @@ export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
 export type ThemeRoot = {
-  setAttribute: (name: string, value: string) => void;
-  removeAttribute: (name: string) => void;
+  classList: {
+    add: (...tokens: string[]) => void;
+    remove: (...tokens: string[]) => void;
+  };
   style: { colorScheme: string };
 };
 
@@ -46,11 +48,9 @@ export function applyThemeToDocument(
   root: ThemeRoot,
 ): ResolvedTheme {
   const resolved = resolveTheme(preference, prefersDark);
-  if (preference === "light" || preference === "dark") {
-    root.setAttribute("data-theme", preference);
-  } else {
-    root.removeAttribute("data-theme");
-  }
+  root.classList.remove("dark", "light");
+  if (preference === "dark") root.classList.add("dark");
+  else if (preference === "light") root.classList.add("light");
   root.style.colorScheme = resolved;
   return resolved;
 }

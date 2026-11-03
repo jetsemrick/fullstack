@@ -6,45 +6,42 @@ alwaysApply: false
 
 # Frontend design schema
 
-Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file as the **single source of truth** for surfaces, typography, radius, and default shadows.
+Canonical tokens live in `apps/web/src/index.css` under `:root`. Treat that file as the **single source of truth** for surfaces, typography, radius, and default shadows. Values follow the SpaceXSI / x.ai design system.
 
 ## Tokens (reference)
 
 | Token | Role |
 |-------|------|
-| `--bg`, `--fg`, `--fg-muted` | Page background, primary text, secondary text (~60% feel—use muted for hints) |
-| `--accent`, `--accent-hover` | Primary actions, focus ring, emphasis borders |
-| `--on-accent` | Label color on accent-filled buttons |
-| `--card`, `--card-border`, `--shadow`, `--shadow-sm` | Elevated surfaces and separation |
-| `--focus-ring` | Input focus halo |
-| `--positive`, `--positive-bg`, `--positive-border` | Gains, open market, selected horizon |
-| `--negative`, `--negative-bg`, `--negative-border` | Losses and error surfaces |
-| `--radius`, `--radius-sm` | Default and smaller corner radius |
-| `--font` | Inter stack; body already sets `font-family` — inherit in components |
+| `--bg`, `--card`, `--card-border` | Page, elevated surface, separation (borders, not shadows) |
+| `--fg`, `--fg-strong`, `--fg-muted` | Body text, headings/selected, secondary text |
+| `--accent`, `--accent-hover` | Sunset / dawn — small highlights only (not light-mode text) |
+| `--accent-fg` | Reserved; do not place sunset behind text in light mode |
+| `--focus` | 2px outline, 2px offset (`#0a0a0a` / `#ffffff`) |
+| `--up`, `--down` | Market gains / losses |
+| `--info` | Breeze — split markers in dark |
+| `--event-div`, `--event-split` | Dividend fill (sunset); split stroke (`--fg-strong` light, `--info` dark) |
+| `--shadow`, `--shadow-sm` | Always `none` — separate surfaces with borders |
+| `--radius`, `--radius-pill` | 0.5rem cards/dropdowns; 9999px buttons, segments, chips |
+| `--font`, `--font-mono` | Geist Sans / Arial; Geist Mono + tabular nums for prices, axes, tickers |
 
 ## Rules
 
-1. **Prefer CSS variables** for layout chrome: backgrounds, borders, foreground, accents. Avoid new hard-coded hex/rgb except for **meaning-specific** hues (e.g. market up/down) until those become named tokens in `:root`.
-2. **Add new primitives in `:root` first**, then wire components with `var(--…)`—do not scatter one-off palette values across TSX or CSS without a matching token when the color is reused.
-3. **Focus**: use `:focus-visible` patterns consistent with globals (accent outline)—do not remove focus outlines without an accessible replacement.
-4. **Consistency**: spacing and component layout follow existing patterns in `app.css`; match established gaps (e.g. `rem`-based grids) unless changing the shell intentionally.
+1. **Prefer CSS variables** for layout chrome. Avoid new hard-coded hex/rgb except meaning-specific hues until those become named tokens.
+2. **Add new primitives in `:root` first**, then wire `var(--…)`.
+3. **Focus**: `:focus-visible` is `2px solid var(--focus)` with `2px` offset.
+4. **Contrast**: light-mode small muted text uses `#676a6f` (5.4:1), not fog `#7d8187`. Sunset is never used for text in light mode. Focus is `2px solid var(--focus)` with a `2px` offset (`#0a0a0a` / `#ffffff`), never `--accent`.
+5. **Type**: weights 400 and 500, plus 600 for the price heading. Controls 13px. Geist Mono + `tabular-nums` on prices, axes, tickers.
+6. **Chart**: gridlines `--card-border`; axis text `--fg-muted` in Geist Mono.
 
 ### Example
 
 ```css
-/* Good */
 .panel {
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   color: var(--fg);
-}
-
-/* Avoid when a semantic token fits */
-.panel {
-  background: #ffffff;
-  color: #2b302b;
 }
 ```
 
-Dark mode overrides the same token names on `:root[data-theme="dark"]` and, when no explicit light preference is saved, `@media (prefers-color-scheme: dark)` on `:root:not([data-theme="light"])`. The blocking script in `apps/web/index.html` applies an explicit stored choice before paint. Do not branch colors inside components.
+Dark values live on `html.dark`. With no saved choice, `@media (prefers-color-scheme: dark)` on `html:not(.light)` applies the same names. The blocking script in `apps/web/index.html` adds `.dark` or `.light` before paint when the user has an explicit preference. Do not branch colors inside components.

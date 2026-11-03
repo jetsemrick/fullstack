@@ -95,40 +95,49 @@ describe("storage helpers", () => {
 
 describe("applyThemeToDocument", () => {
   function fakeRoot() {
-    const attrs: Record<string, string> = {};
+    const classes = new Set<string>();
     const style = { colorScheme: "" };
     return {
-      attrs,
+      classes,
       style,
       root: {
-        setAttribute(name: string, value: string) {
-          attrs[name] = value;
-        },
-        removeAttribute(name: string) {
-          delete attrs[name];
+        classList: {
+          add(...tokens: string[]) {
+            for (const token of tokens) classes.add(token);
+          },
+          remove(...tokens: string[]) {
+            for (const token of tokens) classes.delete(token);
+          },
         },
         style,
       },
     };
   }
 
-  test("explicit dark sets data-theme and color-scheme", () => {
-    const { attrs, style, root } = fakeRoot();
+  test("explicit dark sets the .dark class and color-scheme", () => {
+    const { classes, style, root } = fakeRoot();
     expect(applyThemeToDocument("dark", false, root)).toBe("dark");
-    expect(attrs["data-theme"]).toBe("dark");
+    expect([...classes]).toEqual(["dark"]);
     expect(style.colorScheme).toBe("dark");
   });
 
-  test("system leaves data-theme unset so CSS can follow prefers-color-scheme", () => {
-    const { attrs, style, root } = fakeRoot();
+  test("explicit light sets the .light class so OS dark does not win", () => {
+    const { classes, style, root } = fakeRoot();
+    expect(applyThemeToDocument("light", true, root)).toBe("light");
+    expect([...classes]).toEqual(["light"]);
+    expect(style.colorScheme).toBe("light");
+  });
+
+  test("system leaves html without .dark/.light so CSS can follow prefers-color-scheme", () => {
+    const { classes, style, root } = fakeRoot();
     expect(applyThemeToDocument("system", true, root)).toBe("dark");
-    expect(attrs["data-theme"]).toBeUndefined();
+    expect([...classes]).toEqual([]);
     expect(style.colorScheme).toBe("dark");
   });
 });
 
 describe("theme boot script", () => {
-  test("index.html applies the stored theme before the app module loads", async () => {
+  test("index.html applies the stored theme class before the app module loads", async () => {
     const html = await Bun.file(new URL("../index.html", import.meta.url)).text();
     const scriptAt = html.indexOf("localStorage.getItem");
     const rootAt = html.indexOf('id="root"');
@@ -139,6 +148,29 @@ describe("theme boot script", () => {
     expect(html).toContain('stored === "dark"');
     expect(html).toContain('stored === "system"');
     expect(html).toContain("prefers-color-scheme: dark");
+    expect(html).toContain('classList.add("dark")');
+    expect(html).toContain('classList.add("light")');
     expect(html).toContain("colorScheme");
+  });
+});
+
+describe("SpaceXSI light tokens", () => {
+  test("light :root uses the v2 muted / up / down inks", async () => {
+    const css = await Bun.file(new URL("./index.css", import.meta.url)).text();
+    const root = css.slice(css.indexOf(":root"), css.indexOf("html.dark"));
+    expect(root).toMatch(/--fg-muted:\s*#676a6f/);
+    expect(root).toMatch(/--up:\s*#137638/);
+    expect(root).toMatch(/--down:\s*#b81e1e/);
+    expect(root).not.toMatch(/--fg-muted:\s*#3c4553/);
+    expect(root).not.toMatch(/--up:\s*#15803d/);
+    expect(root).not.toMatch(/--down:\s*#dc2626/);
+  });
+
+  test("dark values stay on fog / #4ade80 / #e66565", async () => {
+    const css = await Bun.file(new URL("./index.css", import.meta.url)).text();
+    const dark = css.slice(css.indexOf("html.dark"), css.indexOf("@media"));
+    expect(dark).toMatch(/--fg-muted:\s*#7d8187/);
+    expect(dark).toMatch(/--up:\s*#4ade80/);
+    expect(dark).toMatch(/--down:\s*#e66565/);
   });
 });

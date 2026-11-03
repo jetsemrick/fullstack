@@ -17,8 +17,9 @@
         var resolved =
           pref === "dark" || (pref !== "light" && prefersDark) ? "dark" : "light";
         var root = document.documentElement;
-        if (pref === "light" || pref === "dark") root.setAttribute("data-theme", pref);
-        else root.removeAttribute("data-theme");
+        root.classList.remove("dark", "light");
+        if (pref === "dark") root.classList.add("dark");
+        else if (pref === "light") root.classList.add("light");
         root.style.colorScheme = resolved;
       })();
     </script>

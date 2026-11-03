@@ -107,8 +107,8 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id={fillGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--fg-strong)" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="var(--fg-strong)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
@@ -138,7 +138,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             domain={xDomain}
             scale="time"
             ticks={variant === "intraday" ? intradayTicks : undefined}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+            tick={{ fill: "var(--fg-muted)", fontSize: 12, fontFamily: "var(--font-mono)" }}
             tickLine={false}
             axisLine={false}
             tickFormatter={tickFormatter}
@@ -149,7 +149,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             dataKey="price"
             domain={["auto", "auto"]}
             width={60}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+            tick={{ fill: "var(--fg-muted)", fontSize: 12, fontFamily: "var(--font-mono)" }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v: number) => formatPrice(v)}
@@ -158,11 +158,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           <Tooltip
             contentStyle={{
               background: "var(--card)",
-              border: `1px solid var(--card-border)`,
-              borderRadius: "12px",
+              border: "1px solid var(--card-border)",
+              borderRadius: "var(--radius)",
               color: "var(--fg)",
               boxShadow: "var(--shadow)",
               padding: "12px",
+              fontFamily: "var(--font-mono)",
             }}
             labelFormatter={(_, payload) => {
               const t = (payload?.[0]?.payload as { t?: number })?.t;
@@ -176,12 +177,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
           <Area
             type="linear"
             dataKey="price"
-            stroke="var(--accent)"
-            strokeWidth={3}
+            stroke="var(--fg-strong)"
+            strokeWidth={2}
             fill={`url(#${fillGradientId})`}
             baseValue="dataMin"
             dot={false}
-            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
+            activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--fg-strong)" }}
             isAnimationActive={false}
           />
         </ComposedChart>
