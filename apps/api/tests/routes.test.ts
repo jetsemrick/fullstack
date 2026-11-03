@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { GetPricesResponse } from "@stock/shared";
 import { handleApiRequest } from "../src/routes";
 
 describe("handleApiRequest", () => {
@@ -93,6 +94,26 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.range).toBeUndefined();
     expect(body.series.length).toBe(2);
     expect(body.series[0].close).toBe(198.1);
+    expect((body as { events?: unknown }).events).toEqual({ dividends: [], splits: [] });
+  });
+
+  test("requests Yahoo events and returns dividends and splits", async () => {
+    const fixturePath = join(import.meta.dir, "fixtures", "chart-with-events.json");
+    const textFixture = await readFile(fixturePath, "utf-8");
+    let requestedUrl = "";
+    globalThis.fetch = mock((url) => {
+      requestedUrl = typeof url === "string" ? url : url.toString();
+      return Promise.resolve(
+        new Response(textFixture, { status: 200, headers: { "content-type": "application/json" } }),
+      );
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/prices?ticker=AAPL&range=max&interval=1d"));
+    expect(res.status).toBe(200);
+    expect(new URL(requestedUrl).searchParams.get("events")).toBe("div,splits");
+    const body = (await res.json()) as GetPricesResponse;
+    expect(body.events.splits).toEqual([{ timestamp: 1598880600, numerator: 4, denominator: 1 }]);
+    expect(body.events.dividends).toHaveLength(2);
   });
 
   test("returns 200 and market context when Yahoo quote JSON is valid", async () => {

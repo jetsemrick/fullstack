@@ -113,6 +113,7 @@ export async function handleApiRequest(req: Request): Promise<Response> {
         currency: yahoo.currency,
         lastPrice: yahoo.lastPrice,
         series: yahoo.points,
+        events: yahoo.events,
       };
       return jsonResponse(body, { status: 200, headers: corsHeaders() });
     } catch (e) {

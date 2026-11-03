@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
+import type { EventMarkerStyle } from "./EventMarkers";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -27,11 +28,11 @@ function formatPercentChange(data: GetPricesResponse | null) {
   };
 }
 
-const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
+const HORIZONS: { label: string; days: number; range: string; interval: string; eventStyle: EventMarkerStyle }[] = [
+  { label: "Today", days: 1, range: "1d", interval: "5m", eventStyle: "dot" },
+  { label: "1 Year", days: 365, range: "1y", interval: "1d", eventStyle: "dot" },
+  { label: "5 Year", days: 1825, range: "5y", interval: "1d", eventStyle: "tick" },
+  { label: "All Time", days: Infinity, range: "max", interval: "1d", eventStyle: "tick" }
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
@@ -58,6 +59,7 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [showEvents, setShowEvents] = useState(false);
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,16 +193,30 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
+                  <div className="chart-controls">
+                    <div className="horizon-buttons">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="view-options">
                       <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
+                        type="button"
+                        className="toggle-chip"
+                        aria-pressed={showEvents}
+                        aria-label="Events: dividend and split markers"
+                        onClick={() => setShowEvents((v) => !v)}
                       >
-                        {h.label}
+                        <span className="toggle-chip__dot" aria-hidden="true" />
+                        Events
                       </button>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -211,8 +227,25 @@ export default function App() {
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  showEvents={showEvents}
+                  markerStyle={HORIZONS[horizonIndex].eventStyle}
                 />
               </div>
+              {showEvents && (
+                <div className="event-legend">
+                  <span className="event-legend__item">
+                    <span
+                      className={`event-swatch event-swatch--${HORIZONS[horizonIndex].eventStyle === "tick" ? "dividend-tick" : "dividend"}`}
+                      aria-hidden="true"
+                    />
+                    Dividend
+                  </span>
+                  <span className="event-legend__item">
+                    <span className="event-swatch event-swatch--split" aria-hidden="true" />
+                    Split
+                  </span>
+                </div>
+              )}
               {loading && (
                 <div className="chart-loading-overlay" role="status">
                   Loading latest data...
