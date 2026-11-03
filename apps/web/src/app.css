@@ -39,7 +39,6 @@
   color: var(--fg);
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .theme-toggle:hover {
@@ -188,6 +187,10 @@
 }
 
 @media (max-width: 480px) {
+  .shell {
+    padding: 16px 16px 64px;
+  }
+
   .header {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -197,15 +200,21 @@
     width: 100%;
     max-width: 100%;
     flex-wrap: nowrap;
+    flex-direction: row-reverse;
+    gap: 8px;
   }
 
-  .search-form {
-    flex: 1 1 0;
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
   }
 
+  .search-form,
   .search-input-wrapper {
-    width: 100%;
-    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    max-width: none;
   }
 
   .search-input {
@@ -224,7 +233,8 @@
 }
 
 .search-btn {
-  border: none;
+  appearance: none;
+  border: 1px solid transparent;
   background: var(--fg-strong);
   color: var(--bg);
   border-radius: var(--radius-pill);
@@ -232,7 +242,6 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .search-btn:hover:enabled {
@@ -240,7 +249,9 @@
 }
 
 .search-btn:disabled {
-  opacity: 0.6;
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--fg-muted);
   cursor: not-allowed;
 }
 
@@ -415,14 +426,10 @@
 }
 
 .horizon-buttons {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 0.125rem;
-  max-width: 100%;
-  padding: 0.1875rem;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--fg-strong) 4%, transparent);
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .horizon-btn {
@@ -430,14 +437,11 @@
   border: 1px solid transparent;
   color: var(--fg-muted);
   border-radius: var(--radius-pill);
-  padding: 0.3rem 0.75rem;
+  padding: 0.22rem 0.55rem;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
-  white-space: nowrap;
-  flex-shrink: 0;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .horizon-btn:hover {
@@ -453,8 +457,8 @@
 
 .report-bug {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
+  right: 16px;
+  bottom: 16px;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -474,7 +478,6 @@
   color: var(--fg);
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .report-bug__fab:hover {
@@ -566,6 +569,7 @@
 }
 
 .report-bug__submit {
+  appearance: none;
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: var(--fg-strong);
@@ -574,7 +578,6 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 
 .report-bug__submit:hover:not(:disabled) {
@@ -582,8 +585,8 @@
 }
 
 .report-bug__submit:disabled {
-  background: color-mix(in srgb, var(--fg-strong) 6%, transparent);
-  border-color: var(--card-border);
+  background: transparent;
+  border: 1px solid var(--card-border);
   color: var(--fg-muted);
   cursor: not-allowed;
 }
@@ -625,19 +628,29 @@
   color: var(--fg);
 }
 
-@media (max-width: 480px) {
-  .shell {
-    padding: 1.25rem 1rem 5rem;
-    gap: 1.25rem;
+@media (prefers-reduced-motion: no-preference) {
+  .theme-toggle,
+  .report-bug__fab {
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
 
-  .content-toolbar {
-    padding: 1rem;
-    gap: 0.75rem;
+  .search-btn,
+  .report-bug__submit {
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .horizon-btn {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-toolbar,
+  .loading-card {
+    padding: 16px;
   }
 
   .chart-container {
-    padding: 1rem 0.5rem 0.75rem 0.25rem;
-    height: 340px;
+    padding: 16px 16px 64px;
   }
 }
