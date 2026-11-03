@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
+import { filterSeriesByHorizon } from "./priceChartData";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -41,18 +42,6 @@ function priceCacheKey(ticker: string, range: string, interval: string): string 
   return `${ticker}:${range}:${interval}`;
 }
 
-function filterSeriesByHorizon(data: GetPricesResponse, horizonDays: number): GetPricesResponse {
-  if (horizonDays === Infinity) return data;
-  const latestTimestamp = data.series[data.series.length - 1]?.timestamp;
-  if (!latestTimestamp) return data;
-  const cutoff = latestTimestamp - horizonDays * 24 * 60 * 60 * 1000;
-  const filteredSeries = data.series.filter((p) => p.timestamp >= cutoff);
-  return {
-    ...data,
-    series: filteredSeries.length > 0 ? filteredSeries : data.series.slice(-1),
-  };
-}
-
 export default function App() {
   const formId = useId();
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
@@ -69,7 +58,8 @@ export default function App() {
     setLoading(true);
     setError(null);
     const horizon = HORIZONS[horizonIndex];
-    const fetchRange = horizon.days > 1 ? "max" : horizon.range;
+    // Yahoo coarsens `max` to roughly quarterly bars even at interval=1d, so each horizon fetches its own range.
+    const fetchRange = horizon.range;
     const cacheKey = priceCacheKey(ticker, fetchRange, horizon.interval);
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < PRICE_CACHE_TTL_MS) {
