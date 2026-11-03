@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { DEFAULT_TICKER, type GetPricesResponse } from "@stock/shared";
 import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
+import type { EventMarkerStyle } from "./EventMarkers";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
 import "./app.css";
@@ -27,11 +28,11 @@ function formatPercentChange(data: GetPricesResponse | null) {
   };
 }
 
-const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
+const HORIZONS: { label: string; days: number; range: string; interval: string; eventStyle: EventMarkerStyle }[] = [
+  { label: "Today", days: 1, range: "1d", interval: "5m", eventStyle: "dot" },
+  { label: "1 Year", days: 365, range: "1y", interval: "1d", eventStyle: "dot" },
+  { label: "5 Year", days: 1825, range: "5y", interval: "1d", eventStyle: "tick" },
+  { label: "All Time", days: Infinity, range: "max", interval: "1d", eventStyle: "tick" }
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
@@ -227,12 +228,16 @@ export default function App() {
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
                   showEvents={showEvents}
+                  markerStyle={HORIZONS[horizonIndex].eventStyle}
                 />
               </div>
               {showEvents && (
                 <div className="event-legend">
                   <span className="event-legend__item">
-                    <span className="event-swatch event-swatch--dividend" aria-hidden="true" />
+                    <span
+                      className={`event-swatch event-swatch--${HORIZONS[horizonIndex].eventStyle === "tick" ? "dividend-tick" : "dividend"}`}
+                      aria-hidden="true"
+                    />
                     Dividend
                   </span>
                   <span className="event-legend__item">

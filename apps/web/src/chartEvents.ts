@@ -96,6 +96,20 @@ export function mergeMarkers(
   return groups;
 }
 
+/** Index of the x closest to `x` in an ascending list, or -1 when empty. */
+export function nearestIndex(sortedXs: number[], x: number): number {
+  if (sortedXs.length === 0) return -1;
+  let lo = 0;
+  let hi = sortedXs.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedXs[mid]! < x) lo = mid + 1;
+    else hi = mid;
+  }
+  if (lo > 0 && x - sortedXs[lo - 1]! <= sortedXs[lo]! - x) return lo - 1;
+  return lo;
+}
+
 export function groupAriaLabel(group: MarkerGroup): string {
   if (group.events.length === 1) return group.events[0]!.ariaLabel;
   return `${group.events.length} events: ${group.events.map((e) => e.ariaLabel).join("; ")}`;

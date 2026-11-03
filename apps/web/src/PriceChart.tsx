@@ -14,7 +14,7 @@ import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
 import { visibleChartEvents } from "./chartEvents";
-import { EventMarkerLayer, EventMarkerTooltip, type ActiveMarker } from "./EventMarkers";
+import { EventMarkerLayer, EventMarkerTooltip, type ActiveMarker, type EventMarkerStyle } from "./EventMarkers";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -70,15 +70,17 @@ export function PriceChart({
   data,
   variant = "daily",
   showEvents = false,
+  markerStyle = "dot",
 }: {
   data: GetPricesResponse;
   variant?: PriceChartVariant;
   showEvents?: boolean;
+  markerStyle?: EventMarkerStyle;
 }) {
   const [activeMarker, setActiveMarker] = useState<ActiveMarker | null>(null);
-  const [markerSource, setMarkerSource] = useState({ data, showEvents });
-  if (markerSource.data !== data || markerSource.showEvents !== showEvents) {
-    setMarkerSource({ data, showEvents });
+  const [markerSource, setMarkerSource] = useState({ data, showEvents, markerStyle });
+  if (markerSource.data !== data || markerSource.showEvents !== showEvents || markerSource.markerStyle !== markerStyle) {
+    setMarkerSource({ data, showEvents, markerStyle });
     setActiveMarker(null);
   }
   const fillGradientId = useId().replace(/:/g, "");
@@ -211,14 +213,20 @@ export function PriceChart({
             isAnimationActive={false}
           />
           {showEvents ? (
-            <Customized component={<EventMarkerLayer events={chartEvents} onActiveChange={setActiveMarker} />} />
+            <Customized
+              component={
+                <EventMarkerLayer events={chartEvents} markerStyle={markerStyle} onActiveChange={setActiveMarker} />
+              }
+            />
           ) : null}
         </ComposedChart>
       </ResponsiveContainer>
       {markerActive ? <EventMarkerTooltip active={activeMarker} /> : null}
       {showEvents ? (
         <p className="sr-only" aria-live="polite">
-          {chartEvents.length === 0
+          {markerActive
+            ? activeMarker.announcement
+            : chartEvents.length === 0
             ? "No dividends or splits in this range."
             : `${chartEvents.length} dividend and split ${chartEvents.length === 1 ? "event" : "events"} shown on the time axis.`}
         </p>

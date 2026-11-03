@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { PriceEvents } from "@stock/shared";
-import { formatEventDate, groupAriaLabel, mergeMarkers, visibleChartEvents } from "./chartEvents";
+import { formatEventDate, groupAriaLabel, mergeMarkers, nearestIndex, visibleChartEvents } from "./chartEvents";
 
 const AAPL_SPLIT_TS = 1598880600; // 2020-08-31 09:30 ET
 
@@ -45,6 +45,18 @@ describe("visibleChartEvents", () => {
   test("returns nothing for stocks without events or responses missing the field", () => {
     expect(visibleChartEvents({ dividends: [], splits: [] }, ALL, "USD")).toEqual([]);
     expect(visibleChartEvents(undefined, ALL, "USD")).toEqual([]);
+  });
+});
+
+describe("nearestIndex", () => {
+  test("finds the closest x, preferring the left one on ties", () => {
+    const xs = [10, 20, 40];
+    expect(nearestIndex(xs, 0)).toBe(0);
+    expect(nearestIndex(xs, 15)).toBe(0);
+    expect(nearestIndex(xs, 16)).toBe(1);
+    expect(nearestIndex(xs, 31)).toBe(2);
+    expect(nearestIndex(xs, 99)).toBe(2);
+    expect(nearestIndex([], 5)).toBe(-1);
   });
 });
 

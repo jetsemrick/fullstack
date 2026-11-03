@@ -611,9 +611,29 @@
 }
 
 .event-marker__dividend {
-  fill: var(--accent);
+  fill: var(--event-div);
   stroke: var(--bg);
   stroke-width: 1;
+}
+
+.event-marker__tick {
+  fill: var(--event-div);
+}
+
+.event-track {
+  fill: transparent;
+  outline: none;
+}
+
+.event-track__ring {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.event-track:focus-visible + .event-track__ring {
+  stroke: var(--focus);
 }
 
 .event-marker__split {
@@ -622,7 +642,27 @@
   stroke-width: 1.5;
 }
 
-.dark .event-marker__split {
+.dark .event-marker__tick {
+  fill: var(--event-div);
+}
+
+.event-track {
+  fill: transparent;
+  outline: none;
+}
+
+.event-track__ring {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.event-track:focus-visible + .event-track__ring {
+  stroke: var(--focus);
+}
+
+.event-marker__split {
   stroke: var(--info);
 }
 
@@ -675,8 +715,15 @@
 
 .event-swatch--dividend {
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--event-div);
   box-shadow: 0 0 0 1px var(--bg);
+}
+
+/* Legend-only: drawn taller than the 4px chart tick so it reads as "|" at 12px. */
+.event-swatch--dividend-tick {
+  width: 1px;
+  height: 8px;
+  background: var(--event-div);
 }
 
 /* 4.24px square rotated 45deg spans the same 6px as the SVG diamond. */
