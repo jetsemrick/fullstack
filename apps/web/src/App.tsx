@@ -29,10 +29,10 @@ function formatPercentChange(data: GetPricesResponse | null) {
 }
 
 const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
+  { label: "Today", shortLabel: "Today", ariaLabel: "Today", days: 1, range: "1d", interval: "5m" },
+  { label: "1 Year", shortLabel: "1Y", ariaLabel: "1 year", days: 365, range: "1y", interval: "1d" },
+  { label: "5 Year", shortLabel: "5Y", ariaLabel: "5 years", days: 1825, range: "5y", interval: "1d" },
+  { label: "All Time", shortLabel: "All", ariaLabel: "All time", days: Infinity, range: "max", interval: "1d" },
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
@@ -195,14 +195,18 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
+                  <div className="horizon-buttons" role="group" aria-label="Chart range">
                     {HORIZONS.map((h, i) => (
                       <button
-                        key={h.label}
+                        key={h.range}
+                        type="button"
                         className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
                         onClick={() => setHorizonIndex(i)}
+                        aria-label={h.ariaLabel}
+                        aria-pressed={i === horizonIndex}
                       >
-                        {h.label}
+                        <span className="horizon-btn__full" aria-hidden="true">{h.label}</span>
+                        <span className="horizon-btn__short" aria-hidden="true">{h.shortLabel}</span>
                       </button>
                     ))}
                   </div>

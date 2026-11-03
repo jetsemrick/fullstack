@@ -426,28 +426,37 @@
 }
 
 .horizon-buttons {
-  display: inline-flex;
-  align-items: center;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
   flex-wrap: nowrap;
   gap: 0.125rem;
-  max-width: 100%;
   padding: 0.1875rem;
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--fg-strong) 4%, transparent);
 }
 
 .horizon-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid transparent;
   color: var(--fg-muted);
   border-radius: var(--radius-pill);
-  padding: 0.3rem 0.75rem;
+  padding: 0 8px;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
   white-space: nowrap;
-  flex-shrink: 0;
   cursor: pointer;
+}
+
+.horizon-btn__short {
+  display: none;
 }
 
 .horizon-btn:hover {
@@ -657,6 +666,17 @@
   }
 
   .chart-container {
-    padding: 16px 16px 64px;
+    height: 360px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 399px) {
+  .horizon-btn__full {
+    display: none;
+  }
+
+  .horizon-btn__short {
+    display: inline;
   }
 }

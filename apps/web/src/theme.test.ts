@@ -203,6 +203,40 @@ describe("SI-69 chart / chrome colors", () => {
     expect(css).not.toMatch(/\.search-btn\s*\{[^}]*#ff6308/s);
     expect(css).not.toMatch(/\.horizon-btn\.active\s*\{[^}]*--up/s);
   });
+
+  test("range track is a full-width flex row with 44px-tall equal segments", async () => {
+    const css = await Bun.file(new URL("./app.css", import.meta.url)).text();
+    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*width:\s*100%/s);
+    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*display:\s*flex/s);
+    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--fg-strong\) 4%, transparent\)/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*flex:\s*1/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*padding:\s*0 8px/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*font-size:\s*13px/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*min-height:\s*44px/s);
+  });
+});
+
+describe("mobile range labels and page padding", () => {
+  test("short range labels and aria-labels exist for viewports below 400px", async () => {
+    const src = await Bun.file(new URL("./App.tsx", import.meta.url)).text();
+    expect(src).toContain('shortLabel: "1Y"');
+    expect(src).toContain('shortLabel: "5Y"');
+    expect(src).toContain('shortLabel: "All"');
+    expect(src).toContain('ariaLabel: "1 year"');
+    expect(src).toContain('ariaLabel: "5 years"');
+    expect(src).toContain('ariaLabel: "All time"');
+    expect(src).not.toMatch(/Events/);
+    const css = await Bun.file(new URL("./app.css", import.meta.url)).text();
+    expect(css).toMatch(/@media \(max-width: 399px\)/);
+    expect(css).toMatch(/\.horizon-btn__short\s*\{[^}]*display:\s*inline/s);
+  });
+
+  test("below 480px the page has 64px bottom padding", async () => {
+    const css = await Bun.file(new URL("./index.css", import.meta.url)).text();
+    expect(css).toMatch(/@media \(max-width: 480px\)\s*\{\s*body\s*\{[^}]*padding-bottom:\s*64px/s);
+    const app = await Bun.file(new URL("./app.css", import.meta.url)).text();
+    expect(app).toMatch(/\.shell\s*\{[^}]*padding:\s*16px 16px 64px/s);
+  });
 });
 
 describe("Geist variable fonts", () => {
