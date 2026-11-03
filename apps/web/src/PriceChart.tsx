@@ -9,17 +9,16 @@ import {
   YAxis,
 } from "recharts";
 import { useId, useMemo } from "react";
-import type { GetPricesResponse } from "@stock/shared";
+import type { GetPricesResponse, ReturnMode } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import { buildChartRows, downsampleRows, RETURN_MODE_LABEL } from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
-const chartData = (data: GetPricesResponse) =>
-  data.series.map((p) => ({
-    t: p.timestamp * 1000,
-    price: p.close,
-  }));
+const TOOLTIP_SERIES_LABEL: Record<ReturnMode, string> = {
+  price: "Price",
+  total: "Total return (adj. close)",
+};
 
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
@@ -63,9 +62,17 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export function PriceChart({
+  data,
+  variant = "daily",
+  mode = "price",
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  mode?: ReturnMode;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
-  const fullRows = useMemo(() => chartData(data), [data]);
+  const fullRows = useMemo(() => buildChartRows(data, mode), [data, mode]);
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
     return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
@@ -102,7 +109,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div role="img" aria-label={`${RETURN_MODE_LABEL[mode]} over time line chart`} style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -171,7 +178,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               }
               return "";
             }}
-            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
+            formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, TOOLTIP_SERIES_LABEL[mode]]}
           />
           <Area
             type="linear"

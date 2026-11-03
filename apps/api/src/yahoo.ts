@@ -64,6 +64,7 @@ export function parseResult(body: unknown): YahooParseResult {
   if (!quote || !Array.isArray(quote.close) || quote.close.length !== timestamps.length) {
     return { errorMessage: "Malformed quote data", points: [], currency, lastPrice, symbol };
   }
+  const adjClose = extractAdjClose(indicators, timestamps.length);
   const points: PricePoint[] = [];
   for (let i = 0; i < timestamps.length; i++) {
     const ts = timestamps[i];
@@ -78,7 +79,7 @@ export function parseResult(body: unknown): YahooParseResult {
       const v = vol[i];
       volume = typeof v === "number" ? v : v === null ? null : null;
     }
-    points.push({ timestamp: ts, close, volume });
+    points.push({ timestamp: ts, close, adjClose: adjClose ? pickPositive(adjClose[i]) : null, volume });
   }
   if (points.length === 0) {
     return { errorMessage: "No price points", points: [], currency, lastPrice, symbol };
@@ -89,6 +90,21 @@ export function parseResult(body: unknown): YahooParseResult {
 function pickNumber(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   return null;
+}
+
+function pickPositive(v: unknown): number | null {
+  const n = pickNumber(v);
+  return n !== null && n > 0 ? n : null;
+}
+
+/** `indicators.adjclose[0].adjclose`; absent on intraday intervals, ignored when misaligned with timestamps. */
+function extractAdjClose(indicators: unknown, length: number): unknown[] | null {
+  if (typeof indicators !== "object" || indicators === null) return null;
+  const arr = (indicators as { adjclose?: unknown }).adjclose;
+  if (!Array.isArray(arr) || typeof arr[0] !== "object" || arr[0] === null) return null;
+  const values = (arr[0] as { adjclose?: unknown }).adjclose;
+  if (!Array.isArray(values) || values.length !== length) return null;
+  return values;
 }
 
 function extractQuoteArrays(indicators: unknown): { close: (number | null)[]; volume: (number | null)[] | null } | null {
