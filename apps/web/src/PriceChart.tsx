@@ -12,6 +12,7 @@ import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
+import { formatDailyAxisTick, formatIntradayAxisTick, formatTooltipWhen } from "./chartTimeFormat";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -24,37 +25,6 @@ const chartData = (data: GetPricesResponse) =>
 function spanCalendarDays(rows: { t: number }[]): number {
   if (rows.length < 2) return 0;
   return (rows[rows.length - 1].t - rows[0].t) / 86_400_000;
-}
-
-/** X-axis labels for daily series: format depends on chart span so ticks read as calendar milestones. */
-function formatDailyAxisTick(ms: number, spanDays: number): string {
-  const d = new Date(ms);
-  if (spanDays > 365 * 5) {
-    return d.toLocaleDateString(undefined, { year: "numeric" });
-  }
-  if (spanDays > 120) {
-    return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
-  }
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function formatIntradayAxisTick(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function formatTooltipWhen(
-  ms: number,
-  variant: "daily" | "intraday",
-  spanDays: number,
-): string {
-  const d = new Date(ms);
-  if (variant === "intraday") {
-    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  }
-  if (spanDays > 365 * 5) {
-    return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-  }
-  return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
 function formatPrice(n: number): string {
