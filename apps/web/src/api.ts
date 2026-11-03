@@ -1,4 +1,29 @@
-import type { ApiErrorBody, GetPricesResponse, MarketContextResponse, ReportBugRequest, ReportBugResponse } from "@stock/shared";
+import type {
+  ApiErrorBody,
+  GetPricesResponse,
+  MarketContextResponse,
+  ReportBugRequest,
+  ReportBugResponse,
+  SearchResponse,
+} from "@stock/shared";
+
+export async function searchSymbols(
+  query: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true; data: SearchResponse } | { ok: false; status: number }> {
+  const res = await fetch(`/api/search?${new URLSearchParams({ q: query }).toString()}`, { signal });
+  if (!res.ok) return { ok: false, status: res.status };
+  let json: unknown;
+  try {
+    json = JSON.parse(await res.text()) as unknown;
+  } catch {
+    return { ok: false, status: res.status };
+  }
+  if (!json || typeof json !== "object" || !Array.isArray((json as SearchResponse).results)) {
+    return { ok: false, status: res.status };
+  }
+  return { ok: true, data: json as SearchResponse };
+}
 
 export async function fetchPrices(params: {
   ticker: string;

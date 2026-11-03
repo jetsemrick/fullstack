@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { SEARCH_MAX_RESULTS, type SearchResponse } from "@stock/shared";
 import { handleApiRequest } from "../src/routes";
+import { clearSearchCache } from "../src/yahoo-search";
 
 describe("handleApiRequest", () => {
   test("rejects invalid ticker with 400", async () => {
@@ -170,5 +172,90 @@ describe("handleApiRequest with mocked Yahoo fetch", () => {
     expect(body.marketState).toBe("REGULAR");
     expect(body.indexes.map((i) => i.symbol)).toEqual(["^GSPC", "^DJI", "^IXIC"]);
     expect(body.indexes[0]?.price).toBe(100);
+  });
+});
+
+describe("GET /api/search", () => {
+  const origFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = origFetch;
+    clearSearchCache();
+  });
+
+  const rejected: [string, string][] = [
+    ["missing q", "http://localhost/api/search"],
+    ["empty q", "http://localhost/api/search?q="],
+    ["whitespace-only q", "http://localhost/api/search?q=%20%20%09"],
+    ["65-character q", `http://localhost/api/search?q=${"a".repeat(65)}`],
+    ["very long q", `http://localhost/api/search?q=${"a".repeat(5000)}`],
+    ["angle brackets", "http://localhost/api/search?q=%3Cscript%3E"],
+    ["control character", "http://localhost/api/search?q=nv%00idia"],
+    ["semicolon", "http://localhost/api/search?q=a;b"],
+  ];
+  for (const [name, url] of rejected) {
+    test(`rejects ${name} with 400 without calling Yahoo`, async () => {
+      const upstream = mock(() => Promise.resolve(new Response("{}")));
+      globalThis.fetch = upstream as unknown as typeof fetch;
+      const res = await handleApiRequest(new Request(url));
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code: string };
+      expect(body.code).toBe("VALIDATION");
+      expect(upstream).not.toHaveBeenCalled();
+    });
+  }
+
+  test("accepts a 64-character query", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify({ quotes: [] })))) as unknown as typeof fetch;
+    const res = await handleApiRequest(new Request(`http://localhost/api/search?q=${"a".repeat(64)}`));
+    expect(res.status).toBe(200);
+  });
+
+  test("normalizes the query before calling Yahoo and returns NVDA first for 'nvidia'", async () => {
+    const fixture = await readFile(join(import.meta.dir, "fixtures", "search-nvidia.json"), "utf-8");
+    let upstreamUrl = "";
+    globalThis.fetch = mock((url) => {
+      upstreamUrl = typeof url === "string" ? url : url.toString();
+      return Promise.resolve(new Response(fixture, { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const res = await handleApiRequest(new Request("http://localhost/api/search?q=%20%20nvidia%20%20%20corp%20"));
+    expect(res.status).toBe(200);
+    expect(new URL(upstreamUrl).hostname).toBe("query1.finance.yahoo.com");
+    expect(new URL(upstreamUrl).searchParams.get("q")).toBe("nvidia corp");
+    const body = (await res.json()) as SearchResponse;
+    expect(body.query).toBe("nvidia corp");
+    expect(body.results[0]?.symbol).toBe("NVDA");
+    expect(body.results.length).toBeLessThanOrEqual(SEARCH_MAX_RESULTS);
+    expect(body.results.some((r) => r.symbol.endsWith("=F"))).toBe(false);
+  });
+
+  test("accepts company-name punctuation and non-Latin letters", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(new Response(JSON.stringify({ quotes: [] })))) as unknown as typeof fetch;
+    for (const q of ["AT&T", "Johnson & Johnson", "Moody's", "BRK.B", "^GSPC", "Nestlé", "トヨタ"]) {
+      const res = await handleApiRequest(new Request(`http://localhost/api/search?q=${encodeURIComponent(q)}`));
+      expect(res.status).toBe(200);
+    }
+  });
+
+  test("returns 502 UPSTREAM when Yahoo fails, so the client can fall back to exact-symbol lookup", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(new Response("rate limited", { status: 429 }))) as unknown as typeof fetch;
+    const res = await handleApiRequest(new Request("http://localhost/api/search?q=nvidia"));
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("UPSTREAM");
+  });
+
+  test("returns 502 when the Yahoo request throws", async () => {
+    globalThis.fetch = mock(() => Promise.reject(new Error("network down"))) as unknown as typeof fetch;
+    const res = await handleApiRequest(new Request("http://localhost/api/search?q=nvidia"));
+    expect(res.status).toBe(502);
+  });
+
+  test("serves repeat queries from cache", async () => {
+    const upstream = mock(() => Promise.resolve(new Response(JSON.stringify({ quotes: [] }))));
+    globalThis.fetch = upstream as unknown as typeof fetch;
+    await handleApiRequest(new Request("http://localhost/api/search?q=Apple"));
+    await handleApiRequest(new Request("http://localhost/api/search?q=apple"));
+    expect(upstream).toHaveBeenCalledTimes(1);
   });
 });

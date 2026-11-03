@@ -4,11 +4,13 @@ import type {
   MarketContextResponse,
   ReportBugRequest,
   ReportBugResponse,
+  SearchResponse,
 } from "@stock/shared";
-import { DEFAULT_TICKER } from "@stock/shared";
+import { DEFAULT_TICKER, SEARCH_QUERY_MAX_LEN } from "@stock/shared";
 import { runReportBugAgent } from "./cursor-agent";
 import { fetchYahooChart } from "./yahoo";
 import { fetchMajorIndexQuotes } from "./yahoo-quote";
+import { fetchYahooSearch } from "./yahoo-search";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 const REPORT_BUG_MAX_LEN = 4000;
@@ -72,6 +74,25 @@ function normalizeTicker(raw: string | null): string {
   return raw.trim().toUpperCase();
 }
 
+/** Letters and digits in any script, spaces, and punctuation that shows up in company names and symbols. */
+const SEARCH_QUERY_RE = /^[\p{L}\p{M}\p{N} .,&'\u2019()/+^=!-]+$/u;
+
+type SearchQueryCheck = { ok: true; query: string } | { ok: false; message: string };
+
+export function normalizeSearchQuery(raw: string | null): SearchQueryCheck {
+  if (raw === null) return { ok: false, message: "q is required" };
+  if (raw.length > SEARCH_QUERY_MAX_LEN * 4) {
+    return { ok: false, message: `q must be at most ${SEARCH_QUERY_MAX_LEN} characters` };
+  }
+  const query = raw.normalize("NFKC").trim().replace(/\s+/g, " ");
+  if (!query) return { ok: false, message: "q is required" };
+  if ([...query].length > SEARCH_QUERY_MAX_LEN) {
+    return { ok: false, message: `q must be at most ${SEARCH_QUERY_MAX_LEN} characters` };
+  }
+  if (!SEARCH_QUERY_RE.test(query)) return { ok: false, message: "q contains unsupported characters" };
+  return { ok: true, query };
+}
+
 /**
  * Main HTTP entry for the API. Used by the Bun server in `index.ts` and by tests.
  */
@@ -118,6 +139,26 @@ export async function handleApiRequest(req: Request): Promise<Response> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       return jsonResponse(errBody("Failed to load prices", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
+    }
+  }
+  if (url.pathname === "/api/search" && req.method === "GET") {
+    const check = normalizeSearchQuery(url.searchParams.get("q"));
+    if (!check.ok) {
+      return jsonResponse(errBody(check.message, "VALIDATION"), { status: 400, headers: corsHeaders() });
+    }
+    try {
+      const y = await fetchYahooSearch(check.query);
+      if (y.errorMessage) {
+        return jsonResponse(errBody("Search is unavailable", "UPSTREAM", y.errorMessage), {
+          status: 502,
+          headers: corsHeaders(),
+        });
+      }
+      const body: SearchResponse = { query: check.query, results: y.results };
+      return jsonResponse(body, { status: 200, headers: corsHeaders() });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      return jsonResponse(errBody("Failed to search", "INTERNAL", msg), { status: 500, headers: corsHeaders() });
     }
   }
   if (url.pathname === "/api/market-context" && req.method === "GET") {
