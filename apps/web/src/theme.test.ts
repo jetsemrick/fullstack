@@ -177,7 +177,47 @@ describe("SpaceXSI light tokens", () => {
     expect(dark).toMatch(/--event-div:\s*#ff6308/);
     expect(dark).toMatch(/--up:\s*#4ade80/);
     expect(dark).toMatch(/--down:\s*#e66565/);
+    expect(dark).toMatch(/--grid:\s*#2e3033/);
     expect(dark).not.toMatch(/--fg-muted:\s*#7d8187/);
     expect(dark).not.toContain("--muted-fg");
+  });
+});
+
+describe("SI-69 chart / chrome colors", () => {
+  test("price area uses --fg-strong at 6% and never sunset", async () => {
+    const src = await Bun.file(new URL("./PriceChart.tsx", import.meta.url)).text();
+    expect(src).toMatch(/stopColor="var\(--fg-strong\)"\s+stopOpacity=\{0\.06\}/);
+    expect(src).toMatch(/stroke="var\(--fg-strong\)"/);
+    expect(src).not.toMatch(/stopColor="var\(--accent\)"/);
+    expect(src).not.toMatch(/stroke="var\(--accent\)"/);
+    expect(src).not.toContain("#ff6308");
+  });
+
+  test("Search and selected range are --fg-strong pills, not sunset or green", async () => {
+    const css = await Bun.file(new URL("./app.css", import.meta.url)).text();
+    expect(css).toMatch(/\.search-btn\s*\{[^}]*background:\s*var\(--fg-strong\)/s);
+    expect(css).toMatch(/\.search-btn\s*\{[^}]*color:\s*var\(--bg\)/s);
+    expect(css).toMatch(/\.horizon-btn\.active\s*\{[^}]*background:\s*var\(--fg-strong\)/s);
+    expect(css).toMatch(/\.horizon-btn\.active\s*\{[^}]*color:\s*var\(--bg\)/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*border-radius:\s*var\(--radius-pill\)/s);
+    expect(css).not.toMatch(/\.search-btn\s*\{[^}]*#ff6308/s);
+    expect(css).not.toMatch(/\.horizon-btn\.active\s*\{[^}]*--up/s);
+  });
+});
+
+describe("Geist variable fonts", () => {
+  test("main.tsx loads the self-hosted variable faces", async () => {
+    const main = await Bun.file(new URL("./main.tsx", import.meta.url)).text();
+    expect(main).toContain("@fontsource-variable/geist");
+    expect(main).toContain("@fontsource-variable/geist-mono");
+    expect(main).not.toContain("@fontsource/geist-sans");
+    expect(main).not.toContain("@fontsource/geist-mono");
+  });
+
+  test("stacks use the registered variable family names", async () => {
+    const css = await Bun.file(new URL("./index.css", import.meta.url)).text();
+    const root = css.slice(css.indexOf(":root"), css.indexOf("html.dark"));
+    expect(root).toMatch(/--font:\s*"Geist Variable", Arial, sans-serif/);
+    expect(root).toMatch(/--font-mono:\s*"Geist Mono Variable", ui-monospace, monospace/);
   });
 });

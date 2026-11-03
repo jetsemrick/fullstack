@@ -18,10 +18,11 @@
   --event-split: var(--fg-strong);
   --shadow: none;
   --shadow-sm: none;
+  --grid: #d5d9e2;
   --radius: 0.5rem;
   --radius-pill: 9999px;
-  --font: "Geist Sans", Arial, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
+  --font: "Geist Variable", Arial, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
 }
 
 html.dark {
@@ -43,6 +44,7 @@ html.dark {
   --event-split: var(--info);
   --shadow: none;
   --shadow-sm: none;
+  --grid: #2e3033;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -65,6 +67,7 @@ html.dark {
     --event-split: var(--info);
     --shadow: none;
     --shadow-sm: none;
+    --grid: #2e3033;
   }
 }
 
