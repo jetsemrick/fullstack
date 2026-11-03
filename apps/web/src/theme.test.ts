@@ -204,15 +204,20 @@ describe("SI-69 chart / chrome colors", () => {
     expect(css).not.toMatch(/\.horizon-btn\.active\s*\{[^}]*--up/s);
   });
 
-  test("range track is a full-width flex row with 44px-tall equal segments", async () => {
+  test("range track hugs content at 480px+ and stays full-width below 480px", async () => {
     const css = await Bun.file(new URL("./app.css", import.meta.url)).text();
-    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*width:\s*100%/s);
-    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*display:\s*flex/s);
+    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*width:\s*auto/s);
+    expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*display:\s*inline-flex/s);
     expect(css).toMatch(/\.horizon-buttons\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--fg-strong\) 4%, transparent\)/s);
-    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*flex:\s*1/s);
-    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*padding:\s*0 8px/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*flex:\s*none/s);
+    expect(css).toMatch(/\.horizon-btn\s*\{[^}]*padding:\s*0 12px/s);
     expect(css).toMatch(/\.horizon-btn\s*\{[^}]*font-size:\s*13px/s);
     expect(css).toMatch(/\.horizon-btn\s*\{[^}]*min-height:\s*44px/s);
+    const mobile = css.slice(css.indexOf("@media (max-width: 479px)"));
+    expect(mobile).toMatch(/\.horizon-buttons\s*\{[^}]*width:\s*100%/s);
+    expect(mobile).toMatch(/\.horizon-buttons\s*\{[^}]*display:\s*flex/s);
+    expect(mobile).toMatch(/\.horizon-btn\s*\{[^}]*flex:\s*1/s);
+    expect(mobile).toMatch(/\.horizon-btn\s*\{[^}]*padding:\s*0 8px/s);
   });
 });
 

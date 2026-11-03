@@ -426,8 +426,8 @@
 }
 
 .horizon-buttons {
-  width: 100%;
-  display: flex;
+  width: auto;
+  display: inline-flex;
   align-items: stretch;
   flex-wrap: nowrap;
   gap: 0.125rem;
@@ -437,8 +437,7 @@
 }
 
 .horizon-btn {
-  flex: 1;
-  min-width: 0;
+  flex: none;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -447,7 +446,7 @@
   border: 1px solid transparent;
   color: var(--fg-muted);
   border-radius: var(--radius-pill);
-  padding: 0 8px;
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
@@ -668,6 +667,19 @@
   .chart-container {
     height: 360px;
     padding: 16px;
+  }
+}
+
+@media (max-width: 479px) {
+  .horizon-buttons {
+    width: 100%;
+    display: flex;
+  }
+
+  .horizon-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 0 8px;
   }
 }
 
