@@ -12,7 +12,7 @@ import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
-import { formatDailyAxisTick, formatIntradayAxisTick, formatTooltipWhen } from "./chartTimeFormat";
+import { MARKET_TZ_LABEL, formatDailyAxisTick, formatIntradayAxisTick, formatTooltipWhen } from "./chartTimeFormat";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -72,7 +72,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div className="price-chart" role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -134,12 +134,12 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               boxShadow: "var(--shadow)",
               padding: "12px",
             }}
+            labelClassName="price-chart__tooltip-label"
             labelFormatter={(_, payload) => {
               const t = (payload?.[0]?.payload as { t?: number })?.t;
-              if (typeof t === "number") {
-                return formatTooltipWhen(t, variant, spanDays);
-              }
-              return "";
+              if (typeof t !== "number") return "";
+              const when = formatTooltipWhen(t, variant, spanDays);
+              return variant === "intraday" ? `${when} ${MARKET_TZ_LABEL}` : when;
             }}
             formatter={(value: number | string) => [typeof value === "number" ? formatPrice(value) : value, "Close"]}
           />

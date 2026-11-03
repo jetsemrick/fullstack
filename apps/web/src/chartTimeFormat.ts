@@ -1,5 +1,8 @@
 import { EASTERN } from "./usMarket";
 
+/** Short label for EASTERN shown next to intraday times. */
+export const MARKET_TZ_LABEL = "ET";
+
 /** X-axis labels for daily series: format depends on chart span so ticks read as calendar milestones. */
 export function formatDailyAxisTick(ms: number, spanDays: number, locale?: string): string {
   const d = new Date(ms);
@@ -24,14 +27,13 @@ export function formatTooltipWhen(
 ): string {
   const d = new Date(ms);
   if (variant === "intraday") {
-    const when = d.toLocaleString(locale, {
+    return d.toLocaleString(locale, {
       timeZone: EASTERN,
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
     });
-    return `${when} ET`;
   }
   if (spanDays > 365 * 5) {
     return d.toLocaleDateString(locale, { timeZone: EASTERN, month: "long", year: "numeric" });

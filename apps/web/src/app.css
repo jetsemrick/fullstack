@@ -257,6 +257,13 @@
   width: 100%;
 }
 
+.price-chart .recharts-cartesian-axis-tick-value,
+.price-chart .recharts-tooltip-item-value,
+.price-chart__tooltip-label {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
 .chart-loading-overlay {
   position: absolute;
   right: 1.5rem;

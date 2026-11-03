@@ -42,10 +42,10 @@ describe.each(VIEWER_ZONES)("viewer timezone %s", (zone) => {
     expect(formatIntradayAxisTick(NOV_3_1030_ET, "en-US")).toBe("10:30 AM");
   });
 
-  test("intraday tooltip shows New York time with ET label", () => {
+  test("intraday tooltip shows New York time", () => {
     process.env.TZ = zone;
-    expect(formatTooltipWhen(NOV_3_1030_ET, "intraday", 0, "en-US")).toBe("Nov 3, 10:30 AM ET");
-    expect(formatTooltipWhen(JUL_1_1000_ET, "intraday", 0, "en-US")).toBe("Jul 1, 10:00 AM ET");
+    expect(formatTooltipWhen(NOV_3_1030_ET, "intraday", 0, "en-US")).toBe("Nov 3, 10:30 AM");
+    expect(formatTooltipWhen(JUL_1_1000_ET, "intraday", 0, "en-US")).toBe("Jul 1, 10:00 AM");
   });
 
   test("daily ticks and tooltip use the New York calendar day", () => {
