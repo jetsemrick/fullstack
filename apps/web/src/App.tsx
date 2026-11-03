@@ -4,6 +4,8 @@ import { fetchPrices } from "./api";
 import { PriceChart } from "./PriceChart";
 import { MarketStrip } from "./MarketStrip";
 import { ReportBug } from "./ReportBug";
+import { SegmentedControl, type SegmentOption } from "./SegmentedControl";
+import type { YScale } from "./priceChartData";
 import "./app.css";
 
 function formatLast(v: number | null, currency: string | null) {
@@ -28,10 +30,15 @@ function formatPercentChange(data: GetPricesResponse | null) {
 }
 
 const HORIZONS = [
-  { label: "Today", days: 1, range: "1d", interval: "5m" },
-  { label: "1 Year", days: 365, range: "1y", interval: "1d" },
-  { label: "5 Year", days: 1825, range: "5y", interval: "1d" },
-  { label: "All Time", days: Infinity, range: "max", interval: "1d" }
+  { label: "Today", days: 1, range: "1d", interval: "5m", logScale: false },
+  { label: "1 Year", days: 365, range: "1y", interval: "1d", logScale: true },
+  { label: "5 Year", days: 1825, range: "5y", interval: "1d", logScale: true },
+  { label: "All Time", days: Infinity, range: "max", interval: "1d", logScale: true }
+];
+
+const Y_SCALE_OPTIONS: SegmentOption<YScale>[] = [
+  { value: "linear", label: "Linear" },
+  { value: "log", label: "Log" },
 ];
 
 const PRICE_CACHE_TTL_MS = 60_000;
@@ -58,6 +65,8 @@ export default function App() {
   const [ticker, setTicker] = useState<string>(DEFAULT_TICKER);
   const [inputTicker, setInputTicker] = useState<string>(DEFAULT_TICKER);
   const [horizonIndex, setHorizonIndex] = useState<number>(0);
+  const [yScale, setYScale] = useState<YScale>("linear");
+  const logScaleAvailable = HORIZONS[horizonIndex].logScale;
 
   const [data, setData] = useState<GetPricesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,16 +200,28 @@ export default function App() {
                       );
                     })()}
                   </div>
-                  <div className="horizon-buttons">
-                    {HORIZONS.map((h, i) => (
-                      <button
-                        key={h.label}
-                        className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
-                        onClick={() => setHorizonIndex(i)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
+                  <div className="chart-toolbar">
+                    <div className="horizon-buttons">
+                      {HORIZONS.map((h, i) => (
+                        <button
+                          key={h.label}
+                          className={`horizon-btn ${i === horizonIndex ? "active" : ""}`}
+                          onClick={() => setHorizonIndex(i)}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="view-options">
+                      <div className={`view-option-slot${logScaleAvailable ? "" : " view-option-slot--reserved"}`}>
+                        <SegmentedControl
+                          ariaLabel="Price axis scale"
+                          options={Y_SCALE_OPTIONS}
+                          value={yScale}
+                          onChange={setYScale}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -211,6 +232,7 @@ export default function App() {
                 <PriceChart
                   data={displayData}
                   variant={horizonIndex === 0 ? "intraday" : "daily"}
+                  yScale={logScaleAvailable ? yScale : "linear"}
                 />
               </div>
               {loading && (

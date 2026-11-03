@@ -11,7 +11,13 @@ import {
 import { useId, useMemo } from "react";
 import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
-import { downsampleRows } from "./priceChartData";
+import {
+  downsampleRows,
+  formatLogAxisPrice,
+  logPlottableRows,
+  logScaleAxis,
+  type YScale,
+} from "./priceChartData";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -63,13 +69,29 @@ function formatPrice(n: number): string {
 
 export type PriceChartVariant = "daily" | "intraday";
 
-export function PriceChart({ data, variant = "daily" }: { data: GetPricesResponse; variant?: PriceChartVariant }) {
+export function PriceChart({
+  data,
+  variant = "daily",
+  yScale = "linear",
+}: {
+  data: GetPricesResponse;
+  variant?: PriceChartVariant;
+  yScale?: YScale;
+}) {
   const fillGradientId = useId().replace(/:/g, "");
   const fullRows = useMemo(() => chartData(data), [data]);
+  const logAxis = useMemo(() => {
+    if (yScale !== "log" || variant !== "daily") return null;
+    const prices = logPlottableRows(fullRows).map((r) => r.price);
+    if (prices.length === 0) return null;
+    return logScaleAxis(Math.min(...prices), Math.max(...prices));
+  }, [fullRows, yScale, variant]);
+  const isLog = logAxis !== null;
   const rows = useMemo(() => {
     if (variant === "intraday") return fullRows;
-    return downsampleRows(fullRows, MAX_DAILY_RENDER_POINTS);
-  }, [fullRows, variant]);
+    const plottable = isLog ? logPlottableRows(fullRows) : fullRows;
+    return downsampleRows(plottable, MAX_DAILY_RENDER_POINTS);
+  }, [fullRows, variant, isLog]);
   const anchorMs = rows.length > 0 ? rows[rows.length - 1]!.t : 0;
 
   const spanDays = spanCalendarDays(rows);
@@ -102,7 +124,10 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      role="img"
+      aria-label={isLog ? "Price over time line chart, log scale" : "Price over time line chart"}
+      style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -145,16 +170,33 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             minTickGap={variant === "intraday" ? 0 : 32}
             dy={10}
           />
-          <YAxis
-            dataKey="price"
-            domain={["auto", "auto"]}
-            width={60}
-            tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => formatPrice(v)}
-            dx={-10}
-          />
+          {logAxis ? (
+            <YAxis
+              dataKey="price"
+              scale="log"
+              domain={logAxis.domain}
+              ticks={logAxis.ticks}
+              interval={0}
+              allowDataOverflow
+              width={60}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatLogAxisPrice(v)}
+              dx={-10}
+            />
+          ) : (
+            <YAxis
+              dataKey="price"
+              domain={["auto", "auto"]}
+              width={60}
+              tick={{ fill: "var(--fg-muted)", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatPrice(v)}
+              dx={-10}
+            />
+          )}
           <Tooltip
             contentStyle={{
               background: "var(--card)",
@@ -179,7 +221,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             stroke="var(--accent)"
             strokeWidth={3}
             fill={`url(#${fillGradientId})`}
-            baseValue="dataMin"
+            baseValue={logAxis ? logAxis.domain[0] : "dataMin"}
             dot={false}
             activeDot={{ r: 6, stroke: "var(--bg)", strokeWidth: 2, fill: "var(--accent)" }}
             isAnimationActive={false}
