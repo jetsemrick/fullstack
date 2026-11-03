@@ -134,6 +134,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               boxShadow: "var(--shadow)",
               padding: "12px",
             }}
+            itemStyle={{ color: "var(--fg)" }}
             labelClassName="price-chart__tooltip-label"
             labelFormatter={(_, payload) => {
               const t = (payload?.[0]?.payload as { t?: number })?.t;
