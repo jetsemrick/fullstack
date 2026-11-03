@@ -1,13 +1,74 @@
 :root {
-  --bg: #f4f5f3;
-  --fg: #2b302b;
-  --fg-muted: #6b726b;
-  --accent: #93af93;
-  --accent-hover: #7b997b;
-  --card: #ffffff;
-  --card-border: #e2e4e0;
-  --shadow: 0 4px 12px rgba(43, 48, 43, 0.05), 0 1px 3px rgba(43, 48, 43, 0.03);
-  --font: "Inter", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+  --bg: #ffffff;
+  --card: #f9f8f6;
+  --card-border: #d5d9e2;
+  --fg: #0a0a0a;
+  --fg-strong: #0a0a0a;
+  /* Small muted copy. Fog #7d8187 is only for icons / >=18px text (`--fg-subtle` if needed). */
+  --fg-muted: #5f6368;
+  --accent: #ff6308;
+  --accent-hover: #ffd085;
+  --accent-fg: var(--fg-strong);
+  --focus: #0a0a0a;
+  --up: #137638;
+  --down: #b81e1e;
+  --info: #9cb8dd;
+  --event-div: #b84300;
+  --event-split: var(--fg-strong);
+  --shadow: none;
+  --shadow-sm: none;
+  --grid: #d5d9e2;
+  --radius: 0.5rem;
+  --radius-pill: 9999px;
+  --font: "Geist Variable", Arial, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --card: #1a1a1a;
+  --card-border: #1f2228;
+  --fg: #d5d9e2;
+  --fg-strong: #ffffff;
+  --fg-muted: #9a9ea5;
+  --accent: #ff6308;
+  --accent-hover: #ffd085;
+  --accent-fg: var(--fg-strong);
+  --focus: #ffffff;
+  --up: #4ade80;
+  --down: #e66565;
+  --info: #9cb8dd;
+  --event-div: #ff6308;
+  --event-split: var(--info);
+  --shadow: none;
+  --shadow-sm: none;
+  --grid: #2e3033;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    color-scheme: dark;
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --card-border: #1f2228;
+    --fg: #d5d9e2;
+    --fg-strong: #ffffff;
+    --fg-muted: #9a9ea5;
+    --accent: #ff6308;
+    --accent-hover: #ffd085;
+    --accent-fg: var(--fg-strong);
+    --focus: #ffffff;
+    --up: #4ade80;
+    --down: #e66565;
+    --info: #9cb8dd;
+    --event-div: #ff6308;
+    --event-split: var(--info);
+    --shadow: none;
+    --shadow-sm: none;
+    --grid: #2e3033;
+  }
 }
 
 *,
@@ -23,8 +84,13 @@ body,
   margin: 0;
 }
 
+html {
+  background: var(--bg);
+}
+
 body {
   font-family: var(--font);
+  font-weight: 400;
   background: var(--bg);
   color: var(--fg);
   line-height: 1.5;
@@ -33,11 +99,18 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  body {
+    padding-bottom: 64px;
+  }
 }
