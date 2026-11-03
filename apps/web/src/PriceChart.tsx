@@ -72,7 +72,11 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
   return (
-    <div className="price-chart" role="img" aria-label="Price over time line chart" style={{ width: "100%", height: "100%" }}>
+    <div
+      className="price-chart"
+      role="img"
+      aria-label={variant === "intraday" ? "Price over time line chart, times in Eastern Time" : "Price over time line chart"}
+      style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={320}>
         <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -114,6 +118,18 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
             tickFormatter={tickFormatter}
             minTickGap={variant === "intraday" ? 0 : 32}
             dy={10}
+            height={variant === "intraday" ? 52 : 30}
+            label={
+              variant === "intraday"
+                ? {
+                    value: `Times in ${MARKET_TZ_LABEL}`,
+                    position: "insideBottomRight",
+                    offset: 0,
+                    fill: "var(--fg-muted)",
+                    fontSize: 12,
+                  }
+                : undefined
+            }
           />
           <YAxis
             dataKey="price"
