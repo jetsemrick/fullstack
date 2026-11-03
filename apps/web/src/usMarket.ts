@@ -111,3 +111,29 @@ export function hourlySessionTicksUtcMs(openMs: number, closeMs: number): number
   }
   return out.sort((a, b) => a - b);
 }
+
+export function easternYear(ms: number): number {
+  return easternCalendarParts(ms).y;
+}
+
+/** Stable key for the Eastern calendar day of an instant, e.g. "2026-11-3". */
+export function easternDayKey(ms: number): string {
+  const { y, mo, dy } = easternCalendarParts(ms);
+  return `${y}-${mo}-${dy}`;
+}
+
+export function formatEasternDay(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-US", { timeZone: EASTERN, weekday: "short", month: "short", day: "numeric" });
+}
+
+export function formatEasternDayTime(ms: number): string {
+  const when = new Date(ms).toLocaleString("en-US", {
+    timeZone: EASTERN,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${when} ET`;
+}
