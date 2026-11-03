@@ -14,7 +14,7 @@ import type { GetPricesResponse } from "@stock/shared";
 import { hourlySessionTicksUtcMs, intradaySessionLayoutUtcMs } from "./usMarket";
 import { downsampleRows } from "./priceChartData";
 import { visibleChartEvents } from "./chartEvents";
-import { EventMarkerLayer, EventMarkerTooltip, type ActiveMarker, type EventMarkerStyle } from "./EventMarkers";
+import { EventMarkerLayer, EventMarkerTooltip, TICK_STRIP_PX, type ActiveMarker, type EventMarkerStyle } from "./EventMarkers";
 
 const MAX_DAILY_RENDER_POINTS = 1_200;
 
@@ -125,6 +125,7 @@ export function PriceChart({
     return visibleChartEvents(data.events, [start, end], data.currency);
   }, [showEvents, rows, xDomain, data.events, data.currency]);
   const markerActive = showEvents && activeMarker !== null;
+  const tickStrip = showEvents && markerStyle === "tick" ? TICK_STRIP_PX : 0;
 
   if (rows.length === 0) return <p className="muted" style={{ textAlign: "center", marginTop: "2rem" }}>No data to chart.</p>;
 
@@ -170,7 +171,8 @@ export function PriceChart({
             axisLine={false}
             tickFormatter={tickFormatter}
             minTickGap={variant === "intraday" ? 0 : 32}
-            dy={10}
+            height={30 + tickStrip}
+            dy={10 + tickStrip}
           />
           <YAxis
             dataKey="price"

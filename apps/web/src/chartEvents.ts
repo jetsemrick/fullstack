@@ -96,6 +96,18 @@ export function mergeMarkers(
   return groups;
 }
 
+/** Dividend ticks closer than this to a neighbor draw faded so dense runs read as a band, not a solid bar. */
+export const DENSE_TICK_GAP_PX = 3;
+
+/** For ascending xs, whether each one is within `minGapPx` of either neighbor. */
+export function denseFlags(sortedXs: number[], minGapPx = DENSE_TICK_GAP_PX): boolean[] {
+  return sortedXs.map((x, i) => {
+    const prev = sortedXs[i - 1];
+    const next = sortedXs[i + 1];
+    return (prev !== undefined && x - prev < minGapPx) || (next !== undefined && next - x < minGapPx);
+  });
+}
+
 /** Index of the x closest to `x` in an ascending list, or -1 when empty. */
 export function nearestIndex(sortedXs: number[], x: number): number {
   if (sortedXs.length === 0) return -1;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { PriceEvents } from "@stock/shared";
-import { formatEventDate, groupAriaLabel, mergeMarkers, nearestIndex, visibleChartEvents } from "./chartEvents";
+import { denseFlags, formatEventDate, groupAriaLabel, mergeMarkers, nearestIndex, visibleChartEvents } from "./chartEvents";
 
 const AAPL_SPLIT_TS = 1598880600; // 2020-08-31 09:30 ET
 
@@ -45,6 +45,14 @@ describe("visibleChartEvents", () => {
   test("returns nothing for stocks without events or responses missing the field", () => {
     expect(visibleChartEvents({ dividends: [], splits: [] }, ALL, "USD")).toEqual([]);
     expect(visibleChartEvents(undefined, ALL, "USD")).toEqual([]);
+  });
+});
+
+describe("denseFlags", () => {
+  test("flags ticks under 3px from either neighbor", () => {
+    expect(denseFlags([0, 2, 10, 13, 15.9])).toEqual([true, true, false, true, true]);
+    expect(denseFlags([0, 3, 6])).toEqual([false, false, false]);
+    expect(denseFlags([5])).toEqual([false]);
   });
 });
 

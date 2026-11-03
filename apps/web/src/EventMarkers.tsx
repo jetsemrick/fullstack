@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
-import { groupAriaLabel, mergeMarkers, nearestIndex, type ChartEvent, type MarkerGroup } from "./chartEvents";
+import { denseFlags, groupAriaLabel, mergeMarkers, nearestIndex, type ChartEvent, type MarkerGroup } from "./chartEvents";
 
 /** "dot": every event is a marker, merged with count badges. "tick": dividends are thin ticks behind one focusable track. */
 export type EventMarkerStyle = "dot" | "tick";
@@ -15,8 +15,9 @@ export type ActiveMarker = {
 
 /** Tooltips this close to a plot edge anchor to that edge instead of centering. */
 const TOOLTIP_EDGE_PX = 120;
-/** Half-height of the hover band over the baseline in tick mode. */
-const TRACK_HALF_HEIGHT_PX = 8;
+/** Height of the dividend tick strip between the plot and the time-axis labels in tick mode. */
+export const TICK_STRIP_PX = 8;
+const TICK_HEIGHT_PX = 4;
 
 type AxisLike = { scale?: (v: number) => number };
 
@@ -56,6 +57,7 @@ export function EventMarkerLayer({ events, markerStyle, onActiveChange, xAxisMap
         .map((e) => ({ event: e, x: scale(e.t) }))
         .filter((d) => Number.isFinite(d.x) && inPlot(d.x))
     : [];
+  const dense = denseFlags(dividends.map((d) => d.x));
   const groups = mergeMarkers(ticks ? events.filter((e) => e.kind === "split") : events, (t) => scale(t)).filter(
     (g) => inPlot(g.x),
   );
@@ -102,23 +104,23 @@ export function EventMarkerLayer({ events, markerStyle, onActiveChange, xAxisMap
       {ticks && dividends.length > 0 ? (
         <>
           <g aria-hidden="true">
-            {dividends.map((d) => (
+            {dividends.map((d, i) => (
               <rect
                 key={d.event.t}
-                className="event-marker__tick"
+                className={`event-marker__tick${dense[i] ? " event-marker__tick--dense" : ""}`}
                 x={d.x - 0.5}
-                y={baseline - 4}
+                y={baseline + (TICK_STRIP_PX - TICK_HEIGHT_PX) / 2}
                 width={1}
-                height={4}
+                height={TICK_HEIGHT_PX}
               />
             ))}
           </g>
           <rect
             className="event-track"
             x={left}
-            y={baseline - TRACK_HALF_HEIGHT_PX}
+            y={baseline}
             width={right - left}
-            height={TRACK_HALF_HEIGHT_PX * 2}
+            height={TICK_STRIP_PX}
             role="img"
             tabIndex={0}
             aria-label={`Dividends, ${dividends.length} in range. Use left and right arrow keys to move between dividends.`}
@@ -129,7 +131,13 @@ export function EventMarkerLayer({ events, markerStyle, onActiveChange, xAxisMap
             onKeyDown={onTrackKeyDown}
           />
           {trackX !== undefined ? (
-            <circle className="event-track__ring" cx={trackX} cy={baseline - 2} r={5} aria-hidden="true" />
+            <circle
+              className="event-track__ring"
+              cx={trackX}
+              cy={baseline + TICK_STRIP_PX / 2}
+              r={5}
+              aria-hidden="true"
+            />
           ) : null}
         </>
       ) : null}
