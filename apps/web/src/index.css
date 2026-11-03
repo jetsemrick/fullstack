@@ -16,6 +16,7 @@
   --info: #9cb8dd;
   --event-div: #b84300;
   --event-split: var(--fg-strong);
+  --grid: var(--card-border);
   --shadow: none;
   --shadow-sm: none;
   --radius: 0.5rem;
@@ -41,6 +42,7 @@ html.dark {
   --info: #9cb8dd;
   --event-div: #ff6308;
   --event-split: var(--info);
+  --grid: #3a3e45;
   --shadow: none;
   --shadow-sm: none;
 }
@@ -63,6 +65,7 @@ html.dark {
     --info: #9cb8dd;
     --event-div: #ff6308;
     --event-split: var(--info);
+  --grid: #3a3e45;
     --shadow: none;
     --shadow-sm: none;
   }

@@ -111,7 +111,7 @@ export function PriceChart({ data, variant = "daily" }: { data: GetPricesRespons
               <stop offset="100%" stopColor="var(--fg-strong)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="var(--card-border)" strokeDasharray="3 3" vertical={false} />
+          <CartesianGrid stroke="var(--grid)" strokeDasharray="3 3" vertical={false} />
           {variant === "intraday" && sessionLayout ? (
             <>
               <ReferenceArea
